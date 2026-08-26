@@ -1,0 +1,60 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Glowing soft circle background for emblem -->
+    <path
+        android:pathData="M54,54m-32,0a32,32 0 1,1 64,0a32,32 0 1,1 -64,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="22"
+                android:startY="22"
+                android:endX="86"
+                android:endY="86"
+                android:type="linear">
+                <item android:color="#33FEF08A" android:offset="0.0" />
+                <item android:color="#11B45309" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Open Cookbook Base Pages -->
+    <!-- Left Page -->
+    <path
+        android:fillColor="#FFFBEB"
+        android:pathData="M52,38 C42,35 34,36 28,38 C26.9,38.4 26,39.4 26,40.6 L26,71 C26,72.4 27.3,73.4 28.6,73 C34,71.2 42,70.5 52,73.5 Z" />
+
+    <!-- Right Page -->
+    <path
+        android:fillColor="#FEF3C7"
+        android:pathData="M56,38 C66,35 74,36 80,38 C81.1,38.4 82,39.4 82,40.6 L82,71 C82,72.4 80.7,73.4 79.4,73 C74,71.2 66,70.5 56,73.5 Z" />
+
+    <!-- Book Spine / Center Shadow -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M52,38 L56,38 L56,73.5 L52,73.5 Z" />
+
+    <!-- Golden Chef Whisk & Fork / Wheat emblem on pages -->
+    <!-- Left page recipe lines -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M31,45 L47,45 L47,47 L31,47 Z M31,50 L45,50 L45,52 L31,52 Z M31,55 L47,55 L47,57 L31,57 Z M31,60 L41,60 L41,62 L31,62 Z" />
+
+    <!-- Right page golden heart / spoon seal -->
+    <path
+        android:fillColor="#B45309"
+        android:pathData="M61,45 L77,45 L77,47 L61,47 Z M61,50 L75,50 L75,52 L61,52 Z M61,55 L77,55 L77,57 L61,57 Z" />
+
+    <!-- Golden Chef Ribbon / Bookmark hanging down -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M53,40 L55,40 L55,80 L54,77 L53,80 Z" />
+
+    <!-- Chef Hat Gold Accent above book -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,26 C51,26 49,28 49,30 C47,30 46,32 47,34 C47.5,35 48.5,35.5 50,35.7 L50,37 L58,37 L58,35.7 C59.5,35.5 60.5,35 61,34 C62,32 61,30 59,30 C59,28 57,26 54,26 Z" />
+</vector>

@@ -13,6 +13,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.backup.BackupManager
 import com.example.data.backup.BackupManifest
+import com.example.data.backup.SavedBackupFile
 import com.example.data.local.AppDatabase
 import com.example.data.local.RecipeEntity
 import com.example.data.local.ShoppingItemEntity
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -43,12 +45,20 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         val db = AppDatabase.getInstance(application)
-        repository = RecipeRepository(db.recipeDao(), db.shoppingDao())
+        repository = RecipeRepository(application, db.recipeDao(), db.shoppingDao())
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (repository.getRecipeCount() == 0) {
+                val hasSeeded = prefs.getBoolean("pref_has_seeded_initial_recipes", false)
+                if (!hasSeeded && repository.getRecipeCount() == 0) {
                     repository.restoreDefaultRecipes(replaceExisting = false)
+                    prefs.edit().putBoolean("pref_has_seeded_initial_recipes", true).apply()
                 }
+                // Automatic weekly backup if enabled
+                if (autoWeeklyBackupEnabled.value) {
+                    val all = repository.getAllRecipesDirect()
+                    BackupManager.performWeeklyBackupIfDue(application, all)
+                }
+                refreshSavedBackups()
             } catch (e: Exception) {
                 // Ignore initialization errors
             }
@@ -58,6 +68,65 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     val searchQuery = MutableStateFlow("")
     val selectedCategory = MutableStateFlow("All")
     val onlyFavorites = MutableStateFlow(false)
+
+    // Category Management
+    val defaultCategories = listOf(
+        "Baking & Desserts",
+        "Main Dishes",
+        "Soups & Stews",
+        "Salads & Starters",
+        "Holiday & Traditions",
+        "Family Classics"
+    )
+
+    private fun loadCategoriesFromPrefs(): List<String> {
+        val stored = prefs.getString("pref_custom_categories", null) ?: return defaultCategories
+        return try {
+            val list = stored.split("|||").map { it.trim() }.filter { it.isNotBlank() }
+            if (list.isNotEmpty()) list else defaultCategories
+        } catch (e: Exception) {
+            defaultCategories
+        }
+    }
+
+    val categories = MutableStateFlow<List<String>>(loadCategoriesFromPrefs())
+
+    fun addCategory(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotBlank() && !categories.value.any { it.equals(trimmed, ignoreCase = true) }) {
+            val updated = categories.value + trimmed
+            categories.value = updated
+            saveCategories(updated)
+        }
+    }
+
+    fun renameCategory(oldName: String, newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isBlank() || oldName.equals(trimmed, ignoreCase = true)) return
+        val updated = categories.value.map { if (it.equals(oldName, ignoreCase = true)) trimmed else it }
+        categories.value = updated
+        saveCategories(updated)
+        if (selectedCategory.value.equals(oldName, ignoreCase = true)) {
+            selectedCategory.value = trimmed
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateCategoryName(oldName, trimmed)
+        }
+    }
+
+    fun deleteCategory(name: String) {
+        if (categories.value.size <= 1) return
+        val updated = categories.value.filterNot { it.equals(name, ignoreCase = true) }
+        categories.value = updated
+        saveCategories(updated)
+        if (selectedCategory.value.equals(name, ignoreCase = true)) {
+            selectedCategory.value = "All"
+        }
+    }
+
+    private fun saveCategories(list: List<String>) {
+        prefs.edit().putString("pref_custom_categories", list.joinToString("|||")).apply()
+    }
     
     // Persistent user preferences
     val languageMode = MutableStateFlow(
@@ -165,6 +234,30 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     val editingRecipeDraft = MutableStateFlow<RecipeEntity?>(null)
     val isShareDialogOpen = MutableStateFlow(false)
 
+    fun openNewRecipeEditor() {
+        editingRecipeDraft.value = RecipeEntity(
+            id = 0,
+            title = "",
+            titleGerman = "",
+            titleEnglish = "",
+            category = categories.value.firstOrNull() ?: "Baking & Desserts",
+            servings = "4 servings",
+            prepTimeMinutes = 15,
+            cookTimeMinutes = 30,
+            difficulty = "Easy",
+            ingredients = listOf(
+                com.example.data.model.RecipeIngredient(name = "", amount = "", unit = "", nameEnglish = "")
+            ),
+            steps = listOf(
+                com.example.data.model.RecipeStep(stepNumber = 1, instructionEnglish = "", instructionGerman = "")
+            ),
+            notes = "",
+            originStory = ""
+        )
+        recipeEditorInitialTab.value = 0
+        isRecipeEditorOpen.value = true
+    }
+
     // Cook Mode (Keep screen awake, high brightness, step tracker, timer)
     val isCookMode = MutableStateFlow(false)
     val activeCookStep = MutableStateFlow(0)
@@ -183,6 +276,11 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     val isScanning = MutableStateFlow(false)
     val scannedDraftRecipe = MutableStateFlow<RecipeEntity?>(null)
     val scanErrorMessage = MutableStateFlow<String?>(null)
+    val navigateToRecipeEvent = MutableStateFlow<RecipeEntity?>(null)
+
+    fun clearNavigateToRecipeEvent() {
+        navigateToRecipeEvent.value = null
+    }
 
     // Text To Speech
     private var tts: TextToSpeech? = null
@@ -415,6 +513,15 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // Duplicate Recipe Prompt Data
+    data class DuplicatePromptData(
+        val existingRecipe: RecipeEntity,
+        val scannedRecipe: RecipeEntity,
+        val rawBitmaps: List<Bitmap> = emptyList()
+    )
+
+    val duplicatePrompt = MutableStateFlow<DuplicatePromptData?>(null)
+
     fun scanRecipe(bitmap: Bitmap?, rawText: String?, imageUri: String? = null) {
         val bitmaps = if (bitmap != null) listOf(bitmap) else emptyList()
         scanRecipe(bitmaps, rawText, imageUri)
@@ -426,7 +533,17 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             scanErrorMessage.value = null
             try {
                 val parsed = repository.scanAndProcessRecipe(bitmaps, rawText, imageUri)
-                scannedDraftRecipe.value = parsed
+                val duplicate = repository.findDuplicateRecipe(parsed)
+                if (duplicate != null) {
+                    duplicatePrompt.value = DuplicatePromptData(
+                        existingRecipe = duplicate,
+                        scannedRecipe = parsed,
+                        rawBitmaps = bitmaps
+                    )
+                } else {
+                    // Open the interactive review & edit sheet so user can inspect or adjust the AI extracted recipe before finalizing
+                    scannedDraftRecipe.value = parsed
+                }
             } catch (t: Throwable) {
                 scanErrorMessage.value = "Scanning error: ${t.localizedMessage ?: "Unable to read recipe"}"
             } finally {
@@ -435,14 +552,66 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun resolveDuplicateUpdate(prompt: DuplicatePromptData) {
+        viewModelScope.launch {
+            val merged = prompt.existingRecipe.copy(
+                title = prompt.scannedRecipe.title.ifBlank { prompt.existingRecipe.title },
+                titleEnglish = prompt.scannedRecipe.titleEnglish.ifBlank { prompt.existingRecipe.titleEnglish },
+                titleGerman = prompt.scannedRecipe.titleGerman.ifBlank { prompt.existingRecipe.titleGerman },
+                category = prompt.scannedRecipe.category.ifBlank { prompt.existingRecipe.category },
+                servings = prompt.scannedRecipe.servings.ifBlank { prompt.existingRecipe.servings },
+                prepTimeMinutes = prompt.scannedRecipe.prepTimeMinutes,
+                cookTimeMinutes = prompt.scannedRecipe.cookTimeMinutes,
+                difficulty = prompt.scannedRecipe.difficulty,
+                ingredients = if (prompt.scannedRecipe.ingredients.isNotEmpty()) prompt.scannedRecipe.ingredients else prompt.existingRecipe.ingredients,
+                steps = if (prompt.scannedRecipe.steps.isNotEmpty()) prompt.scannedRecipe.steps else prompt.existingRecipe.steps,
+                notes = if (prompt.scannedRecipe.notes.isNotBlank()) prompt.scannedRecipe.notes else prompt.existingRecipe.notes,
+                notesGerman = if (prompt.scannedRecipe.notesGerman.isNotBlank()) prompt.scannedRecipe.notesGerman else prompt.existingRecipe.notesGerman,
+                imageUri = prompt.scannedRecipe.imageUri ?: prompt.existingRecipe.imageUri,
+                originStory = if (prompt.scannedRecipe.originStory.isNotBlank() && !prompt.scannedRecipe.originStory.contains("Scanned recipe")) prompt.scannedRecipe.originStory else prompt.existingRecipe.originStory
+            )
+            repository.updateRecipe(merged)
+            val updated = repository.getRecipeDirect(merged.id) ?: merged
+            duplicatePrompt.value = null
+            scannedDraftRecipe.value = null
+            selectRecipe(updated)
+            navigateToRecipeEvent.value = updated
+        }
+    }
+
+    fun resolveDuplicateSaveAsCopy(prompt: DuplicatePromptData) {
+        viewModelScope.launch {
+            val baseTitle = prompt.scannedRecipe.title.replace(Regex("\\s*\\((?:Variation|Copy).*?\\)$"), "")
+            val all = repository.getAllRecipesDirect()
+            val copiesCount = all.count { it.title.startsWith(baseTitle, ignoreCase = true) }
+            val newTitle = if (copiesCount <= 1) "$baseTitle (Variation)" else "$baseTitle (Variation $copiesCount)"
+
+            val variationRecipe = prompt.scannedRecipe.copy(
+                id = 0,
+                title = newTitle,
+                titleEnglish = if (prompt.scannedRecipe.titleEnglish.isNotBlank()) newTitle else "",
+                titleGerman = if (prompt.scannedRecipe.titleGerman.isNotBlank()) newTitle else ""
+            )
+            val newId = repository.insertRecipe(variationRecipe)
+            val inserted = repository.getRecipeDirect(newId) ?: variationRecipe.copy(id = newId)
+            duplicatePrompt.value = null
+            scannedDraftRecipe.value = null
+            selectRecipe(inserted)
+            navigateToRecipeEvent.value = inserted
+        }
+    }
+
+    fun dismissDuplicatePrompt() {
+        duplicatePrompt.value = null
+    }
+
     fun saveDraftRecipe(recipe: RecipeEntity) {
         viewModelScope.launch {
             val id = repository.insertRecipe(recipe)
-            val inserted = repository.getRecipeDirect(id)
+            val inserted = repository.getRecipeDirect(id) ?: recipe.copy(id = id)
             scannedDraftRecipe.value = null
-            if (inserted != null) {
-                selectRecipe(inserted)
-            }
+            selectRecipe(inserted)
+            navigateToRecipeEvent.value = inserted
         }
     }
 
@@ -491,10 +660,130 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     val pendingRestoreManifest = MutableStateFlow<BackupManifest?>(null)
     val isRestoring = MutableStateFlow(false)
     val lastBackupDate = MutableStateFlow<String?>(prefs.getString("pref_last_backup_date", null))
+    val autoWeeklyBackupEnabled = MutableStateFlow(prefs.getBoolean("pref_auto_weekly_backup", true))
+    val savedBackupsList = MutableStateFlow<List<SavedBackupFile>>(emptyList())
+
+    fun setAutoWeeklyBackupEnabled(enabled: Boolean) {
+        autoWeeklyBackupEnabled.value = enabled
+        prefs.edit().putBoolean("pref_auto_weekly_backup", enabled).apply()
+        if (enabled) {
+            checkAndPerformAutoWeeklyBackup()
+        }
+    }
+
+    fun checkAndPerformAutoWeeklyBackup() {
+        if (!autoWeeklyBackupEnabled.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val all = repository.getAllRecipesDirect()
+            if (all.isNotEmpty()) {
+                val created = BackupManager.performWeeklyBackupIfDue(getApplication(), all)
+                if (created) {
+                    refreshSavedBackups()
+                }
+            }
+        }
+    }
+
+    fun refreshSavedBackups() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val list = BackupManager.listAllLocalBackups(getApplication())
+            withContext(Dispatchers.Main) {
+                savedBackupsList.value = list
+            }
+        }
+    }
+
+    fun createInstantBackup() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val all = repository.getAllRecipesDirect()
+            if (all.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    backupStatusMessage.value = "Your cookbook is currently empty. Add recipes first to create a backup."
+                }
+                return@launch
+            }
+            val saved = BackupManager.createLocalBackup(getApplication(), all, "Instant Backup")
+            withContext(Dispatchers.Main) {
+                refreshSavedBackups()
+                if (saved != null) {
+                    val dateStr = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date())
+                    lastBackupDate.value = dateStr
+                    prefs.edit().putString("pref_last_backup_date", dateStr).apply()
+                    backupStatusMessage.value = "Backup created successfully! (${saved.recipeCount} recipes saved)"
+                } else {
+                    backupStatusMessage.value = "Failed to create backup file."
+                }
+            }
+        }
+    }
+
+    fun deleteSavedBackup(file: File) {
+        viewModelScope.launch(Dispatchers.IO) {
+            BackupManager.deleteBackupFile(file)
+            refreshSavedBackups()
+        }
+    }
+
+    fun directRestoreBackupFile(file: File, replaceExisting: Boolean, onComplete: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            isRestoring.value = true
+            try {
+                val content = BackupManager.readBackupFileContent(file)
+                if (content.isNullOrBlank()) {
+                    withContext(Dispatchers.Main) {
+                        backupStatusMessage.value = "Unable to read backup file."
+                    }
+                    return@launch
+                }
+                val parseResult = BackupManager.parseBackup(content)
+                val manifest = parseResult.getOrNull()
+                if (manifest == null || manifest.recipes.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        backupStatusMessage.value = "No valid recipes found in this backup file."
+                    }
+                    return@launch
+                }
+                repository.restoreRecipes(manifest.recipes, replaceExisting)
+                val updated = repository.getAllRecipesDirect()
+                BackupManager.saveLocalSnapshot(getApplication(), updated)
+                withContext(Dispatchers.Main) {
+                    val count = manifest.recipes.size
+                    backupStatusMessage.value = if (replaceExisting) {
+                        "Successfully restored $count recipes (Replaced library)!"
+                    } else {
+                        "Successfully merged $count recipes into library!"
+                    }
+                    onComplete()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    backupStatusMessage.value = "Restore failed: ${e.localizedMessage}"
+                }
+            } finally {
+                isRestoring.value = false
+            }
+        }
+    }
+
+    fun deleteAllRecipes(onComplete: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = repository.getAllRecipesDirect()
+            if (current.isNotEmpty()) {
+                BackupManager.createLocalBackup(getApplication(), current, "Pre-Deletion Safety Backup")
+            }
+            repository.deleteAllRecipes()
+            refreshSavedBackups()
+            withContext(Dispatchers.Main) {
+                backupStatusMessage.value = "All recipes cleared. A safety backup was saved automatically."
+                onComplete()
+            }
+        }
+    }
 
     fun openBackupDialog() {
         isBackupDialogOpen.value = true
         backupStatusMessage.value = null
+        refreshSavedBackups()
     }
 
     fun closeBackupDialog() {
@@ -507,10 +796,17 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun generateBackupJson(onReady: (String, Int) -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val all = repository.getAllRecipesDirect()
             val json = BackupManager.exportToJson(all)
-            onReady(json, all.size)
+            // Also ensure it's saved locally
+            if (all.isNotEmpty()) {
+                BackupManager.createLocalBackup(getApplication(), all, "Manual Export")
+            }
+            withContext(Dispatchers.Main) {
+                refreshSavedBackups()
+                onReady(json, all.size)
+            }
         }
     }
 
@@ -522,58 +818,92 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun shareBackup(context: Context) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val all = repository.getAllRecipesDirect()
             val json = BackupManager.exportToJson(all)
+            if (all.isNotEmpty()) {
+                BackupManager.createLocalBackup(getApplication(), all, "Shared Backup")
+            }
             val uri = BackupManager.createShareableBackupUri(context, json)
-            if (uri != null) {
-                BackupManager.shareBackup(context, uri, all.size)
-                onBackupExportSuccess(all.size)
-            } else {
-                backupStatusMessage.value = "Unable to create shareable backup file."
+            withContext(Dispatchers.Main) {
+                refreshSavedBackups()
+                if (uri != null) {
+                    BackupManager.shareBackup(context, uri, all.size)
+                    onBackupExportSuccess(all.size)
+                } else {
+                    backupStatusMessage.value = "Unable to create shareable backup file."
+                }
             }
         }
     }
 
     fun inspectBackupFile(context: Context, uri: Uri) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val content = BackupManager.readFromUri(context, uri)
-            if (content.isNullOrBlank()) {
-                backupStatusMessage.value = "Failed to read backup file."
-                return@launch
-            }
-
-            val parseResult = BackupManager.parseBackup(content)
-            if (parseResult.isSuccess) {
-                val manifest = parseResult.getOrThrow()
-                if (manifest.recipes.isEmpty()) {
-                    backupStatusMessage.value = "The selected backup file contains 0 recipes."
-                } else {
-                    pendingRestoreManifest.value = manifest
-                    backupStatusMessage.value = null
+            withContext(Dispatchers.Main) {
+                if (content.isNullOrBlank()) {
+                    backupStatusMessage.value = "Could not read data from selected file. You can also paste the JSON or recipe text directly."
+                    return@withContext
                 }
-            } else {
-                backupStatusMessage.value = "Invalid backup file: ${parseResult.exceptionOrNull()?.message ?: "Unrecognized format"}"
+                inspectBackupText(content)
             }
         }
     }
 
+    fun inspectBackupText(text: String) {
+        if (text.isBlank()) {
+            backupStatusMessage.value = "Please enter or paste recipe JSON or text."
+            return
+        }
+
+        val parseResult = BackupManager.parseBackup(text)
+        if (parseResult.isSuccess) {
+            val manifest = parseResult.getOrThrow()
+            if (manifest.recipes.isEmpty()) {
+                backupStatusMessage.value = "No recipes found in the provided backup."
+            } else {
+                pendingRestoreManifest.value = manifest
+                val firstTitle = manifest.recipes.firstOrNull()?.title ?: "Recipe"
+                val extraText = if (manifest.recipes.size > 1) " (including \"$firstTitle\" and ${manifest.recipes.size - 1} more)" else " (\"$firstTitle\")"
+                backupStatusMessage.value = "Found ${manifest.recipes.size} recipe(s)$extraText. Choose below to restore into your library."
+            }
+        } else {
+            backupStatusMessage.value = "Invalid format: ${parseResult.exceptionOrNull()?.message ?: "Unrecognized format"}"
+        }
+    }
+
+    fun restoreLocalSnapshot(replaceExisting: Boolean) {
+        val snapshot = BackupManager.getLocalSnapshot(getApplication())
+        if (snapshot.isNullOrBlank()) {
+            backupStatusMessage.value = "No local snapshot found yet."
+            return
+        }
+        inspectBackupText(snapshot)
+    }
+
     fun executeRestore(replaceExisting: Boolean, onComplete: (Int) -> Unit = {}) {
         val manifest = pendingRestoreManifest.value ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             isRestoring.value = true
             try {
                 repository.restoreRecipes(manifest.recipes, replaceExisting)
                 val count = manifest.recipes.size
-                pendingRestoreManifest.value = null
-                backupStatusMessage.value = if (replaceExisting) {
-                    "Successfully restored $count recipes (Replaced existing library)!"
-                } else {
-                    "Successfully merged $count recipes into your cookbook!"
+                // Save updated snapshot
+                val updated = repository.getAllRecipesDirect()
+                BackupManager.saveLocalSnapshot(getApplication(), updated)
+                withContext(Dispatchers.Main) {
+                    pendingRestoreManifest.value = null
+                    backupStatusMessage.value = if (replaceExisting) {
+                        "Successfully restored $count recipes (Replaced library)!"
+                    } else {
+                        "Successfully merged $count recipes into your cookbook!"
+                    }
+                    onComplete(count)
                 }
-                onComplete(count)
             } catch (e: Exception) {
-                backupStatusMessage.value = "Restore failed: ${e.localizedMessage}"
+                withContext(Dispatchers.Main) {
+                    backupStatusMessage.value = "Restore failed: ${e.localizedMessage}"
+                }
             } finally {
                 isRestoring.value = false
             }
@@ -581,13 +911,19 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun restoreStarterRecipes(replaceExisting: Boolean = false) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             isRestoring.value = true
             try {
                 repository.restoreDefaultRecipes(replaceExisting)
-                backupStatusMessage.value = "Starter Heirloom Recipes reloaded successfully!"
+                val updated = repository.getAllRecipesDirect()
+                BackupManager.saveLocalSnapshot(getApplication(), updated)
+                withContext(Dispatchers.Main) {
+                    backupStatusMessage.value = "Starter Heirloom Recipes (including Chocolate Chip Cookies) reloaded successfully!"
+                }
             } catch (e: Exception) {
-                backupStatusMessage.value = "Failed to load starter recipes: ${e.localizedMessage}"
+                withContext(Dispatchers.Main) {
+                    backupStatusMessage.value = "Failed to load starter recipes: ${e.localizedMessage}"
+                }
             } finally {
                 isRestoring.value = false
             }

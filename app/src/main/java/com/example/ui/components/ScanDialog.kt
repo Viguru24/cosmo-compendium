@@ -46,6 +46,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,11 +60,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.Alignment
@@ -99,6 +104,10 @@ fun ScanRecipeBottomSheet(
     isScanning: Boolean,
     draftRecipe: RecipeEntity?,
     errorMessage: String? = null,
+    duplicatePrompt: com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData? = null,
+    onResolveDuplicateUpdate: ((com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData) -> Unit)? = null,
+    onResolveDuplicateSaveCopy: ((com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData) -> Unit)? = null,
+    onDismissDuplicate: (() -> Unit)? = null,
     onClearError: () -> Unit = {},
     onScan: (List<Bitmap>, String?, String?) -> Unit,
     onSaveDraft: (RecipeEntity) -> Unit,
@@ -125,20 +134,71 @@ fun ScanRecipeBottomSheet(
                     Toast.makeText(context, "Error reading image: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+            if (scannedPages.isNotEmpty()) {
+                val allBitmaps = scannedPages.map { it.bitmap }
+                val primaryPath = scannedPages.firstOrNull()?.filePath ?: ""
+                Toast.makeText(context, "${scannedPages.size} page(s) loaded! Automatically scanning...", Toast.LENGTH_SHORT).show()
+                onScan(allBitmaps, null, primaryPath)
+            }
         }
     }
 
+    val coroutineScope = rememberCoroutineScope()
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var cameraLauncherRef by remember { mutableStateOf<androidx.activity.result.ActivityResultLauncher<Uri>?>(null) }
+
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success && pendingCameraUri != null) {
             try {
-                val safeBitmap = ImageUtils.ensureSoftwareBitmap(bitmap)
-                val savedImagePath = ImageUtils.saveLowResReferenceImage(context, safeBitmap) ?: ""
-                scannedPages.add(ScannedPageThumbnail(safeBitmap, savedImagePath))
+                val bitmap = ImageUtils.loadAndDownscaleBitmap(context, pendingCameraUri!!)
+                if (bitmap != null) {
+                    val savedImagePath = ImageUtils.saveLowResReferenceImage(context, bitmap) ?: ""
+                    scannedPages.add(ScannedPageThumbnail(bitmap, savedImagePath))
+                    
+                    if (scannedPages.size == 1) {
+                        Toast.makeText(context, "Page 1 captured! Opening camera for Page 2 (or tap back/cancel if 1 page)...", Toast.LENGTH_LONG).show()
+                        coroutineScope.launch {
+                            delay(400)
+                            try {
+                                val uri = ImageUtils.createTempCameraUri(context)
+                                pendingCameraUri = uri
+                                cameraLauncherRef?.launch(uri)
+                            } catch (e: Throwable) {
+                                Toast.makeText(context, "Could not open camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } else {
+                        // 2 or more pages captured -> automatically synthesize and convert!
+                        Toast.makeText(context, "${scannedPages.size} pages captured! Automatically scanning & transcribing...", Toast.LENGTH_SHORT).show()
+                        val allBitmaps = scannedPages.map { it.bitmap }
+                        val primaryPath = scannedPages.firstOrNull()?.filePath ?: savedImagePath
+                        onScan(allBitmaps, null, primaryPath)
+                    }
+                } else {
+                    Toast.makeText(context, "Could not process photo from camera", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Throwable) {
                 Toast.makeText(context, "Error processing photo: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        } else if (!success && scannedPages.isNotEmpty()) {
+            // User cancelled/backed out of camera after page 1 -> automatically process the 1 page captured!
+            Toast.makeText(context, "1 page captured! Automatically scanning & transcribing...", Toast.LENGTH_SHORT).show()
+            val allBitmaps = scannedPages.map { it.bitmap }
+            val primaryPath = scannedPages.firstOrNull()?.filePath ?: ""
+            onScan(allBitmaps, null, primaryPath)
+        }
+    }
+    cameraLauncherRef = cameraLauncher
+
+    fun launchHighResCamera() {
+        try {
+            val uri = ImageUtils.createTempCameraUri(context)
+            pendingCameraUri = uri
+            cameraLauncher.launch(uri)
+        } catch (e: Throwable) {
+            Toast.makeText(context, "Could not open camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -146,13 +206,30 @@ fun ScanRecipeBottomSheet(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            try {
-                cameraLauncher.launch(null)
-            } catch (e: Throwable) {
-                Toast.makeText(context, "Could not open camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-            }
+            launchHighResCamera()
         } else {
             Toast.makeText(context, "Camera permission is required to photograph recipe cards directly.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun requestCameraOrLaunch() {
+        val hasCameraPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+        if (hasCameraPermission) {
+            launchHighResCamera()
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    var hasAutoOpenedCamera by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!hasAutoOpenedCamera && scannedPages.isEmpty() && draftRecipe == null && !isScanning) {
+            hasAutoOpenedCamera = true
+            requestCameraOrLaunch()
         }
     }
 
@@ -237,12 +314,25 @@ fun ScanRecipeBottomSheet(
         )
     )
 
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = Color(0xFFFFFDF8),
-        modifier = modifier.testTag("scan_recipe_bottom_sheet")
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .testTag("scan_recipe_bottom_sheet")
     ) {
-        if (draftRecipe != null) {
+        if (duplicatePrompt != null) {
+            DuplicateRecipeComparisonView(
+                prompt = duplicatePrompt,
+                onUpdate = { onResolveDuplicateUpdate?.invoke(duplicatePrompt) },
+                onSaveCopy = { onResolveDuplicateSaveCopy?.invoke(duplicatePrompt) },
+                onDiscard = { onDismissDuplicate?.invoke() ?: onDismiss() }
+            )
+        } else if (draftRecipe != null) {
             // Edit & Review AI Sorted Fields
             RecipeReviewAndSaveView(
                 initialDraft = draftRecipe,
@@ -252,36 +342,235 @@ fun ScanRecipeBottomSheet(
                 onCancel = onDismiss
             )
         } else if (isScanning) {
-            // Live AI Scanning Animation
-            Column(
+            // Clean Full-Page Live AI Scanning & Transcribing Screen
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .background(Color(0xFFFDFBF7))
             ) {
-                CircularProgressIndicator(
-                    color = TerracottaPrimary,
-                    modifier = Modifier.size(56.dp),
-                    strokeWidth = 4.dp
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Text(
-                    text = "✨ AI Culinary Archivist at Work...",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = TerracottaPrimary
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Hero Glowing Icon & Animated Spinner
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFFFF4EB),
+                        border = BorderStroke(2.dp, Color(0xFFFFD8BF)),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.size(88.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            CircularProgressIndicator(
+                                color = TerracottaPrimary,
+                                modifier = Modifier.size(68.dp),
+                                strokeWidth = 3.5.dp
+                            )
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = TerracottaPrimary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Transcribing Recipe...",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF431407),
+                            fontFamily = FontFamily.Serif
+                        )
                     )
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Scanning multi-page handwriting, transcribing all steps 1, 2, 3, 4 and fractional ingredients (1/4 / 1/2 spoon sugar), and translating...",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = Color(0xFF431407),
-                        fontWeight = FontWeight.Medium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Deciphering handwriting, fractions & cooking instructions",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFF785E48),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        ),
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth(0.75f)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = TerracottaPrimary,
+                        trackColor = Color(0xFFEADBCE)
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Captured Pages Preview Container
+                    if (scannedPages.isNotEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFE8DFD5)),
+                            shadowElevation = 2.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CameraAlt,
+                                            contentDescription = null,
+                                            tint = TerracottaPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = if (scannedPages.size == 1) "Captured Card (1 Page)" else "Captured Cards (${scannedPages.size} Pages)",
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF292524)
+                                            )
+                                        )
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = Color(0xFFFEF3C7),
+                                        border = BorderStroke(1.dp, Color(0xFFFDE68A))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFFD97706))
+                                            )
+                                            Text(
+                                                text = "Analyzing",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    color = Color(0xFF92400E),
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.sp
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    scannedPages.forEachIndexed { index, item ->
+                                        Card(
+                                            shape = RoundedCornerShape(10.dp),
+                                            border = BorderStroke(1.5.dp, Color(0xFFE2D6C5)),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(170.dp)
+                                        ) {
+                                            Box(modifier = Modifier.fillMaxSize()) {
+                                                AsyncImage(
+                                                    model = if (item.filePath.isNotBlank()) File(item.filePath) else item.bitmap,
+                                                    contentDescription = "Page ${index + 1}",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                                Surface(
+                                                    color = Color(0xDD292524),
+                                                    shape = RoundedCornerShape(topStart = 8.dp),
+                                                    modifier = Modifier.align(Alignment.BottomEnd)
+                                                ) {
+                                                    Text(
+                                                        text = if (index == 0 && scannedPages.size > 1) "Page 1 • Front" else if (index == 1) "Page 2 • Back" else "Page ${index + 1}",
+                                                        color = Color.White,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Clean Progress Step Indicators
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE8DFD5)),
+                        shadowElevation = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            listOf(
+                                "✨ Deciphering cursive handwriting" to true,
+                                "⚖️ Converting fractional measurements & spoons" to true,
+                                "📖 Structuring into your Cookbook" to false
+                            ).forEach { (stepTitle, isDone) ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    if (isDone) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = SageGreen,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(15.dp),
+                                            strokeWidth = 2.dp,
+                                            color = TerracottaPrimary
+                                        )
+                                    }
+                                    Text(
+                                        text = stepTitle,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = if (isDone) Color(0xFF44403C) else TerracottaPrimary,
+                                            fontWeight = if (isDone) FontWeight.Normal else FontWeight.SemiBold,
+                                            fontSize = 13.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         } else {
             // Options: Camera, Photo Pick, Multi-Page Preview, Presets, Paste Text
@@ -298,7 +587,7 @@ fun ScanRecipeBottomSheet(
                 ) {
                     Column {
                         Text(
-                            text = "📸 Scan Heirloom Recipe",
+                            text = "📸 Scan Recipe",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = TerracottaPrimary,
@@ -353,7 +642,7 @@ fun ScanRecipeBottomSheet(
                     }
                 }
 
-                // If pages are already captured, display the Multi-Page Strip & Scan Trigger
+                // If pages are already captured, display the Multi-Page Strip & Smart Next-Page Assistant
                 if (scannedPages.isNotEmpty()) {
                     val pageCount = scannedPages.size
                     Card(
@@ -370,21 +659,30 @@ fun ScanRecipeBottomSheet(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "📑 Captured Pages ($pageCount)",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = TerracottaPrimary
+                                Column {
+                                    Text(
+                                        text = if (pageCount == 1) "📸 Page 1 Captured" else "📑 $pageCount Pages Captured",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = TerracottaPrimary
+                                        )
                                     )
-                                )
+                                    Text(
+                                        text = if (pageCount == 1) "Need a 2nd page (back of card / next steps)?" else "Front & back / multiple pages ready for AI parsing",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = Color(0xFF431407),
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    )
+                                }
                                 TextButton(
                                     onClick = { scannedPages.clear() }
                                 ) {
-                                    Text("Clear All", color = Color(0xFF991B1B), fontSize = 12.sp)
+                                    Text("Clear", color = Color(0xFF991B1B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
 
                             // Horizontal thumbnail list
                             LazyRow(
@@ -412,7 +710,7 @@ fun ScanRecipeBottomSheet(
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
                                                 Text(
-                                                    text = "Page ${index + 1}",
+                                                    text = if (index == 0) "Page 1 (Front)" else if (index == 1) "Page 2 (Back)" else "Page ${index + 1}",
                                                     color = Color.White,
                                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                                     modifier = Modifier.padding(vertical = 3.dp),
@@ -442,93 +740,115 @@ fun ScanRecipeBottomSheet(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Action buttons: Add more pages & Process all pages
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        val hasCameraPermission = ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.CAMERA
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                        if (hasCameraPermission) {
-                                            cameraLauncher.launch(null)
-                                        } else {
-                                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            if (pageCount == 1) {
+                                // Smart 2nd Page Prompt
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(
+                                        onClick = { requestCameraOrLaunch() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("📸 Take Page 2 Photo (Back of Card)", fontWeight = FontWeight.Bold)
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val bitmaps = scannedPages.map { it.bitmap }
+                                                val primaryPath = scannedPages.firstOrNull()?.filePath
+                                                onScan(bitmaps, null, primaryPath)
+                                            },
+                                            modifier = Modifier.weight(1.3f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Convert 1 Page Now", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                                         }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp), tint = TerracottaPrimary)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("+ Next Page", fontSize = 12.sp, color = TerracottaPrimary, fontWeight = FontWeight.Bold)
+
+                                        OutlinedButton(
+                                            onClick = { multiGalleryLauncher.launch("image/*") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF5B21B6))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("+ Photos", fontSize = 13.sp, color = Color(0xFF5B21B6), fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
+                            } else {
+                                // Multi-page actions
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(
+                                        onClick = {
+                                            val bitmaps = scannedPages.map { it.bitmap }
+                                            val primaryPath = scannedPages.firstOrNull()?.filePath
+                                            onScan(bitmaps, null, primaryPath)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("✨ Scan & Synthesize All $pageCount Pages", fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
 
-                                OutlinedButton(
-                                    onClick = { multiGalleryLauncher.launch("image/*") },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF5B21B6))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("+ Gallery", fontSize = 12.sp, color = Color(0xFF5B21B6), fontWeight = FontWeight.Bold)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { requestCameraOrLaunch() },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp), tint = TerracottaPrimary)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("+ Page ${pageCount + 1}", fontSize = 13.sp, color = TerracottaPrimary, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { multiGalleryLauncher.launch("image/*") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF5B21B6))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("+ Photos", fontSize = 13.sp, color = Color(0xFF5B21B6), fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Button(
-                                onClick = {
-                                    val bitmaps = scannedPages.map { it.bitmap }
-                                    val primaryPath = scannedPages.firstOrNull()?.filePath
-                                    onScan(bitmaps, null, primaryPath)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("✨ Scan & Synthesize $pageCount Page(s)", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
 
                 // Primary Scan / Photo Pick Action Cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Card(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .clickable {
-                                val hasCameraPermission = ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.CAMERA
-                                ) == PackageManager.PERMISSION_GRANTED
-
-                                if (hasCameraPermission) {
-                                    try {
-                                        cameraLauncher.launch(null)
-                                    } catch (e: Throwable) {
-                                        Toast.makeText(context, "Could not open camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                                    }
-                                } else {
-                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                                }
+                                scannedPages.clear()
+                                requestCameraOrLaunch()
                             },
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF3C7)),
                         border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFF59E0B)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Column(
+                        Row(
                             modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Icon(
                                 Icons.Default.CameraAlt,
@@ -536,57 +856,65 @@ fun ScanRecipeBottomSheet(
                                 tint = TerracottaPrimary,
                                 modifier = Modifier.size(32.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Take Photo",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF431407)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "📸 Take Photo (1 or 2 Pages)",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF431407)
+                                    )
                                 )
-                            )
-                            Text(
-                                text = "Single or multi-page",
-                                style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF431407), fontWeight = FontWeight.Medium)
-                            )
+                                Text(
+                                    text = "Snaps Page 1 then automatically opens for Page 2 (press Back/Cancel if 1 page)",
+                                    style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF431407), fontWeight = FontWeight.Medium)
+                                )
+                            }
                         }
                     }
 
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                try {
-                                    multiGalleryLauncher.launch("image/*")
-                                } catch (e: Throwable) {
-                                    Toast.makeText(context, "Could not open gallery: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                                }
-                            },
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEDE9FE)),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF6D28D9)),
-                        shape = RoundedCornerShape(12.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    try {
+                                        multiGalleryLauncher.launch("image/*")
+                                    } catch (e: Throwable) {
+                                        Toast.makeText(context, "Could not open gallery: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    }
+                                },
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFEDE9FE)),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF6D28D9)),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Image,
-                                contentDescription = null,
-                                tint = Color(0xFF5B21B6),
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Choose Photos",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2E1065)
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Image,
+                                    contentDescription = null,
+                                    tint = Color(0xFF5B21B6),
+                                    modifier = Modifier.size(26.dp)
                                 )
-                            )
-                            Text(
-                                text = "Select 1 or more pages",
-                                style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF3B0764), fontWeight = FontWeight.Medium)
-                            )
+                                Column {
+                                    Text(
+                                        text = "From Photos",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF2E1065)
+                                        )
+                                    )
+                                    Text(
+                                        text = "Choose 1 or more",
+                                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF3B0764), fontWeight = FontWeight.Medium)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -896,6 +1224,32 @@ fun RecipeReviewAndSaveView(
             )
         }
 
+        val totalMinutes = (prepTime.toIntOrNull() ?: 0) + (cookTime.toIntOrNull() ?: 0)
+        if (totalMinutes > 0) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Surface(
+                color = Color(0xFFF9F5EC),
+                border = BorderStroke(1.dp, Color(0xFF8C7B6B)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "⏱️ Total Time (Prep + Cook):",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF431407))
+                    )
+                    Text(
+                        text = "$totalMinutes mins",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary)
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Ingredients summary
@@ -1011,7 +1365,7 @@ fun RecipeReviewAndSaveView(
         ) {
             Icon(Icons.Default.Check, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Save to Heirloom Recipe Book", fontWeight = FontWeight.Bold)
+            Text("Save Recipe", fontWeight = FontWeight.Bold)
         }
     }
 
@@ -1054,6 +1408,355 @@ fun RecipeReviewAndSaveView(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DuplicateRecipeComparisonView(
+    prompt: com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData,
+    onUpdate: () -> Unit,
+    onSaveCopy: () -> Unit,
+    onDiscard: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val existing = prompt.existingRecipe
+    val scanned = prompt.scannedRecipe
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .background(Color(0xFFFDFBF7))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .testTag("duplicate_recipe_comparison_view"),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Warning Icon Badge
+        Surface(
+            shape = CircleShape,
+            color = Color(0xFFFEF3C7),
+            border = BorderStroke(1.5.dp, Color(0xFFF59E0B)),
+            modifier = Modifier.size(68.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color(0xFFB45309),
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Text(
+            text = "Duplicate Recipe Detected",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF431407),
+                fontFamily = FontFamily.Serif
+            ),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "You already have a recipe titled \"${existing.title}\" in your ${existing.category} collection.",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = Color(0xFF573C27),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            ),
+            modifier = Modifier.padding(horizontal = 12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Side-by-side / Comparison Cards
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Existing in Library
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFBF8F2)),
+                border = BorderStroke(1.5.dp, Color(0xFFD6C8B8)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(text = "📖", fontSize = 16.sp)
+                            Text(
+                                text = "Current Recipe in Cookbook",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF78350F)
+                                )
+                            )
+                        }
+                        if (existing.isFavorite) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFFEF3C7),
+                                border = BorderStroke(1.dp, Color(0xFFFDE68A))
+                            ) {
+                                Text(
+                                    text = "★ Favorite",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFB45309),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = existing.title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF292524),
+                            fontFamily = FontFamily.Serif
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🏷️ ${existing.category}",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF6B5848))
+                        )
+                        Text(
+                            text = "⏱️ ${existing.cookTimeMinutes}m cook",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF6B5848))
+                        )
+                        Text(
+                            text = "🍳 Cooked ${existing.timesCooked}x",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF6B5848))
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Ingredients (${existing.ingredients.size}): " + existing.ingredients.take(4).joinToString(", ") { it.name } + if (existing.ingredients.size > 4) "..." else "",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFF78716C),
+                            fontStyle = FontStyle.Italic
+                        ),
+                        maxLines = 2
+                    )
+                }
+            }
+
+            // Newly Scanned Candidate
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+                border = BorderStroke(1.5.dp, Color(0xFFFDBA74)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(text = "📸", fontSize = 16.sp)
+                            Text(
+                                text = "Newly Scanned Version",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = TerracottaPrimary
+                                )
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFFEDD5),
+                            border = BorderStroke(1.dp, Color(0xFFFED7AA))
+                        ) {
+                            Text(
+                                text = "New Scan",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TerracottaPrimary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = scanned.title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF431407),
+                            fontFamily = FontFamily.Serif
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🏷️ ${scanned.category}",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF785E48))
+                        )
+                        Text(
+                            text = "⏱️ ${scanned.cookTimeMinutes}m cook",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF785E48))
+                        )
+                        Text(
+                            text = "📋 ${scanned.steps.size} steps",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF785E48))
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Ingredients (${scanned.ingredients.size}): " + scanned.ingredients.take(4).joinToString(", ") { it.name } + if (scanned.ingredients.size > 4) "..." else "",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFF8C7355),
+                            fontStyle = FontStyle.Italic
+                        ),
+                        maxLines = 2
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Action Options
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Option 1: Update Existing Recipe
+            Button(
+                onClick = onUpdate,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("duplicate_update_existing_button"),
+                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Update Existing Recipe",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+            Text(
+                text = "Updates ingredients, steps, and photos while preserving your favorites status and cooking history.",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color(0xFF78716C),
+                    fontSize = 12.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                ),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Option 2: Save as New Copy (Variation)
+            OutlinedButton(
+                onClick = onSaveCopy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("duplicate_save_copy_button"),
+                border = BorderStroke(1.5.dp, SageGreen),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = SageGreen)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Save as New Copy (Variation)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+            Text(
+                text = "Keeps both recipes separately in your collection as \"${scanned.title} (Variation)\".",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color(0xFF78716C),
+                    fontSize = 12.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                ),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Option 3: Discard Scanned Recipe
+            TextButton(
+                onClick = onDiscard,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .testTag("duplicate_discard_button")
+            ) {
+                Text(
+                    text = "Discard Scanned Recipe",
+                    color = Color(0xFF991B1B),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+fun DuplicateRecipeDialog(
+    prompt: com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData,
+    onUpdate: () -> Unit,
+    onSaveCopy: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    Dialog(onDismissRequest = onDiscard) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFFFFFDF8),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+        ) {
+            DuplicateRecipeComparisonView(
+                prompt = prompt,
+                onUpdate = onUpdate,
+                onSaveCopy = onSaveCopy,
+                onDiscard = onDiscard
+            )
         }
     }
 }

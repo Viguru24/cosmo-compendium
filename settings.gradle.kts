@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Heirloom Recipes"
+rootProject.name = "Cookbook"
 
 include(":app")

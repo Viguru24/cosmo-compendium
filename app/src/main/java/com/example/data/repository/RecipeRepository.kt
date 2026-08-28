@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.content.Context
 import android.graphics.Bitmap
 import com.example.ai.GeminiClient
 import com.example.ai.ParsedIngredientDto
@@ -13,11 +14,13 @@ import com.example.data.model.RecipeIngredient
 import com.example.data.model.RecipeStep
 import com.example.data.model.ShoppingCategorizer
 import com.example.data.model.UnitSystem
+import com.example.ui.util.ImageUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.Locale
 
 class RecipeRepository(
+    private val context: Context? = null,
     private val recipeDao: RecipeDao,
     private val shoppingDao: ShoppingDao
 ) {
@@ -180,29 +183,51 @@ class RecipeRepository(
         if (replaceExisting) {
             recipeDao.deleteAll()
         }
-        recipeDao.insertAll(com.example.data.local.DefaultRecipes.getInitialRecipes())
+        val defaultList = com.example.data.local.DefaultRecipes.getInitialRecipes()
+        defaultList.forEach { recipe ->
+            recipeDao.insertRecipe(recipe.copy(id = 0))
+        }
     }
 
     suspend fun insertRecipe(recipe: RecipeEntity): Long = recipeDao.insertRecipe(recipe)
 
-    suspend fun insertAll(recipes: List<RecipeEntity>) = recipeDao.insertAll(recipes)
+    suspend fun insertAll(recipes: List<RecipeEntity>) {
+        recipes.forEach { recipe ->
+            recipeDao.insertRecipe(recipe.copy(id = 0))
+        }
+    }
 
     suspend fun getAllRecipesDirect(): List<RecipeEntity> = recipeDao.getAllRecipesDirect()
+
+    suspend fun deleteAllRecipes() = recipeDao.deleteAll()
 
     suspend fun restoreRecipes(recipes: List<RecipeEntity>, replaceExisting: Boolean) {
         if (replaceExisting) {
             recipeDao.deleteAll()
         }
-        // If replacing or merging, generate clean IDs if needed so autoincrement doesn't conflict
-        val sanitized = if (replaceExisting) {
-            recipes
-        } else {
-            recipes.map { it.copy(id = 0) }
+        recipes.forEach { recipe ->
+            val cleanTitle = recipe.title.ifBlank {
+                recipe.titleEnglish.ifBlank {
+                    recipe.titleGerman.ifBlank { "Restored Recipe" }
+                }
+            }
+            val titleGerman = recipe.titleGerman.ifBlank { cleanTitle }
+            val titleEnglish = recipe.titleEnglish.ifBlank { cleanTitle }
+            
+            recipeDao.insertRecipe(
+                recipe.copy(
+                    id = 0,
+                    title = cleanTitle,
+                    titleGerman = titleGerman,
+                    titleEnglish = titleEnglish
+                )
+            )
         }
-        recipeDao.insertAll(sanitized)
     }
 
     suspend fun updateRecipe(recipe: RecipeEntity) = recipeDao.updateRecipe(recipe)
+
+    suspend fun updateCategoryName(oldCategory: String, newCategory: String) = recipeDao.updateCategoryName(oldCategory, newCategory)
 
     suspend fun deleteRecipe(recipe: RecipeEntity) = recipeDao.deleteRecipe(recipe)
 
@@ -227,31 +252,78 @@ class RecipeRepository(
         val result = GeminiClient.parseRecipeWithAi(imageBitmaps, recipeText)
         val dto = result.getOrNull() ?: ParsedRecipeDto()
 
-        val enTitle = dto.titleEnglish?.takeIf { it.isNotBlank() } ?: dto.titleGerman?.takeIf { it.isNotBlank() } ?: "Grandma's Family Recipe"
+        val enTitle = dto.titleEnglish?.takeIf { it.isNotBlank() }
+            ?: dto.title?.takeIf { it.isNotBlank() }
+            ?: dto.name?.takeIf { it.isNotBlank() }
+            ?: dto.titleGerman?.takeIf { it.isNotBlank() }
+            ?: "Recipe"
         val displayTitle = enTitle
 
-        val ingredientsList = dto.ingredients?.map { ing ->
-            val name = ing.nameEnglish?.takeIf { it.isNotBlank() } ?: ing.nameGerman ?: "Ingredient"
-            RecipeIngredient(
-                name = name,
-                amount = ing.amount ?: "",
-                unit = ing.unit ?: "",
-                nameGerman = name,
-                nameEnglish = name,
-                isOptional = ing.isOptional ?: false,
-                group = ing.group
-            )
+        // Detect and crop ONLY the food photograph from the scanned page
+        var finalFoodImageUri: String? = null
+        if (context != null && dto.hasFoodPhoto == true && dto.foodPhotoBox != null && imageBitmaps.isNotEmpty()) {
+            val pageIdx = (dto.foodPhotoBox.pageIndex ?: 0).coerceIn(0, imageBitmaps.size - 1)
+            val sourceBitmap = imageBitmaps[pageIdx]
+            val ymin = dto.foodPhotoBox.ymin ?: 0
+            val xmin = dto.foodPhotoBox.xmin ?: 0
+            val ymax = dto.foodPhotoBox.ymax ?: 1000
+            val xmax = dto.foodPhotoBox.xmax ?: 1000
+            finalFoodImageUri = ImageUtils.cropAndSaveFoodPhoto(context, sourceBitmap, ymin, xmin, ymax, xmax)
+        }
+
+        val ingredientsList = dto.ingredients?.mapNotNull { ing ->
+            val name = ing.nameEnglish?.takeIf { it.isNotBlank() }
+                ?: ing.name?.takeIf { it.isNotBlank() }
+                ?: ing.ingredient?.takeIf { it.isNotBlank() }
+                ?: ing.item?.takeIf { it.isNotBlank() }
+                ?: ing.nameGerman?.takeIf { it.isNotBlank() }
+                ?: ing.raw?.takeIf { it.isNotBlank() }
+
+            val amt = ing.amount?.takeIf { it.isNotBlank() }
+                ?: ing.quantity?.takeIf { it.isNotBlank() }
+                ?: ing.qty?.takeIf { it.isNotBlank() }
+                ?: ""
+
+            val unitStr = ing.unit?.takeIf { it.isNotBlank() }
+                ?: ing.measurement?.takeIf { it.isNotBlank() }
+                ?: ing.measure?.takeIf { it.isNotBlank() }
+                ?: ""
+
+            if (name.isNullOrBlank() && amt.isBlank() && unitStr.isBlank()) {
+                null
+            } else {
+                val finalName = name ?: "Ingredient"
+                RecipeIngredient(
+                    name = finalName,
+                    amount = amt,
+                    unit = unitStr,
+                    nameGerman = ing.nameGerman ?: finalName,
+                    nameEnglish = ing.nameEnglish ?: finalName,
+                    isOptional = ing.isOptional ?: false,
+                    group = ing.group
+                )
+            }
         } ?: emptyList()
 
-        val stepsList = dto.steps?.mapIndexed { index, step ->
-            val instr = step.instructionEnglish?.takeIf { it.isNotBlank() } ?: step.instructionGerman ?: ""
-            RecipeStep(
-                stepNumber = step.stepNumber ?: (index + 1),
-                instructionEnglish = instr,
-                instructionGerman = instr,
-                timerMinutes = step.timerMinutes ?: 0,
-                tip = step.tip
-            )
+        val stepsList = dto.steps?.mapIndexedNotNull { index, step ->
+            val instr = step.instructionEnglish?.takeIf { it.isNotBlank() }
+                ?: step.instruction?.takeIf { it.isNotBlank() }
+                ?: step.step?.takeIf { it.isNotBlank() }
+                ?: step.text?.takeIf { it.isNotBlank() }
+                ?: step.description?.takeIf { it.isNotBlank() }
+                ?: step.instructionGerman?.takeIf { it.isNotBlank() }
+
+            if (instr.isNullOrBlank()) {
+                null
+            } else {
+                RecipeStep(
+                    stepNumber = step.stepNumber ?: (index + 1),
+                    instructionEnglish = instr,
+                    instructionGerman = step.instructionGerman ?: instr,
+                    timerMinutes = step.timerMinutes ?: 0,
+                    tip = step.tip
+                )
+            }
         } ?: emptyList()
 
         return RecipeEntity(
@@ -271,9 +343,69 @@ class RecipeRepository(
             coverTheme = if (dto.category?.contains("Baking", ignoreCase = true) == true) "FLORAL_LINEN" else "VINTAGE_LEATHER",
             isFavorite = false,
             rating = 5,
-            originStory = "Scanned and translated from family recipe card.",
-            imageUri = imageUri,
+            originStory = "Scanned recipe.",
+            imageUri = finalFoodImageUri ?: imageUri,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    suspend fun findDuplicateRecipe(candidate: RecipeEntity): RecipeEntity? {
+        val all = recipeDao.getAllRecipesDirect()
+        val cleanCandidateTitle = normalizeTitle(candidate.title)
+
+        for (existing in all) {
+            if (existing.id == candidate.id) continue
+            val cleanExistingTitle = normalizeTitle(existing.title)
+
+            // 1. Exact or strongly matched normalized title
+            if (cleanCandidateTitle.isNotBlank() && cleanCandidateTitle == cleanExistingTitle) {
+                return existing
+            }
+
+            // 2. Direct equality on titleEnglish or titleGerman or title
+            if (candidate.titleEnglish.isNotBlank() && candidate.titleEnglish.equals(existing.titleEnglish, ignoreCase = true)) {
+                return existing
+            }
+            if (candidate.titleGerman.isNotBlank() && candidate.titleGerman.equals(existing.titleGerman, ignoreCase = true)) {
+                return existing
+            }
+            if (candidate.title.isNotBlank() && candidate.title.equals(existing.title, ignoreCase = true)) {
+                return existing
+            }
+
+            // 3. Substring matching for distinctive heirloom titles (e.g. "Bread & Butter Pudding")
+            if (cleanCandidateTitle.length >= 6 && cleanExistingTitle.length >= 6) {
+                if (cleanCandidateTitle.contains(cleanExistingTitle) || cleanExistingTitle.contains(cleanCandidateTitle)) {
+                    return existing
+                }
+            }
+
+            // 4. High ingredient list overlap similarity check (if both have >= 3 ingredients)
+            if (candidate.ingredients.size >= 3 && existing.ingredients.size >= 3) {
+                val candidateIngs = candidate.ingredients.map { normalizeIngName(it.name) }.filter { it.length >= 3 }.toSet()
+                val existingIngs = existing.ingredients.map { normalizeIngName(it.name) }.filter { it.length >= 3 }.toSet()
+                if (candidateIngs.isNotEmpty() && existingIngs.isNotEmpty()) {
+                    val intersection = candidateIngs.intersect(existingIngs)
+                    val overlapRatio = intersection.size.toFloat() / minOf(candidateIngs.size, existingIngs.size)
+                    if (overlapRatio >= 0.70f) {
+                        return existing
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    private fun normalizeTitle(title: String): String {
+        return title.lowercase()
+            .replace(Regex("(?i)grandma's|grandmas|omas|oma's|traditional|vintage|classic|authentic|homemade|recipe|card"), "")
+            .replace(Regex("[^a-z0-9]"), "")
+            .trim()
+    }
+
+    private fun normalizeIngName(name: String): String {
+        return name.lowercase()
+            .replace(Regex("[^a-z0-9]"), "")
+            .trim()
     }
 }

@@ -58,6 +58,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import java.io.File
+import com.example.ui.components.RealisticLeatherBackground
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -73,6 +77,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -130,6 +135,7 @@ fun BookshelfScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val scannedDraftRecipe by viewModel.scannedDraftRecipe.collectAsStateWithLifecycle()
     val scanErrorMessage by viewModel.scanErrorMessage.collectAsStateWithLifecycle()
+    val duplicatePrompt by viewModel.duplicatePrompt.collectAsStateWithLifecycle()
     val isSettingsOpen by viewModel.isSettingsOpen.collectAsStateWithLifecycle()
     val isSmartConverterOpen by viewModel.isSmartConverterOpen.collectAsStateWithLifecycle()
     val converterInitialIngredient by viewModel.converterInitialIngredient.collectAsStateWithLifecycle()
@@ -140,6 +146,9 @@ fun BookshelfScreen(
     val pendingRestoreManifest by viewModel.pendingRestoreManifest.collectAsStateWithLifecycle()
     val backupStatusMessage by viewModel.backupStatusMessage.collectAsStateWithLifecycle()
     val isRestoring by viewModel.isRestoring.collectAsStateWithLifecycle()
+    val autoWeeklyBackupEnabled by viewModel.autoWeeklyBackupEnabled.collectAsStateWithLifecycle()
+    val savedBackups by viewModel.savedBackupsList.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val isRecipeEditorOpen by viewModel.isRecipeEditorOpen.collectAsStateWithLifecycle()
@@ -147,40 +156,37 @@ fun BookshelfScreen(
     val isShoppingListOpen by viewModel.isShoppingListOpen.collectAsStateWithLifecycle()
     val uncheckedShoppingCount by viewModel.uncheckedShoppingCount.collectAsStateWithLifecycle()
     val shoppingItems by viewModel.shoppingItems.collectAsStateWithLifecycle()
+    val navigateToRecipe by viewModel.navigateToRecipeEvent.collectAsStateWithLifecycle()
 
     var showScanSheet by remember { mutableStateOf(false) }
     var recipePendingDelete by remember { mutableStateOf<RecipeEntity?>(null) }
     var recipePendingShare by remember { mutableStateOf<RecipeEntity?>(null) }
 
-    val rawCategories = listOf("All", "Baking & Desserts", "Main Dishes", "Soups & Stews", "Breakfast", "Family Classics")
+    LaunchedEffect(navigateToRecipe) {
+        navigateToRecipe?.let { recipe ->
+            showScanSheet = false
+            onRecipeClick(recipe)
+            viewModel.clearNavigateToRecipeEvent()
+        }
+    }
+
+    val rawCategories = listOf("All") + categories
 
     Scaffold(
         modifier = modifier.fillMaxSize().testTag("bookshelf_screen"),
-        containerColor = CreamBackgroundLight,
+        containerColor = Color(0xFFF3EDE4),
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "📖", fontSize = 20.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = AppLocalization.getAppTitle(languageMode),
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontFamily = FontFamily.Serif,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TerracottaPrimary
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "📖", fontSize = 22.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = AppLocalization.getAppSubtitle(languageMode),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFF431407),
-                                fontStyle = FontStyle.Italic,
-                                fontWeight = FontWeight.Medium
+                            text = AppLocalization.getAppTitle(languageMode),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Bold,
+                                color = TerracottaPrimary
                             ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -214,47 +220,10 @@ fun BookshelfScreen(
                         }
                     }
 
-                    // Smart Unit Converter Quick Tool
-                    IconButton(
-                        onClick = { viewModel.openSmartConverter("baking_soda", "2", "g") },
-                        modifier = Modifier.testTag("open_converter_button")
-                    ) {
-                        Icon(
-                            Icons.Default.Scale,
-                            contentDescription = "Smart Unit Converter",
-                            tint = TerracottaPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    // Backup & Restore button
-                    IconButton(
-                        onClick = { viewModel.openBackupDialog() },
-                        modifier = Modifier.testTag("open_backup_button")
-                    ) {
-                        Icon(
-                            Icons.Default.Archive,
-                            contentDescription = "Backup & Restore",
-                            tint = TerracottaPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
                     // Add Recipe Manual button
                     IconButton(
                         onClick = {
-                            val newRecipe = RecipeEntity(
-                                title = "New Heirloom Recipe",
-                                titleGerman = "New Heirloom Recipe",
-                                titleEnglish = "New Heirloom Recipe",
-                                category = "Main Dishes",
-                                servings = "4 servings",
-                                prepTimeMinutes = 15,
-                                cookTimeMinutes = 30,
-                                ingredients = emptyList(),
-                                steps = emptyList()
-                            )
-                            viewModel.openRecipeEditor(newRecipe)
+                            viewModel.openNewRecipeEditor()
                         },
                         modifier = Modifier.testTag("add_manual_recipe_button")
                     ) {
@@ -308,11 +277,21 @@ fun BookshelfScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFF6F0E8),
+                            Color(0xFFECE4D8),
+                            Color(0xFFE7DDD0)
+                        )
+                    )
+                )
         ) {
             // Search Bar & Filter Section
             Surface(
                 color = Color(0xFFFFFDF9),
-                shadowElevation = 1.dp
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, Color(0xFFE8DFD5))
             ) {
                 Column(
                     modifier = Modifier
@@ -454,7 +433,7 @@ fun BookshelfScreen(
                         Text(text = "📜", fontSize = 48.sp)
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = AppLocalization.getEmptyStateTitle(languageMode),
+                            text = "No Recipes Found",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = TerracottaPrimary
@@ -462,7 +441,7 @@ fun BookshelfScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "No recipes currently showing. You can reload the starter heirloom collection or restore your previous backup file.",
+                            text = "No recipes currently showing. You can load the starter recipe collection or restore a backup file.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = Color(0xFF382D24),
                                 fontWeight = FontWeight.Medium,
@@ -548,6 +527,12 @@ fun BookshelfScreen(
                 onSoundEffectsChange = { viewModel.setSoundEffectsEnabled(it) },
                 keepScreenAwake = keepScreenOn,
                 onKeepScreenAwakeChange = { viewModel.setKeepScreenOn(it) },
+                autoWeeklyBackupEnabled = autoWeeklyBackupEnabled,
+                onToggleAutoWeeklyBackup = { viewModel.setAutoWeeklyBackupEnabled(it) },
+                categories = categories,
+                onAddCategory = { viewModel.addCategory(it) },
+                onRenameCategory = { old, new -> viewModel.renameCategory(old, new) },
+                onDeleteCategory = { viewModel.deleteCategory(it) },
                 onOpenBackup = {
                     viewModel.closeSettings()
                     viewModel.openBackupDialog()
@@ -555,6 +540,9 @@ fun BookshelfScreen(
                 onOpenSmartConverter = {
                     viewModel.closeSettings()
                     viewModel.openSmartConverter("baking_soda", "2", "g")
+                },
+                onDeleteAllRecipes = {
+                    viewModel.deleteAllRecipes()
                 },
                 onDismiss = { viewModel.closeSettings() }
             )
@@ -568,6 +556,18 @@ fun BookshelfScreen(
                 pendingRestoreManifest = pendingRestoreManifest,
                 statusMessage = backupStatusMessage,
                 isRestoring = isRestoring,
+                autoWeeklyBackupEnabled = autoWeeklyBackupEnabled,
+                onToggleAutoWeeklyBackup = { viewModel.setAutoWeeklyBackupEnabled(it) },
+                savedBackups = savedBackups,
+                onCreateInstantBackup = {
+                    viewModel.createInstantBackup()
+                },
+                onDirectRestoreBackup = { file, replaceExisting ->
+                    viewModel.directRestoreBackupFile(file, replaceExisting)
+                },
+                onDeleteSavedBackup = { file ->
+                    viewModel.deleteSavedBackup(file)
+                },
                 onExportToJson = { callback ->
                     viewModel.generateBackupJson(callback)
                 },
@@ -580,6 +580,12 @@ fun BookshelfScreen(
                 onInspectFile = { uri ->
                     viewModel.inspectBackupFile(context, uri)
                 },
+                onInspectText = { text ->
+                    viewModel.inspectBackupText(text)
+                },
+                onRestoreStarterRecipes = { replaceExisting ->
+                    viewModel.restoreStarterRecipes(replaceExisting)
+                },
                 onExecuteRestore = { replaceExisting ->
                     viewModel.executeRestore(replaceExisting)
                 },
@@ -591,11 +597,26 @@ fun BookshelfScreen(
         }
 
         // Scan Sheet Dialog
-        if (showScanSheet || scannedDraftRecipe != null || isScanning) {
+        if (showScanSheet || scannedDraftRecipe != null || isScanning || duplicatePrompt != null) {
             ScanRecipeBottomSheet(
                 isScanning = isScanning,
                 draftRecipe = scannedDraftRecipe,
                 errorMessage = scanErrorMessage,
+                duplicatePrompt = duplicatePrompt,
+                onResolveDuplicateUpdate = { prompt ->
+                    viewModel.resolveDuplicateUpdate(prompt)
+                    showScanSheet = false
+                    Toast.makeText(context, "Updated existing '${prompt.existingRecipe.title}' with new scan details", Toast.LENGTH_SHORT).show()
+                },
+                onResolveDuplicateSaveCopy = { prompt ->
+                    viewModel.resolveDuplicateSaveAsCopy(prompt)
+                    showScanSheet = false
+                    Toast.makeText(context, "Saved as new recipe variation", Toast.LENGTH_SHORT).show()
+                },
+                onDismissDuplicate = {
+                    viewModel.dismissDuplicatePrompt()
+                    showScanSheet = false
+                },
                 onClearError = { viewModel.scanErrorMessage.value = null },
                 onScan = { bitmaps, text, imageUri ->
                     viewModel.scanRecipe(bitmaps, text, imageUri)
@@ -608,6 +629,7 @@ fun BookshelfScreen(
                     showScanSheet = false
                     viewModel.scannedDraftRecipe.value = null
                     viewModel.scanErrorMessage.value = null
+                    viewModel.dismissDuplicatePrompt()
                 }
             )
         }
@@ -616,6 +638,7 @@ fun BookshelfScreen(
         if (isRecipeEditorOpen && editingRecipeDraft != null) {
             EditRecipeDialog(
                 initialRecipe = editingRecipeDraft!!,
+                categories = categories,
                 onSave = { updated ->
                     viewModel.saveEditedRecipe(updated)
                 },
@@ -680,7 +703,7 @@ fun BookshelfScreen(
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to delete '${toDelete.getDisplayTitle(languageMode)}' from your heirloom cookbook? This action cannot be undone."
+                        text = "Are you sure you want to delete '${toDelete.getDisplayTitle(languageMode)}'? This action cannot be undone."
                     )
                 },
                 confirmButton = {
@@ -719,114 +742,134 @@ fun RecipeBookCard(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val theme = try {
-        CoverTheme.valueOf(recipe.coverTheme)
-    } catch (e: Exception) {
-        CoverTheme.VINTAGE_LEATHER
-    }
-
     var showMenu by remember { mutableStateOf(false) }
+    val hasPhoto = !recipe.imageUri.isNullOrBlank()
+
+    // Determine pleasant category pill colors
+    val displayCat = recipe.getDisplayCategory(languageMode)
+    val catLower = recipe.category.lowercase()
+    val (catBg, catText, catBorder) = when {
+        catLower.contains("baking") || catLower.contains("dessert") ->
+            Triple(Color(0xFFFFF1E6), Color(0xFFC2410C), Color(0xFFFFD7BE))
+        catLower.contains("main") ->
+            Triple(Color(0xFFF0FDF4), Color(0xFF15803D), Color(0xFFBBF7D0))
+        catLower.contains("soup") || catLower.contains("stew") ->
+            Triple(Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+        catLower.contains("salad") || catLower.contains("side") ->
+            Triple(Color(0xFFECFDF5), Color(0xFF047857), Color(0xFFA7F3D0))
+        else ->
+            Triple(Color(0xFFF5EFEB), Color(0xFF78350F), Color(0xFFE2D6C7))
+    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(210.dp)
-            .shadow(4.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
+            .height(if (hasPhoto) 250.dp else 185.dp)
+            .shadow(4.dp, RoundedCornerShape(16.dp), spotColor = Color(0x333D2615), ambientColor = Color(0x1A3D2615))
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
             .testTag("recipe_book_card_${recipe.id}"),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFE5DDD3))
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(theme.primaryHex),
-                            Color(theme.secondaryHex)
-                        )
-                    )
-                )
-        ) {
-            // Book Spine Highlight on Left
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                Color(0x44000000),
-                                Color(0x11FFFFFF),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            // Subtle Frame Border
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(6.dp)
-                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
-            )
-
-            // Content
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(10.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Top: Category and Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (hasPhoto) {
+                // Framed Dish Photo Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(115.dp)
+                        .background(Color(0xFFEFE8DE))
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0x55000000),
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        Text(
-                            text = recipe.getDisplayCategory(languageMode),
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFFFEF08A),
-                                fontSize = 9.5.sp,
-                                fontWeight = FontWeight.Medium
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    AsyncImage(
+                        model = File(recipe.imageUri!!),
+                        contentDescription = recipe.getDisplayTitle(languageMode),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onToggleFavorite,
-                            modifier = Modifier.size(24.dp)
+                    // Subtle top gradient for chip visibility
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0x77000000),
+                                        Color.Transparent,
+                                        Color(0x33000000)
+                                    )
+                                )
+                            )
+                    )
+
+                    // Top Bar over photo
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xF0FFFFFF),
+                            border = BorderStroke(1.dp, catBorder),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
-                            Icon(
-                                if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                tint = if (recipe.isFavorite) Color(0xFFFF4444) else Color(0xCCFFFFFF),
-                                modifier = Modifier.size(16.dp)
+                            Text(
+                                text = displayCat,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.5.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = catText,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
-                        Box {
-                            IconButton(
-                                onClick = { showMenu = true },
-                                modifier = Modifier.size(24.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xE6FFFFFF),
+                                modifier = Modifier.size(28.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = "More Options",
-                                    tint = Color(0xEEFFFFFF),
-                                    modifier = Modifier.size(16.dp)
-                                )
+                                IconButton(
+                                    onClick = onToggleFavorite,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Favorite",
+                                        tint = if (recipe.isFavorite) Color(0xFFE11D48) else Color(0xFF4A3423),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                            }
+
+                            Box {
+                                Surface(
+                                shape = CircleShape,
+                                color = Color(0xE6FFFFFF),
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { showMenu = true },
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        Icons.Default.MoreVert,
+                                        contentDescription = "More Options",
+                                        tint = Color(0xFF4A3423),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
                             }
 
                             DropdownMenu(
@@ -861,87 +904,209 @@ fun RecipeBookCard(
                         }
                     }
                 }
+            }
+        }
 
-                // Center: Title in English
-                Column {
+            // Text and Metadata Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Top Header (if no photo) or Title area
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (!hasPhoto) {
+                        // Top Bar: Category Pill Badge & Actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = catBg,
+                                border = BorderStroke(1.dp, catBorder),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Text(
+                                    text = displayCat,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = catText,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFF5EFEB),
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = onToggleFavorite,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                            contentDescription = "Favorite",
+                                            tint = if (recipe.isFavorite) Color(0xFFE11D48) else Color(0xFF8C7A6B),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
+
+                                Box {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFFF5EFEB),
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        IconButton(
+                                            onClick = { showMenu = true },
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            Icon(
+                                                Icons.Default.MoreVert,
+                                                contentDescription = "More Options",
+                                                tint = Color(0xFF5A4535),
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Edit Recipe") },
+                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                showMenu = false
+                                                onEditClick()
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Share Recipe") },
+                                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                showMenu = false
+                                                onShareClick()
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Delete Recipe", color = MaterialTheme.colorScheme.error) },
+                                            leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                showMenu = false
+                                                onDeleteClick()
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Space under category badge
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    // Title placed top-left
                     val displayTitle = recipe.getDisplayTitle(languageMode)
-
                     Text(
                         text = displayTitle,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Serif,
-                            color = Color(0xFFFFFBEB),
-                            lineHeight = 17.sp,
+                            color = Color(0xFF1E140C),
+                            lineHeight = 19.sp,
                             fontSize = 15.sp
                         ),
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     if (recipe.rating > 0) {
                         Spacer(modifier = Modifier.height(3.dp))
-                        Row {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             repeat(recipe.rating) {
-                                Text("★", color = Color(0xFFFFD700), fontSize = 10.sp)
+                                Text("★", color = Color(0xFFF59E0B), fontSize = 11.5.sp)
                             }
                         }
                     }
                 }
 
-                // Bottom: Time & Ingredients count
+                // Bottom Metadata Row: Cook Time, Difficulty & Servings
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = Color(0xFFFFD700),
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
+                    // Cook time
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFFAF3EC),
+                        border = BorderStroke(1.dp, Color(0xFFEDE0D2))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.AccessTime,
+                                contentDescription = "Cook Time",
+                                tint = Color(0xFF9A3412),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "${recipe.cookTimeMinutes}m",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF431407),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    }
+
+                    // Difficulty
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFF5EFEB)
+                    ) {
                         Text(
-                            text = "${recipe.prepTimeMinutes + recipe.cookTimeMinutes}m",
+                            text = recipe.difficulty,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFFFEF9C3),
-                                fontSize = 11.sp
+                                color = Color(0xFF5A4535),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         )
                     }
 
-                    if (recipe.timesCooked > 0) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color(0x55000000)
-                        ) {
-                            Text(
-                                text = "✓ ${recipe.timesCooked}x",
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color(0xFFFEF3C7),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    } else {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color(0x33FFFFFF)
-                        ) {
-                            Text(
-                                text = "${recipe.ingredients.size} items",
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color.White,
-                                    fontSize = 10.sp
-                                )
-                            )
-                        }
-                    }
+                    // Servings
+                    Text(
+                        text = recipe.servings,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color(0xFF786250),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

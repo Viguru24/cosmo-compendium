@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.data.model.RecipeIngredient
 import com.example.data.model.RecipeStep
+import com.squareup.moshi.JsonClass
 
+@JsonClass(generateAdapter = true)
 @Entity(tableName = "recipes")
 data class RecipeEntity(
     @PrimaryKey(autoGenerate = true)
@@ -29,5 +31,7 @@ data class RecipeEntity(
     val timesCooked: Int = 0,
     val originStory: String = "Handwritten family recipe from grandmother's kitchen.",
     val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    val totalTimeMinutes: Int get() = prepTimeMinutes + cookTimeMinutes
+}
 

@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HeirloomRecipeApp(viewModel: RecipeViewModel) {
     val selectedRecipe by viewModel.selectedRecipe.collectAsStateWithLifecycle()
+    val selectedRecipeId = selectedRecipe?.id
 
     BackHandler(enabled = selectedRecipe != null) {
         if (viewModel.isCookMode.value) {
@@ -57,19 +58,21 @@ fun HeirloomRecipeApp(viewModel: RecipeViewModel) {
     }
 
     AnimatedContent(
-        targetState = selectedRecipe,
+        targetState = selectedRecipeId,
         transitionSpec = {
-            if (targetState != null) {
+            if (targetState != null && initialState == null) {
                 slideInHorizontally { width -> width } + fadeIn() togetherWith
                         slideOutHorizontally { width -> -width } + fadeOut()
-            } else {
+            } else if (targetState == null && initialState != null) {
                 slideInHorizontally { width -> -width } + fadeIn() togetherWith
                         slideOutHorizontally { width -> width } + fadeOut()
+            } else {
+                fadeIn() togetherWith fadeOut()
             }
         },
         label = "ScreenTransition"
-    ) { recipe ->
-        if (recipe == null) {
+    ) { recipeId ->
+        if (recipeId == null) {
             BookshelfScreen(
                 viewModel = viewModel,
                 onRecipeClick = { clicked ->
@@ -77,13 +80,16 @@ fun HeirloomRecipeApp(viewModel: RecipeViewModel) {
                 }
             )
         } else {
-            BookletScreen(
-                viewModel = viewModel,
-                recipe = recipe,
-                onBack = {
-                    viewModel.selectRecipe(null)
-                }
-            )
+            val currentRecipe = selectedRecipe
+            if (currentRecipe != null) {
+                BookletScreen(
+                    viewModel = viewModel,
+                    recipe = currentRecipe,
+                    onBack = {
+                        viewModel.selectRecipe(null)
+                    }
+                )
+            }
         }
     }
 }

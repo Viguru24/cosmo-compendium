@@ -56,6 +56,9 @@ interface RecipeDao {
     @Query("SELECT COUNT(*) FROM recipes")
     suspend fun getCount(): Int
 
+    @Query("UPDATE recipes SET category = :newCategory WHERE category = :oldCategory")
+    suspend fun updateCategoryName(oldCategory: String, newCategory: String)
+
     @Query("SELECT * FROM recipes ORDER BY createdAt DESC")
     suspend fun getAllRecipesDirect(): List<RecipeEntity>
 

@@ -2,4 +2,6 @@
 <paths>
     <cache-path name="backup_cache" path="backups/" />
     <cache-path name="shared_files" path="." />
+    <files-path name="internal_files" path="." />
+    <files-path name="recipe_photos" path="recipe_photos/" />
 </paths>

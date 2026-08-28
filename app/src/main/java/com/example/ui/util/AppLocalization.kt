@@ -5,7 +5,7 @@ import com.example.data.model.LanguageMode
 
 object AppLocalization {
 
-    fun getAppTitle(lang: LanguageMode = LanguageMode.ENGLISH): String = "Heirloom Recipe Book"
+    fun getAppTitle(lang: LanguageMode = LanguageMode.ENGLISH): String = "Cookbook"
 
     fun getAppSubtitle(lang: LanguageMode = LanguageMode.ENGLISH): String = "Cherished Family Heritage & Vintage Recipes"
 
@@ -26,9 +26,9 @@ object AppLocalization {
         else -> category
     }
 
-    fun getEmptyStateTitle(lang: LanguageMode = LanguageMode.ENGLISH): String = "No Heirloom Recipes Found"
+    fun getEmptyStateTitle(lang: LanguageMode = LanguageMode.ENGLISH): String = "No Recipes Found"
 
-    fun getEmptyStateMessage(lang: LanguageMode = LanguageMode.ENGLISH): String = "Try searching for a different ingredient or scan in one of your vintage recipe cards!"
+    fun getEmptyStateMessage(lang: LanguageMode = LanguageMode.ENGLISH): String = "Try searching for a different ingredient or scan in a new recipe card!"
 
     fun getFavoritesLabel(lang: LanguageMode = LanguageMode.ENGLISH): String = "⭐ Favorites"
 

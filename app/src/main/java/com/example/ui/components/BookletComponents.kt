@@ -9,6 +9,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,6 +29,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,6 +66,8 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import java.io.File
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
@@ -73,6 +79,9 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ShoppingCart
 import com.example.util.pdf.RecipePdfGenerator
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -161,6 +170,8 @@ fun RecipeCoverPage(
         CoverTheme.VINTAGE_LEATHER
     }
 
+    val hasPhoto = !recipe.imageUri.isNullOrBlank()
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -172,49 +183,42 @@ fun RecipeCoverPage(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .fillMaxSize(0.96f)
-                .shadow(20.dp, RoundedCornerShape(16.dp))
+                .shadow(24.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
                 .clickable { onOpenBook() }
                 .testTag("book_cover_surface"),
-            color = Color(theme.primaryHex)
+            color = Color(0xFF231F1D)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color(theme.primaryHex),
-                                Color(theme.secondaryHex)
-                            )
-                        )
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (hasPhoto) {
+                    AsyncImage(
+                        model = java.io.File(recipe.imageUri!!),
+                        contentDescription = recipe.getDisplayTitle(),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-            ) {
-                // Book Spine highlight on left
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0x66000000),
-                                    Color(0x11FFFFFF),
-                                    Color.Transparent,
-                                    Color.Transparent
+                    // High-contrast gradient overlay for readable typography
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xB3000000),
+                                        Color(0x55000000),
+                                        Color(0xB3000000),
+                                        Color(0xF20F0D0B)
+                                    )
                                 )
                             )
-                        )
-                )
-
-                // Refined Blind-stamp & subtle border frame
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .border(1.5.dp, Color(0x66E5D4B8), RoundedCornerShape(12.dp))
-                        .padding(6.dp)
-                        .border(0.75.dp, Color(0x33E5D4B8), RoundedCornerShape(8.dp))
-                )
+                    )
+                } else {
+                    RealisticLeatherBackground(
+                        theme = theme,
+                        isCard = false,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 Column(
                     modifier = Modifier
@@ -226,7 +230,7 @@ fun RecipeCoverPage(
                     // Top Inscription
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "HEIRLOOM RECIPE COLLECTION",
+                            text = "RECIPE COLLECTION",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 letterSpacing = 3.sp,
                                 fontWeight = FontWeight.Bold,
@@ -367,7 +371,8 @@ fun RecipeCoverPage(
         }
     }
 }// ==========================================
-// 2. LORE & TABLE OF CONTENTS (Page 1)
+// ==========================================
+// 2. RECIPE OVERVIEW & TABLE OF CONTENTS (Page 1)
 // ==========================================
 @Composable
 fun RecipeLoreTableOfContentsPage(
@@ -391,7 +396,7 @@ fun RecipeLoreTableOfContentsPage(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(18.dp)
                 .verticalScroll(scrollState)
         ) {
             // Header
@@ -401,21 +406,26 @@ fun RecipeLoreTableOfContentsPage(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Page 1 • Heritage & Index",
+                    text = "Page 1 • Recipe Overview",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = Color(0xFF6B5B4E),
-                        fontStyle = FontStyle.Italic,
                         fontWeight = FontWeight.Bold
                     )
                 )
-                Text(
-                    text = "Family Tradition",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        color = TerracottaPrimary
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFFFEDD5),
+                    border = BorderStroke(1.dp, Color(0xFFFED7AA))
+                ) {
+                    Text(
+                        text = recipe.category,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = TerracottaPrimary
+                        )
                     )
-                )
+                }
             }
 
             HorizontalDivider(
@@ -424,62 +434,178 @@ fun RecipeLoreTableOfContentsPage(
                 color = Color(0xFFD6C7B2)
             )
 
-            // Family Kitchen Story Card
+            // Primary Recipe Stats Grid (Cook Time, Portions, Difficulty)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F2E8)),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFFE2D5C3))
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.2.dp, Color(0xFFE2D5C3))
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Heritage & Kitchen Lore",
-                            style = MaterialTheme.typography.titleSmall.copy(
+                            text = "Recipe Details",
+                            style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF5A4535),
+                                color = Color(0xFF431407),
                                 fontFamily = FontFamily.Serif
                             )
                         )
                         if (onEditDetails != null) {
-                            IconButton(
+                            OutlinedButton(
                                 onClick = onEditDetails,
-                                modifier = Modifier.size(28.dp)
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, Color(0xFFD6C7B2)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = TerracottaPrimary)
                             ) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Edit Details & Lore",
-                                    tint = TerracottaPrimary,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Edit", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = recipe.originStory.ifBlank { "A cherished traditional family recipe passed down through generations, celebrated for Sunday dinners and holiday feasts." },
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontStyle = FontStyle.Italic,
-                            color = Color(0xFF3B2E24),
-                            lineHeight = 20.sp
-                        )
-                    )
-                    if (onEditDetails != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = onEditDetails,
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, Color(0xFFD6C7B2)),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TerracottaPrimary)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Edit Lore & Details", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                    // 4-Column Key Stats Row (Prep, Cook, Total, Portions)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFEDE4D6), RoundedCornerShape(8.dp))
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        // PREP TIME
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "PREP",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF6B5B4E),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${recipe.prepTimeMinutes}m",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1C1917)
+                                )
+                            )
+                            Text(
+                                text = "Prep Time",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF78716C),
+                                    fontSize = 9.sp
+                                )
+                            )
+                        }
+
+                        // COOK TIME
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "COOK",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF6B5B4E),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${recipe.cookTimeMinutes}m",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1C1917)
+                                )
+                            )
+                            Text(
+                                text = "Cook Time",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF78716C),
+                                    fontSize = 9.sp
+                                )
+                            )
+                        }
+
+                        // TOTAL TIME
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "TOTAL",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF6B5B4E),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${recipe.totalTimeMinutes}m",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFB45309)
+                                )
+                            )
+                            Text(
+                                text = "Total Time",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF78716C),
+                                    fontSize = 9.sp
+                                )
+                            )
+                        }
+
+                        // PORTIONS / SERVINGS
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "PORTIONS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF6B5B4E),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = recipe.servings,
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1C1917)
+                                ),
+                                maxLines = 1
+                            )
+                            Text(
+                                text = recipe.difficulty,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF78716C),
+                                    fontSize = 9.sp
+                                )
+                            )
+                        }
+                    }
+
+                    // Recipe Notes (if notes exist)
+                    val displayNotes = recipe.notes.ifBlank { recipe.originStory }.trim()
+                    if (displayNotes.isNotBlank()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Notes:",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF5A4535)
+                                )
+                            )
+                            Text(
+                                text = displayNotes,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF44403C),
+                                    lineHeight = 18.sp
+                                )
+                            )
                         }
                     }
                 }
@@ -487,7 +613,7 @@ fun RecipeLoreTableOfContentsPage(
 
             // Reference Scanned Card Photo (if available)
             if (!recipe.imageUri.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -504,16 +630,16 @@ fun RecipeLoreTableOfContentsPage(
                             model = File(recipe.imageUri),
                             contentDescription = "Original recipe photo reference",
                             modifier = Modifier
-                                .size(60.dp)
+                                .size(54.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .border(1.dp, Color(0xFFD1C7B7), RoundedCornerShape(6.dp)),
                             contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Original Photo Reference",
+                                    text = "Original Recipe Photo",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF5A4535)
@@ -528,7 +654,7 @@ fun RecipeLoreTableOfContentsPage(
                                 )
                             }
                             Text(
-                                text = "Tap to inspect original photo.",
+                                text = "Tap to inspect scanned photo.",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontSize = 11.sp
@@ -541,30 +667,6 @@ fun RecipeLoreTableOfContentsPage(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Regional & Heritage Notes
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFECE4D7), RoundedCornerShape(8.dp))
-                    .padding(10.dp),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("HERITAGE", style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF6B5B4E), fontWeight = FontWeight.Bold))
-                    Text("Vintage Family", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold, color = Color(0xFF3B2E24)))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("COOK TIME", style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF6B5B4E), fontWeight = FontWeight.Bold))
-                    Text("${recipe.prepTimeMinutes + recipe.cookTimeMinutes} mins", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold, color = Color(0xFF3B2E24)))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("COOKED", style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF6B5B4E), fontWeight = FontWeight.Bold))
-                    Text("${recipe.timesCooked} times", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold, color = Color(0xFF3B2E24)))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Table of Contents / Quick Jump Index
             Text(
                 text = "TABLE OF CONTENTS",
@@ -575,14 +677,14 @@ fun RecipeLoreTableOfContentsPage(
                 )
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Jump 1: Ingredients
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onJumpToPage(2) }
-                    .padding(vertical = 3.dp),
+                    .padding(vertical = 2.dp),
                 shape = RoundedCornerShape(6.dp),
                 color = Color(0xFFF7F2E8),
                 border = BorderStroke(1.dp, Color(0xFFE2D5C3))
@@ -593,7 +695,7 @@ fun RecipeLoreTableOfContentsPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Page 2: Ingredients & Scaling",
+                        "Page 2: Ingredients (${recipe.ingredients.size} items) & Scaler",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF3B2E24)
@@ -610,7 +712,7 @@ fun RecipeLoreTableOfContentsPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onJumpToPage(stepPage) }
-                        .padding(vertical = 3.dp),
+                        .padding(vertical = 2.dp),
                     shape = RoundedCornerShape(6.dp),
                     color = Color(0xFFFAF7F0),
                     border = BorderStroke(1.dp, Color(0xFFEDE6DC))
@@ -648,13 +750,13 @@ fun RecipeLoreTableOfContentsPage(
                 }
             }
 
-            // Jump 3: Cook's Journal
+            // Jump 3: Notes & Journal
             val journalPage = 3 + recipe.steps.size
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onJumpToPage(journalPage) }
-                    .padding(vertical = 3.dp),
+                    .padding(vertical = 2.dp),
                 shape = RoundedCornerShape(6.dp),
                 color = Color(0xFFF3ECE0),
                 border = BorderStroke(1.dp, Color(0xFFDFD6C8))
@@ -665,7 +767,7 @@ fun RecipeLoreTableOfContentsPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Page $journalPage: Cook's Journal & Family Notes",
+                        "Page $journalPage: Recipe Notes & Kitchen Journal",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF4A3828)
@@ -849,13 +951,13 @@ fun RecipeIngredientsPage(
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 2.dp)
+                                    modifier = Modifier.padding(vertical = 7.dp, horizontal = 2.dp)
                                 ) {
                                     Text(
                                         text = when (system) {
                                             UnitSystem.METRIC_GRAMS -> "Metric"
                                             UnitSystem.CUPS_US -> "US (Cups)"
-                                            UnitSystem.UK_IMPERIAL -> "British (UK)"
+                                            UnitSystem.UK_IMPERIAL -> "British"
                                             UnitSystem.BAKERS_PRECISION -> "Baker's"
                                         },
                                         color = if (isSelected) Color.White else Color(0xFF451A03),
@@ -872,38 +974,58 @@ fun RecipeIngredientsPage(
                     if (onOpenConverter != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFFFEF3C7),
-                            border = BorderStroke(1.dp, Color(0xFFF59E0B)),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFFFBEB),
+                            border = BorderStroke(1.2.dp, Color(0xFFFCD34D)),
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable { onOpenConverter("baking_soda", "2", "g") }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("✨", fontSize = 13.sp)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        "Smart Spoon & Knife-Tip Converter",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF78350F),
-                                            fontSize = 11.5.sp
-                                        )
-                                    )
-                                }
+                                Text("✨", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    "Open ➔",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFFB45309),
-                                        fontSize = 11.sp
-                                    )
+                                    "Smart Spoon & Knife-Tip Converter",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF78350F),
+                                        fontSize = 11.5.sp
+                                    ),
+                                    modifier = Modifier.weight(1f)
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0xFFFEF3C7),
+                                    border = BorderStroke(0.8.dp, Color(0xFFF59E0B))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "Open",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFFB45309),
+                                                fontSize = 10.5.sp
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Icon(
+                                            Icons.Default.ArrowForward,
+                                            contentDescription = null,
+                                            tint = Color(0xFFB45309),
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -946,7 +1068,7 @@ fun RecipeIngredientsPage(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf(0.5f, 1.0f, 1.5f, 2.0f, 3.0f).forEach { scale ->
                             val isSelected = servingMultiplier == scale
@@ -955,7 +1077,6 @@ fun RecipeIngredientsPage(
                                 color = if (isSelected) TerracottaPrimary else Color(0xFFE5DCD0),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(horizontal = 2.dp)
                                     .clickable { onSetMultiplier(scale) }
                             ) {
                                 Box(
@@ -978,58 +1099,88 @@ fun RecipeIngredientsPage(
             if (onAddToShoppingList != null) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFF3EAD8),
-                    border = BorderStroke(1.dp, Color(0xFFC89B6D)),
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFF7F0E4),
+                    border = BorderStroke(1.2.dp, Color(0xFFD8BEA0)),
+                    shadowElevation = 1.dp,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
                         .clickable { onAddToShoppingList() }
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.ShoppingCart,
-                                contentDescription = null,
-                                tint = TerracottaPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = "Send Ingredients to Shopping List",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF451A03)
-                                    )
-                                )
-                                Text(
-                                    text = "Includes ${recipe.ingredients.size} items scaled to ${if (servingMultiplier % 1f == 0f) "${servingMultiplier.toInt()}x" else "${servingMultiplier}x"}",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color(0xFF78350F),
-                                        fontSize = 10.5.sp
-                                    )
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFFFEDD5),
+                            border = BorderStroke(1.dp, Color(0xFFFED7AA)),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.ShoppingCart,
+                                    contentDescription = null,
+                                    tint = TerracottaPrimary,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
 
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = TerracottaPrimary
-                        ) {
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "+ Add All",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
+                                text = "Send to Shopping List",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF451A03),
+                                    fontSize = 13.sp
                                 ),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                maxLines = 1
                             )
+                            Text(
+                                text = "Add all ${recipe.ingredients.size} items (${if (servingMultiplier % 1f == 0f) "${servingMultiplier.toInt()}x" else "${servingMultiplier}x"} scaled)",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF78350F),
+                                    fontSize = 11.sp
+                                ),
+                                maxLines = 1
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = TerracottaPrimary,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier.clickable { onAddToShoppingList() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "Add All",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -1408,9 +1559,21 @@ fun RecipeCookJournalPage(
     onStartCookingMode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var notesText by remember(recipe.notes) { mutableStateOf(recipe.notes) }
-    var rating by remember(recipe.rating) { mutableStateOf(recipe.rating) }
+    var notesText by remember(recipe.id) { mutableStateOf(recipe.notes) }
+    var rating by remember(recipe.id) { mutableStateOf(recipe.rating) }
+    var showSavedBadge by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    // Auto-save debounce when typing notes or selecting stars
+    LaunchedEffect(notesText, rating) {
+        if (notesText != recipe.notes || rating != recipe.rating) {
+            delay(500)
+            onSaveJournal(notesText, rating)
+            showSavedBadge = true
+            delay(1500)
+            showSavedBadge = false
+        }
+    }
 
     Surface(
         modifier = modifier
@@ -1440,14 +1603,32 @@ fun RecipeCookJournalPage(
                         fontWeight = FontWeight.Bold
                     )
                 )
-                Text(
-                    text = "Cook's Journal",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        color = TerracottaPrimary
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (showSavedBadge) {
+                        Surface(
+                            color = Color(0xFFDCFCE7),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(
+                                text = "✓ Saved",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF166534),
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Cook's Journal",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            color = TerracottaPrimary
+                        )
                     )
-                )
+                }
             }
 
             HorizontalDivider(
@@ -1464,23 +1645,37 @@ fun RecipeCookJournalPage(
                 border = BorderStroke(1.dp, Color(0xFFE2D5C3))
             ) {
                 Column(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Recipe Rating",
+                        text = "Family Star Rating",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF5A4535)
                         )
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (rating > 0) "$rating / 5 Stars" else "Tap to rate this recipe",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = if (rating > 0) TerracottaPrimary else Color(0xFF8C7A6B),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         (1..5).forEach { star ->
-                            IconButton(onClick = {
-                                rating = star
-                                onSaveJournal(notesText, star)
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    rating = star
+                                    onSaveJournal(notesText, star)
+                                },
+                                modifier = Modifier.size(44.dp)
+                            ) {
                                 Icon(
                                     Icons.Default.Star,
                                     contentDescription = "$star stars",
@@ -1528,30 +1723,67 @@ fun RecipeCookJournalPage(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Personal Notes & Grandma's secret adjustments
-            Text(
-                text = "Cook's Notes & Adjustments:",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF5A4535)
+            // Personal Notes & secret adjustments
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Cook's Notes & Kitchen Secrets:",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF5A4535)
+                    )
                 )
-            )
+                TextButton(
+                    onClick = {
+                        onSaveJournal(notesText, rating)
+                        showSavedBadge = true
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("Save Notes", fontSize = 12.sp, color = TerracottaPrimary, fontWeight = FontWeight.Bold)
+                }
+            }
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
                 value = notesText,
                 onValueChange = {
                     notesText = it
-                    onSaveJournal(it, rating)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp),
-                placeholder = { Text("e.g., baked for 5 extra minutes, added a dash of nutmeg...") },
+                    .heightIn(min = 140.dp),
+                singleLine = false,
+                minLines = 5,
+                maxLines = 12,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = Color(0xFF1E140C),
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                placeholder = {
+                    Text(
+                        "Write your notes here: e.g. baked for 5 extra minutes, added a dash of nutmeg, special oven setting...",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFF786250),
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp
+                        )
+                    )
+                },
                 colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF1E140C),
+                    unfocusedTextColor = Color(0xFF1E140C),
+                    focusedPlaceholderColor = Color(0xFF786250),
+                    unfocusedPlaceholderColor = Color(0xFF786250),
                     focusedBorderColor = TerracottaPrimary,
-                    unfocusedBorderColor = Color(0xFFD6C7B2),
-                    focusedContainerColor = Color(0xFFFFFDF9),
-                    unfocusedContainerColor = Color(0xFFFFFDF9)
+                    unfocusedBorderColor = Color(0xFF8C7B6B),
+                    focusedContainerColor = Color(0xFFFFFFFF),
+                    unfocusedContainerColor = Color(0xFFFFFDF9),
+                    cursorColor = TerracottaPrimary
                 ),
                 shape = RoundedCornerShape(8.dp)
             )
@@ -2145,7 +2377,7 @@ fun ShareRecipeCardDialog(
                             onClick = {
                                 val intent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_SUBJECT, "Heirloom Recipe: ${recipe.title}")
+                                    putExtra(Intent.EXTRA_SUBJECT, "Recipe: ${recipe.title}")
                                     putExtra(Intent.EXTRA_TEXT, shareableText)
                                 }
                                 context.startActivity(Intent.createChooser(intent, "Share Recipe via..."))
@@ -2230,6 +2462,7 @@ fun ShareRecipeCardDialog(
 fun EditRecipeDialog(
     initialRecipe: RecipeEntity,
     initialTab: Int = 0,
+    categories: List<String> = emptyList(),
     onSave: (RecipeEntity) -> Unit,
     onDelete: ((RecipeEntity) -> Unit)? = null,
     onDismiss: () -> Unit
@@ -2239,6 +2472,7 @@ fun EditRecipeDialog(
     var titleEnglish by remember { mutableStateOf(initialRecipe.titleEnglish.ifBlank { initialRecipe.title }) }
     var titleGerman by remember { mutableStateOf(initialRecipe.titleGerman) }
     var category by remember { mutableStateOf(initialRecipe.category) }
+    var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var servings by remember { mutableStateOf(initialRecipe.servings) }
     var prepTime by remember { mutableStateOf(initialRecipe.prepTimeMinutes.toString()) }
     var cookTime by remember { mutableStateOf(initialRecipe.cookTimeMinutes.toString()) }
@@ -2279,6 +2513,7 @@ fun EditRecipeDialog(
     var showDeleteConfirmInEditor by remember { mutableStateOf(false) }
 
     val presetCategories = listOf("Baking & Cakes", "Main Dishes", "Soups & Stews", "Desserts", "Breakfast & Brunch", "Family Classics")
+    val allAvailableCategories = (categories + presetCategories).filter { it.isNotBlank() }.distinct()
     val quickUnits = listOf("g", "ml", "cup", "tbsp", "tsp", "EL", "TL", "pinch", "oz", "kg", "l")
     val quickGroups = listOf("Dough", "Filling", "Topping", "Sauce", "Garnish")
 
@@ -2350,7 +2585,7 @@ fun EditRecipeDialog(
                     Tab(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
-                        text = { Text("Lore & Notes", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        text = { Text("Notes", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     )
                 }
 
@@ -2378,11 +2613,43 @@ fun EditRecipeDialog(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            // Category selector & chips
+                            // Category selector with Pull-Down Dropdown Menu & Quick Chips
                             Text("Category:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary))
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    value = category,
+                                    onValueChange = { category = it },
+                                    label = { Text("Category (Pull-down or type)") },
+                                    trailingIcon = {
+                                        IconButton(onClick = { categoryDropdownExpanded = !categoryDropdownExpanded }) {
+                                            Icon(
+                                                Icons.Default.ArrowDropDown,
+                                                contentDescription = "Select Category",
+                                                tint = TerracottaPrimary
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                DropdownMenu(
+                                    expanded = categoryDropdownExpanded,
+                                    onDismissRequest = { categoryDropdownExpanded = false }
+                                ) {
+                                    allAvailableCategories.forEach { cat ->
+                                        DropdownMenuItem(
+                                            text = { Text(cat) },
+                                            onClick = {
+                                                category = cat
+                                                categoryDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
                             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(presetCategories.size) { idx ->
-                                    val cat = presetCategories[idx]
+                                items(allAvailableCategories.size) { idx ->
+                                    val cat = allAvailableCategories[idx]
                                     FilterChip(
                                         selected = category.equals(cat, ignoreCase = true),
                                         onClick = { category = cat },
@@ -2390,12 +2657,6 @@ fun EditRecipeDialog(
                                     )
                                 }
                             }
-                            OutlinedTextField(
-                                value = category,
-                                onValueChange = { category = it },
-                                label = { Text("Category Name") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
 
                             // Servings, Prep Time, Cook Time
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2411,6 +2672,34 @@ fun EditRecipeDialog(
                                     label = { Text("Cook (min)") },
                                     modifier = Modifier.weight(1f)
                                 )
+                            }
+
+                            // Total Time Live Calculation Banner
+                            val pMin = prepTime.toIntOrNull() ?: 0
+                            val cMin = cookTime.toIntOrNull() ?: 0
+                            val totMin = pMin + cMin
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFFEF3C7),
+                                border = BorderStroke(1.dp, Color(0xFFF59E0B)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Timer, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Total Time:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF78350F)))
+                                    }
+                                    Text(
+                                        text = "$totMin min ($pMin prep + $cMin cook)",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                                    )
+                                }
                             }
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2940,13 +3229,13 @@ fun EditRecipeDialog(
                             }
                         }
 
-                        // ================= TAB 3: LORE & NOTES =================
+                        // ================= TAB 3: NOTES =================
                         3 -> {
                             OutlinedTextField(
                                 value = originStory,
                                 onValueChange = { originStory = it },
-                                label = { Text("Heritage Lore & Origin Story") },
-                                placeholder = { Text("e.g. Cherished family recipe passed down through generations...") },
+                                label = { Text("Recipe Description / Story") },
+                                placeholder = { Text("e.g. Traditional recipe, ideal for family dinner or celebrations...") },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(110.dp)
@@ -2955,8 +3244,8 @@ fun EditRecipeDialog(
                             OutlinedTextField(
                                 value = notes,
                                 onValueChange = { notes = it },
-                                label = { Text("Family Notes & Cooking Secrets") },
-                                placeholder = { Text("e.g. Always bake with steam tray on the lower rack.") },
+                                label = { Text("Chef Notes & Cooking Tips") },
+                                placeholder = { Text("e.g. Bake on the middle rack at 180°C...") },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(100.dp)

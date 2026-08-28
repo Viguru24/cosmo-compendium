@@ -401,6 +401,80 @@ object DefaultRecipes {
                 timesCooked = 3,
                 originStory = "Authentic restaurant & family staple recipe.",
                 createdAt = now - 50000
+            ),
+            RecipeEntity(
+                id = 7,
+                title = "Grandma's Soft & Chewy Chocolate Chip Cookies",
+                titleGerman = "Grandma's Soft & Chewy Chocolate Chip Cookies",
+                titleEnglish = "Grandma's Soft & Chewy Chocolate Chip Cookies",
+                category = "Baking & Desserts",
+                servings = "24 cookies",
+                prepTimeMinutes = 15,
+                cookTimeMinutes = 11,
+                difficulty = "Easy",
+                ingredients = listOf(
+                    RecipeIngredient(name = "All-Purpose Flour", amount = "2 1/4", unit = "cups (280g)", nameEnglish = "All-Purpose Flour", group = "Dry Ingredients"),
+                    RecipeIngredient(name = "Baking Soda (Bicarbonate of Soda)", amount = "1", unit = "tsp (5g)", nameEnglish = "Baking Soda", group = "Dry Ingredients"),
+                    RecipeIngredient(name = "Fine Sea Salt", amount = "1/2", unit = "tsp", nameEnglish = "Fine Sea Salt", group = "Dry Ingredients"),
+                    RecipeIngredient(name = "Unsalted Butter (softened)", amount = "1", unit = "cup (225g)", nameEnglish = "Unsalted Butter", group = "Wet Ingredients"),
+                    RecipeIngredient(name = "Light Brown Sugar (packed)", amount = "3/4", unit = "cup (165g)", nameEnglish = "Brown Sugar", group = "Wet Ingredients"),
+                    RecipeIngredient(name = "Granulated White Sugar", amount = "3/4", unit = "cup (150g)", nameEnglish = "Granulated White Sugar", group = "Wet Ingredients"),
+                    RecipeIngredient(name = "Pure Vanilla Extract", amount = "2", unit = "tsp", nameEnglish = "Pure Vanilla Extract", group = "Wet Ingredients"),
+                    RecipeIngredient(name = "Large Eggs (room temperature)", amount = "2", unit = "large", nameEnglish = "Large Eggs", group = "Wet Ingredients"),
+                    RecipeIngredient(name = "Semi-Sweet Chocolate Chips or Chunks", amount = "2", unit = "cups (340g)", nameEnglish = "Semi-Sweet Chocolate Chips", group = "Mix-ins"),
+                    RecipeIngredient(name = "Flaky Sea Salt (for topping)", amount = "1", unit = "pinch", nameEnglish = "Flaky Sea Salt", isOptional = true, group = "Finishing")
+                ),
+                steps = listOf(
+                    RecipeStep(
+                        stepNumber = 1,
+                        instructionEnglish = "Preheat oven to 190°C (375°F). Line two large baking sheets with parchment paper.",
+                        instructionGerman = "Preheat oven to 190°C (375°F). Line two large baking sheets with parchment paper.",
+                        timerMinutes = 0,
+                        tip = "Parchment paper prevents bottoms from over-browning."
+                    ),
+                    RecipeStep(
+                        stepNumber = 2,
+                        instructionEnglish = "In a medium bowl, whisk together the flour, baking soda, and fine sea salt. Set aside.",
+                        instructionGerman = "In a medium bowl, whisk together the flour, baking soda, and fine sea salt. Set aside.",
+                        timerMinutes = 2
+                    ),
+                    RecipeStep(
+                        stepNumber = 3,
+                        instructionEnglish = "In a large mixer bowl, beat softened butter, brown sugar, and granulated sugar on medium speed for 2 minutes until creamy and fluffy. Beat in vanilla extract and eggs one at a time until fully incorporated.",
+                        instructionGerman = "In a large mixer bowl, beat softened butter, brown sugar, and granulated sugar on medium speed for 2 minutes until creamy and fluffy. Beat in vanilla extract and eggs one at a time until fully incorporated.",
+                        timerMinutes = 3,
+                        tip = "Creaming the butter and sugars well creates tender cookie centers."
+                    ),
+                    RecipeStep(
+                        stepNumber = 4,
+                        instructionEnglish = "Gradually stir in the flour mixture on low speed until just combined (do not overmix). Fold in the semi-sweet chocolate chips with a spatula.",
+                        instructionGerman = "Gradually stir in the flour mixture on low speed until just combined. Fold in the semi-sweet chocolate chips with a spatula.",
+                        timerMinutes = 2,
+                        tip = "For thicker, bakery-style cookies, chill dough in refrigerator for 30 minutes before baking."
+                    ),
+                    RecipeStep(
+                        stepNumber = 5,
+                        instructionEnglish = "Drop rounded scoops (about 1.5 to 2 tablespoons each) onto prepared baking sheets, spaced 5cm (2 inches) apart. Top with extra chocolate chips if desired.",
+                        instructionGerman = "Drop rounded scoops (about 1.5 to 2 tablespoons each) onto prepared baking sheets, spaced 5cm (2 inches) apart.",
+                        timerMinutes = 0
+                    ),
+                    RecipeStep(
+                        stepNumber = 6,
+                        instructionEnglish = "Bake at 190°C (375°F) for 9 to 11 minutes until the edges are golden brown and centers are still soft. Sprinkle lightly with flaky sea salt. Cool on baking sheet for 5 minutes, then transfer to a wire rack. Enjoy warm with a glass of cold milk!",
+                        instructionGerman = "Bake at 190°C (375°F) for 9 to 11 minutes until the edges are golden brown and centers are still soft. Cool on baking sheet for 5 minutes.",
+                        timerMinutes = 10,
+                        tip = "Take them out when centers still look slightly pale; they will finish setting on the hot baking sheet for that perfect chew."
+                    )
+                ),
+                notes = "Grandmother's cherished golden chocolate chip cookies. The combination of brown sugar and pure vanilla extract gives them a rich caramel note and ultra-chewy texture.",
+                notesGerman = "Grandmother's cherished golden chocolate chip cookies. The combination of brown sugar and pure vanilla extract gives them a rich caramel note and ultra-chewy texture.",
+                sourceLanguage = "en",
+                coverTheme = "WARM_TERRACOTTA",
+                isFavorite = true,
+                rating = 5,
+                timesCooked = 35,
+                originStory = "Beloved family cookie jar recipe baked for every holiday and celebration.",
+                createdAt = now - 10000
             )
         )
     }

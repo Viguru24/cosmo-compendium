@@ -5,28 +5,227 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M0,0h108v108h-108z">
+
+    <!-- 1. Base Rich Cognac Full-Grain Leather Surface with Natural Ambient Lighting -->
+    <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="0"
-                android:startY="0"
-                android:endX="108"
-                android:endY="108"
-                android:type="linear">
-                <item android:color="#78350F" android:offset="0.0" />
-                <item android:color="#9A3412" android:offset="0.5" />
-                <item android:color="#451A03" android:offset="1.0" />
+                android:gradientRadius="72"
+                android:centerX="54"
+                android:centerY="46"
+                android:type="radial">
+                <item android:color="#5C260D" android:offset="0.0" />
+                <item android:color="#431A09" android:offset="0.45" />
+                <item android:color="#2B1005" android:offset="0.78" />
+                <item android:color="#170701" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Subtle book binding stitching lines on edge -->
+
+    <!-- 2. Aged Leather Grain Micro-Texture & Natural Mottling -->
     <path
-        android:pathData="M18,0L18,108"
+        android:fillColor="#15000000"
+        android:pathData="M12,18 C20,15 32,22 45,17 C58,12 70,20 85,15 C95,25 90,40 98,52 C88,65 94,80 82,90 C70,82 55,95 40,88 C25,92 18,78 12,68 C15,50 8,35 12,18 Z" />
+    <path
+        android:fillColor="#22000000"
+        android:pathData="M25,28 C35,32 50,26 62,34 C75,30 82,42 78,58 C85,70 72,82 60,76 C45,84 32,74 24,62 C28,48 18,38 25,28 Z" />
+
+    <!-- 3. Organic Kitchen Grease & Dark Aged Tea/Coffee Stains -->
+    <!-- Large historic water/oil spill mark top-right -->
+    <path
+        android:pathData="M64,12 C74,10 88,16 94,26 C98,34 92,44 86,48 C76,46 70,36 66,28 C62,22 60,14 64,12 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="22"
+                android:centerX="80"
+                android:centerY="28"
+                android:type="radial">
+                <item android:color="#550D0401" android:offset="0.0" />
+                <item android:color="#331A0802" android:offset="0.6" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Stained glass ring mark bottom-left (kitchen heritage) -->
+    <path
+        android:strokeWidth="3.5"
+        android:strokeColor="#33140501"
+        android:pathData="M26,72 A18,18 0 1,0 62,72 A18,18 0 1,0 26,72" />
+    <path
         android:strokeWidth="1.2"
-        android:strokeColor="#55FDE047" />
+        android:strokeColor="#220A0200"
+        android:pathData="M28,72 A16,16 0 1,0 60,72 A16,16 0 1,0 28,72" />
+
+    <!-- 4. Deep Natural Leather Creases & Fold Scars -->
     <path
-        android:pathData="M22,0L22,108"
+        android:pathData="M8,44 Q32,48 58,41 T102,46"
         android:strokeWidth="0.8"
-        android:strokeColor="#33FFFFFF" />
+        android:strokeColor="#33000000" />
+    <path
+        android:pathData="M8,45 Q32,49 58,42 T102,47"
+        android:strokeWidth="0.5"
+        android:strokeColor="#1AF59E0B" />
+    <path
+        android:pathData="M14,80 Q40,75 70,82 T98,78"
+        android:strokeWidth="0.8"
+        android:strokeColor="#33000000" />
+
+    <!-- 5. BURNT & SCORCHED CORNERS (Deep carbonized gradient burns) -->
+    <!-- Top-Left Burnt Corner -->
+    <path android:pathData="M0,0 L42,0 L0,42 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="36"
+                android:centerX="0"
+                android:centerY="0"
+                android:type="radial">
+                <item android:color="#F0050201" android:offset="0.0" />
+                <item android:color="#C0120602" android:offset="0.45" />
+                <item android:color="#602E1005" android:offset="0.75" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Top-Right Burnt Corner -->
+    <path android:pathData="M66,0 L108,0 L108,42 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="36"
+                android:centerX="108"
+                android:centerY="0"
+                android:type="radial">
+                <item android:color="#F0050201" android:offset="0.0" />
+                <item android:color="#C0120602" android:offset="0.45" />
+                <item android:color="#602E1005" android:offset="0.75" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Bottom-Left Burnt Corner -->
+    <path android:pathData="M0,66 L42,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="36"
+                android:centerX="0"
+                android:centerY="108"
+                android:type="radial">
+                <item android:color="#F0050201" android:offset="0.0" />
+                <item android:color="#C0120602" android:offset="0.45" />
+                <item android:color="#602E1005" android:offset="0.75" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Bottom-Right Burnt Corner -->
+    <path android:pathData="M108,66 L108,108 L66,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="36"
+                android:centerX="108"
+                android:centerY="108"
+                android:type="radial">
+                <item android:color="#F0050201" android:offset="0.0" />
+                <item android:color="#C0120602" android:offset="0.45" />
+                <item android:color="#602E1005" android:offset="0.75" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 6. Heavy Book Perimeter Vignette Edge Shadows -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:gradientRadius="62"
+                android:centerX="54"
+                android:centerY="54"
+                android:type="radial">
+                <item android:color="#00000000" android:offset="0.55" />
+                <item android:color="#44080301" android:offset="0.82" />
+                <item android:color="#AA040100" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 7. Left Spine Deep Shadow & Embossed Crease -->
+    <path
+        android:pathData="M0,0 L20,0 L20,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="54"
+                android:endX="20"
+                android:endY="54"
+                android:type="linear">
+                <item android:color="#B0000000" android:offset="0.0" />
+                <item android:color="#40100501" android:offset="0.6" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Spine debossed flex groove -->
+    <path
+        android:pathData="M16,0 L16,108"
+        android:strokeWidth="1.5"
+        android:strokeColor="#70000000" />
+    <path
+        android:pathData="M17.5,0 L17.5,108"
+        android:strokeWidth="0.8"
+        android:strokeColor="#25D97706" />
+
+    <!-- 8. Authentic Waxed Cord Saddle Stitching with Shadow Indentations -->
+    <!-- Vertical Spine Stitch line dashes -->
+    <path
+        android:fillColor="#CCDEB887"
+        android:pathData="M12.5,8 L13.5,8 L13.5,12 L12.5,12 Z M12.5,16 L13.5,16 L13.5,20 L12.5,20 Z M12.5,24 L13.5,24 L13.5,28 L12.5,28 Z M12.5,32 L13.5,32 L13.5,36 L12.5,36 Z M12.5,40 L13.5,40 L13.5,44 L12.5,44 Z M12.5,48 L13.5,48 L13.5,52 L12.5,52 Z M12.5,56 L13.5,56 L13.5,60 L12.5,60 Z M12.5,64 L13.5,64 L13.5,68 L12.5,68 Z M12.5,72 L13.5,72 L13.5,76 L12.5,76 Z M12.5,80 L13.5,80 L13.5,84 L12.5,84 Z M12.5,88 L13.5,88 L13.5,92 L12.5,92 Z M12.5,96 L13.5,96 L13.5,100 L12.5,100 Z" />
+    <path
+        android:fillColor="#AA0F0501"
+        android:pathData="M13.5,8 L14,8 L14,12 L13.5,12 Z M13.5,16 L14,16 L14,20 L13.5,20 Z M13.5,24 L14,24 L14,28 L13.5,28 Z M13.5,32 L14,32 L14,36 L13.5,36 Z M13.5,40 L14,40 L14,44 L13.5,44 Z M13.5,48 L14,48 L14,52 L13.5,52 Z M13.5,56 L14,56 L14,60 L13.5,60 Z M13.5,64 L14,64 L14,68 L13.5,68 Z M13.5,72 L14,72 L14,76 L13.5,76 Z M13.5,80 L14,80 L14,84 L13.5,84 Z M13.5,88 L14,88 L14,92 L13.5,92 Z M13.5,96 L14,96 L14,100 L13.5,100 Z" />
+
+    <!-- 9. Antique Weathered Brass Corner Protectors / Reinforcements (Ornate Hardware) -->
+    <!-- Top-Left Brass Corner Bracket -->
+    <path
+        android:fillColor="#8C6D37"
+        android:pathData="M4,4 L22,4 C22,10 18,14 14,14 C14,18 10,22 4,22 Z" />
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M5,5 L18,5 C17,8 14,11 11,11 C11,14 8,17 5,18 Z" />
+    <path
+        android:fillColor="#2D1E0F"
+        android:pathData="M9,9 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+
+    <!-- Top-Right Brass Corner Bracket -->
+    <path
+        android:fillColor="#8C6D37"
+        android:pathData="M104,4 L86,4 C86,10 90,14 94,14 C94,18 98,22 104,22 Z" />
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M103,5 L90,5 C91,8 94,11 97,11 C97,14 100,17 103,18 Z" />
+    <path
+        android:fillColor="#2D1E0F"
+        android:pathData="M99,9 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+
+    <!-- Bottom-Left Brass Corner Bracket -->
+    <path
+        android:fillColor="#8C6D37"
+        android:pathData="M4,104 L22,104 C22,98 18,94 14,94 C14,90 10,86 4,86 Z" />
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M5,103 L18,103 C17,100 14,97 11,97 C11,94 8,91 5,90 Z" />
+    <path
+        android:fillColor="#2D1E0F"
+        android:pathData="M9,99 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+
+    <!-- Bottom-Right Brass Corner Bracket -->
+    <path
+        android:fillColor="#8C6D37"
+        android:pathData="M104,104 L86,104 C86,98 90,94 94,94 C94,90 98,86 104,86 Z" />
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M103,103 L90,103 C91,100 94,97 97,97 C97,94 100,91 103,90 Z" />
+    <path
+        android:fillColor="#2D1E0F"
+        android:pathData="M99,99 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+
 </vector>

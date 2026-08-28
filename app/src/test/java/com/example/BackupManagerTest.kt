@@ -8,7 +8,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class BackupManagerTest {
 
     @Test
@@ -85,5 +90,76 @@ class BackupManagerTest {
         assertNotNull(manifest)
         assertEquals(1, manifest?.recipeCount)
         assertEquals("Family Pot Roast", manifest?.recipes?.firstOrNull()?.title)
+    }
+
+    @Test
+    fun testParseChocolateChipCookiesFormats() {
+        // Single object with string array ingredients and instructions (like common recipe backups or websites)
+        val cookieJson = """
+            {
+              "name": "Classic Chocolate Chip Cookies",
+              "category": "Baking & Desserts",
+              "yield": "24 cookies",
+              "prepTime": "15 mins",
+              "cookTime": "12 mins",
+              "recipeIngredient": [
+                "2 1/4 cups all-purpose flour",
+                "1 tsp baking soda",
+                "1 cup unsalted butter, softened",
+                "3/4 cup granulated sugar",
+                "3/4 cup packed brown sugar",
+                "2 large eggs",
+                "2 cups semi-sweet chocolate chips"
+              ],
+              "recipeInstructions": [
+                "Preheat oven to 375°F (190°C).",
+                "Combine flour and baking soda in small bowl.",
+                "Beat butter, granulated sugar, and brown sugar in large mixer bowl until creamy.",
+                "Add eggs one at a time, beating well after each addition.",
+                "Gradually beat in flour mixture, then stir in chocolate chips.",
+                "Drop by rounded tablespoon onto ungreased baking sheets.",
+                "Bake for 9 to 11 minutes or until golden brown. Cool on baking sheets for 2 minutes."
+              ]
+            }
+        """.trimIndent()
+
+        val parseResult = BackupManager.parseBackup(cookieJson)
+        assertTrue(parseResult.isSuccess)
+        val manifest = parseResult.getOrNull()
+        assertNotNull(manifest)
+        assertEquals(1, manifest?.recipeCount)
+        val recipe = manifest?.recipes?.firstOrNull()
+        assertNotNull(recipe)
+        assertEquals("Classic Chocolate Chip Cookies", recipe?.title)
+        assertEquals(7, recipe?.ingredients?.size)
+        assertEquals(7, recipe?.steps?.size)
+        assertEquals(12, recipe?.cookTimeMinutes)
+    }
+
+    @Test
+    fun testParseWrappedDataJson() {
+        val wrappedJson = """
+            {
+              "app": "Cookbook",
+              "data": [
+                {
+                  "title": "Grandma's Chocolate Chip Cookies",
+                  "ingredients": [
+                    {"name": "Chocolate Chips", "amount": "2", "unit": "cups"}
+                  ],
+                  "steps": [
+                    {"instructionEnglish": "Bake 10 minutes", "timerMinutes": 10}
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val parseResult = BackupManager.parseBackup(wrappedJson)
+        assertTrue(parseResult.isSuccess)
+        val manifest = parseResult.getOrNull()
+        assertNotNull(manifest)
+        assertEquals(1, manifest?.recipeCount)
+        assertEquals("Grandma's Chocolate Chip Cookies", manifest?.recipes?.firstOrNull()?.title)
     }
 }

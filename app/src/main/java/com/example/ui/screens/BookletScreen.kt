@@ -151,6 +151,8 @@ fun BookletScreen(
     val isShoppingListOpen by viewModel.isShoppingListOpen.collectAsStateWithLifecycle()
     val uncheckedShoppingCount by viewModel.uncheckedShoppingCount.collectAsStateWithLifecycle()
     val shoppingItems by viewModel.shoppingItems.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val autoWeeklyBackupEnabled by viewModel.autoWeeklyBackupEnabled.collectAsStateWithLifecycle()
 
     // Pages: 0: Cover, 1: Lore & TOC, 2: Ingredients & Scaler, 3..3+steps: Steps, last: Journal
     val totalPages = 4 + recipe.steps.size
@@ -214,7 +216,7 @@ fun BookletScreen(
                                 maxLines = 1
                             )
                             Text(
-                                text = "Heirloom Recipe",
+                                text = recipe.category.ifBlank { "Recipe" },
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontSize = 11.sp
@@ -380,8 +382,8 @@ fun BookletScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(Color(0xFFEDE5D8))
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             listOf(
@@ -398,20 +400,27 @@ fun BookletScreen(
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
                                     color = if (isCurrent) TerracottaPrimary else Color.Transparent,
-                                    modifier = Modifier.clickable {
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(targetPage)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(targetPage)
+                                            }
                                         }
-                                    }
                                 ) {
-                                    Text(
-                                        text = label,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        fontSize = 11.sp,
-                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isCurrent) Color.White else Color(0xFF5A493B),
-                                        maxLines = 1
-                                    )
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(vertical = 5.dp, horizontal = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isCurrent) Color.White else Color(0xFF5A493B),
+                                            maxLines = 1,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -439,8 +448,8 @@ fun BookletScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Previous Page Button
@@ -455,9 +464,11 @@ fun BookletScreen(
                                 enabled = pagerState.currentPage > 0,
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, Color(0xFFC7BCAE)),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4A3828)),
-                                modifier = Modifier.testTag("prev_page_button")
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("prev_page_button")
                             ) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Turn Back", modifier = Modifier.size(15.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -476,8 +487,10 @@ fun BookletScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
                                 shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                modifier = Modifier.testTag("start_cooking_mode_button")
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .testTag("start_cooking_mode_button")
                             ) {
                                 Icon(Icons.Default.RestaurantMenu, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -501,9 +514,11 @@ fun BookletScreen(
                                 enabled = pagerState.currentPage < totalPages - 1,
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.dp, Color(0xFFC7BCAE)),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4A3828)),
-                                modifier = Modifier.testTag("next_page_button")
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("next_page_button")
                             ) {
                                 Text(
                                     text = "Next",
@@ -838,6 +853,12 @@ fun BookletScreen(
                 onSoundEffectsChange = { viewModel.setSoundEffectsEnabled(it) },
                 keepScreenAwake = keepScreenOn,
                 onKeepScreenAwakeChange = { viewModel.setKeepScreenOn(it) },
+                autoWeeklyBackupEnabled = autoWeeklyBackupEnabled,
+                onToggleAutoWeeklyBackup = { viewModel.setAutoWeeklyBackupEnabled(it) },
+                categories = categories,
+                onAddCategory = { viewModel.addCategory(it) },
+                onRenameCategory = { old, new -> viewModel.renameCategory(old, new) },
+                onDeleteCategory = { viewModel.deleteCategory(it) },
                 onOpenBackup = {
                     viewModel.closeSettings()
                     viewModel.openBackupDialog()
@@ -885,6 +906,7 @@ fun BookletScreen(
             EditRecipeDialog(
                 initialRecipe = editingRecipeDraft ?: recipe,
                 initialTab = recipeEditorInitialTab,
+                categories = categories,
                 onSave = { updated ->
                     viewModel.saveEditedRecipe(updated)
                 },

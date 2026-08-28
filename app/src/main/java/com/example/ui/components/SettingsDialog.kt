@@ -19,15 +19,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -39,11 +45,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -69,12 +82,69 @@ fun SettingsDialog(
     onSoundEffectsChange: (Boolean) -> Unit,
     keepScreenAwake: Boolean,
     onKeepScreenAwakeChange: (Boolean) -> Unit,
+    autoWeeklyBackupEnabled: Boolean = true,
+    onToggleAutoWeeklyBackup: (Boolean) -> Unit = {},
+    categories: List<String> = emptyList(),
+    onAddCategory: (String) -> Unit = {},
+    onRenameCategory: (String, String) -> Unit = { _, _ -> },
+    onDeleteCategory: (String) -> Unit = {},
+    onDeleteAllRecipes: () -> Unit = {},
     onOpenBackup: () -> Unit = {},
     onOpenSmartConverter: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val sampleIngredient = RecipeIngredient("Flour", "250", "g", nameEnglish = "All-Purpose Flour")
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var editingCategoryName by remember { mutableStateOf<String?>(null) }
+    var renameInput by remember { mutableStateOf("") }
+    var newCategoryInput by remember { mutableStateOf("") }
+    var showAddCategoryField by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Delete All Recipes?",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF991B1B)
+                        )
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete all recipes from your cookbook library? All recipes will be removed immediately. (You can restore your recipes anytime from automatic weekly backups or reload starter recipes in Backup & Restore).",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF451A03), lineHeight = 20.sp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDeleteAllRecipes()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.testTag("confirm_delete_all_recipes_button")
+                ) {
+                    Text("Yes, Delete All", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel", color = Color(0xFF57534E))
+                }
+            },
+            containerColor = Color(0xFFFFFDF9),
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,7 +203,7 @@ fun SettingsDialog(
                         Icon(Icons.Default.Scale, contentDescription = null, tint = TerracottaPrimary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Measuring Style & Units",
+                            text = "Measuring Style & Conversions",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF431407)
@@ -227,6 +297,7 @@ fun SettingsDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onOpenSmartConverter() }
+                                .testTag("open_smart_converter_settings_button")
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -238,14 +309,14 @@ fun SettingsDialog(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
-                                            text = "Open Smart Spoon & Knife-Tip Tool",
+                                            text = "Open Smart Spoon & Knife-Tip Converter",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF78350F)
                                             )
                                         )
                                         Text(
-                                            text = "Convert small grams (e.g., 2g soda) to spoons instantly",
+                                            text = "Convert grams to knife-tips, pinches & spoons instantly",
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 color = Color(0xFF92400E),
                                                 fontSize = 11.sp
@@ -265,34 +336,255 @@ fun SettingsDialog(
 
                 HorizontalDivider(color = Color(0xFF8C7B6B))
 
-                // Section 2: AI Import Engine Features Badge
+                // Section 2: Manage Recipe Categories
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFFAF5FF),
-                    border = BorderStroke(1.5.dp, Color(0xFF7E22CE)),
+                    color = Color(0xFFFFF7ED),
+                    border = BorderStroke(1.5.dp, Color(0xFFFDBA74)),
+                    modifier = Modifier.fillMaxWidth().testTag("settings_categories_section")
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Bookmark, contentDescription = null, tint = TerracottaPrimary, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = "Recipe Categories",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF9A3412)
+                                        )
+                                    )
+                                    Text(
+                                        text = "Customize, rename, or add custom categories",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = Color(0xFFC2410C),
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { showAddCategoryField = !showAddCategoryField },
+                                modifier = Modifier.size(32.dp).testTag("settings_add_category_button")
+                            ) {
+                                Icon(
+                                    if (showAddCategoryField) Icons.Default.Close else Icons.Default.Add,
+                                    contentDescription = "Add Category",
+                                    tint = TerracottaPrimary
+                                )
+                            }
+                        }
+
+                        // Add category input field
+                        if (showAddCategoryField) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = newCategoryInput,
+                                    onValueChange = { newCategoryInput = it },
+                                    placeholder = { Text("New category name...", fontSize = 12.sp) },
+                                    modifier = Modifier.weight(1f).height(50.dp).testTag("new_category_input"),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = TerracottaPrimary,
+                                        unfocusedBorderColor = Color(0xFFFDBA74),
+                                        focusedContainerColor = Color.White,
+                                        unfocusedContainerColor = Color.White
+                                    ),
+                                    singleLine = true
+                                )
+                                Button(
+                                    onClick = {
+                                        if (newCategoryInput.isNotBlank()) {
+                                            onAddCategory(newCategoryInput.trim())
+                                            newCategoryInput = ""
+                                            showAddCategoryField = false
+                                        }
+                                    },
+                                    enabled = newCategoryInput.isNotBlank(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("save_new_category_button")
+                                ) {
+                                    Text("Add", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Category List Items
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            categories.forEach { cat ->
+                                val isEditingThis = editingCategoryName == cat
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    border = BorderStroke(1.dp, Color(0xFFFED7AA)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (isEditingThis) {
+                                        Row(
+                                            modifier = Modifier.padding(6.dp).fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            OutlinedTextField(
+                                                value = renameInput,
+                                                onValueChange = { renameInput = it },
+                                                modifier = Modifier.weight(1f).height(46.dp).testTag("rename_category_input"),
+                                                shape = RoundedCornerShape(6.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = TerracottaPrimary,
+                                                    unfocusedBorderColor = Color(0xFFFDBA74)
+                                                ),
+                                                singleLine = true
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    if (renameInput.isNotBlank()) {
+                                                        onRenameCategory(cat, renameInput.trim())
+                                                    }
+                                                    editingCategoryName = null
+                                                },
+                                                modifier = Modifier.size(32.dp).testTag("confirm_rename_category_button")
+                                            ) {
+                                                Icon(Icons.Default.Check, contentDescription = "Save", tint = SageGreen)
+                                            }
+                                            IconButton(
+                                                onClick = { editingCategoryName = null },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = "Cancel", tint = Color.Gray)
+                                            }
+                                        }
+                                    } else {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp).fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = cat,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = Color(0xFF431407)
+                                                )
+                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                IconButton(
+                                                    onClick = {
+                                                        editingCategoryName = cat
+                                                        renameInput = cat
+                                                    },
+                                                    modifier = Modifier.size(28.dp).testTag("edit_category_${cat.lowercase().replace(" ", "_")}")
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Edit,
+                                                        contentDescription = "Rename Category",
+                                                        tint = TerracottaPrimary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                                if (categories.size > 1) {
+                                                    IconButton(
+                                                        onClick = { onDeleteCategory(cat) },
+                                                        modifier = Modifier.size(28.dp).testTag("delete_category_${cat.lowercase().replace(" ", "_")}")
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.DeleteOutline,
+                                                            contentDescription = "Delete Category",
+                                                            tint = Color(0xFFDC2626),
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFF8C7B6B))
+
+                // Section 3: Automatic Weekly Backup
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFFFBEB),
+                    border = BorderStroke(1.5.dp, Color(0xFFD97706)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color(0xFF6B21A8), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Intelligent AI Recipe Importer",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF581C87)
-                                )
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Archive, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = "Automatic Weekly Backup",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF92400E)
+                                        )
+                                    )
+                                    Text(
+                                        text = "Regular automated local preservation",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = Color(0xFFB45309),
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = autoWeeklyBackupEnabled,
+                                onCheckedChange = onToggleAutoWeeklyBackup,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFFD97706)
+                                ),
+                                modifier = Modifier.testTag("toggle_auto_weekly_backup")
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+
                         Text(
-                            text = "• Scans handwritten recipes and vintage script\n• Instantly translates from foreign or old recipes into clean English\n• Detects oven temperatures, timers, & ingredient groupings\n• Normalizes units into your selected measuring style",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFF3B0764),
-                                fontWeight = FontWeight.Medium,
-                                lineHeight = 16.sp
+                            text = "Backs up your cookbook library automatically once a week to protect against accidental loss.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFF78350F),
+                                fontSize = 11.5.sp
                             )
                         )
+
+                        Button(
+                            onClick = onOpenBackup,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("open_backup_from_settings_button")
+                        ) {
+                            Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open Backup & Restore Tool", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
 
@@ -361,48 +653,46 @@ fun SettingsDialog(
 
                 HorizontalDivider(color = Color(0xFF8C7B6B))
 
-                // Section 4: Backup & Data Preservation
+                // Section 4: Recipe Library Management / Danger Zone (Delete All Button)
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFFFFBEB),
-                    border = BorderStroke(1.5.dp, Color(0xFFD97706)),
+                    color = Color(0xFFFEF2F2),
+                    border = BorderStroke(1.5.dp, Color(0xFFF87171)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Archive, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Cookbook Backup & Restore",
+                                text = "Recipe Library Management",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF92400E)
+                                    color = Color(0xFF991B1B)
                                 )
                             )
                         }
 
                         Text(
-                            text = "Save a complete, portable copy of all your recipes, photos, and notes to your device or Google Drive, or restore a previous backup with one tap.",
+                            text = "Need to start fresh? One button to delete all recipes currently stored in your cookbook.",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFF78350F),
+                                color = Color(0xFF7F1D1D),
                                 fontSize = 11.5.sp,
                                 lineHeight = 16.sp
                             )
                         )
 
                         Button(
-                            onClick = onOpenBackup,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            onClick = { showDeleteConfirmation = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("open_backup_from_settings_button")
+                                .testTag("delete_all_recipes_button")
                         ) {
-                            Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Open Backup & Restore Tool", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text("Delete All Recipes", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -423,3 +713,4 @@ fun SettingsDialog(
         }
     )
 }
+

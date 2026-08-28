@@ -158,19 +158,15 @@ object OfflineRecipeParser {
     fun parse(rawText: String): ParsedRecipeDto {
         if (rawText.isBlank()) {
             return ParsedRecipeDto(
-                titleGerman = "Neues Familienrezept",
-                titleEnglish = "New Family Heirloom Recipe",
+                titleGerman = "Untitled Recipe",
+                titleEnglish = "Untitled Recipe",
                 category = "Family Classics",
                 servings = "4 servings",
-                prepTimeMinutes = 20,
+                prepTimeMinutes = 15,
                 cookTimeMinutes = 30,
-                difficulty = "Medium",
-                ingredients = listOf(
-                    ParsedIngredientDto(nameGerman = "Zutat 1", nameEnglish = "Ingredient 1", amount = "200", unit = "g")
-                ),
-                steps = listOf(
-                    ParsedStepDto(stepNumber = 1, instructionGerman = "Zubereitungsschritt 1", instructionEnglish = "Preparation step 1")
-                ),
+                difficulty = "Easy",
+                ingredients = emptyList(),
+                steps = emptyList(),
                 detectedSourceLanguage = "en"
             )
         }
@@ -206,17 +202,27 @@ object OfflineRecipeParser {
         val rawStepTexts = mutableListOf<String>()
         var inIngredients = false
         var inSteps = false
+        var currentGroup: String? = null
 
         for (line in lines) {
-            val lowerLine = line.lowercase()
-            if (lowerLine.contains("zutaten") || lowerLine.contains("ingredients")) {
+            val lowerLine = line.lowercase().trim()
+
+            // Detect section headers like "Ingredients:", "Zutaten:", "For the Dough:", "Füllung:", "Directions:", "Steps:"
+            if (lowerLine.matches(Regex("^(?:ingredients|zutaten)\\s*:?$"))) {
                 inIngredients = true
                 inSteps = false
+                currentGroup = null
                 continue
             }
-            if (lowerLine.contains("zubereitung") || lowerLine.contains("directions") || lowerLine.contains("instructions") || lowerLine.contains("steps") || lowerLine.contains("methode")) {
+            if (lowerLine.matches(Regex("^(?:directions|instructions|steps|zubereitung|methode|preparation)\\s*:?$"))) {
                 inSteps = true
                 inIngredients = false
+                currentGroup = null
+                continue
+            }
+            if (lowerLine.matches(Regex("^(?:for the|für den|für die|für das|für)?\\s*(?:dough|crust|filling|glaze|topping|sauce|frosting|teig|kruste|füllung|guss|streusel|belag|soße|sauce)\\s*:?$"))) {
+                currentGroup = line.replace(":", "").trim()
+                inIngredients = true
                 continue
             }
 
@@ -226,24 +232,33 @@ object OfflineRecipeParser {
 
             if (hasMultipleInlineSteps) {
                 inSteps = true
+                inIngredients = false
                 for (s in inlineStepsMatch) {
                     val cleaned = s.replace(Regex("^(?:\\d+[.)]|Step\\s*\\d+:?|Schritt\\s*\\d+:?)\\s*"), "").trim()
                     if (cleaned.isNotBlank()) rawStepTexts.add(cleaned)
                 }
             } else if (inIngredients && !inSteps) {
-                ingredients.add(parseIngredientLine(line, isGerman))
+                if (isStepLike(line)) {
+                    inSteps = true
+                    inIngredients = false
+                    val cleanedStep = line.replace(Regex("^(?:\\d+[.)]|Step\\s*\\d+:?|Schritt\\s*\\d+:?)\\s*"), "").trim()
+                    if (cleanedStep.isNotBlank()) rawStepTexts.add(cleanedStep)
+                } else {
+                    ingredients.add(parseIngredientLine(line, isGerman, currentGroup))
+                }
             } else if (inSteps) {
                 val cleanedStep = line.replace(Regex("^(?:\\d+[.)]|Step\\s*\\d+:?|Schritt\\s*\\d+:?)\\s*"), "").trim()
                 if (cleanedStep.isNotBlank()) {
                     rawStepTexts.add(cleanedStep)
                 }
             } else if (line != firstLine) {
-                // Heuristic identification for ingredients vs steps
-                if (line.matches(Regex("^(?:\\d+[.)]|Step\\s*\\d+:?|Schritt\\s*\\d+:?).*")) || line.length > 70 || line.contains("backen", ignoreCase = true) || line.contains("bake", ignoreCase = true) || line.contains("stir", ignoreCase = true) || line.contains("rühren", ignoreCase = true)) {
+                // Heuristic identification for ingredients vs steps when no explicit headers exist
+                if (isStepLike(line)) {
+                    inSteps = true
                     val cleaned = line.replace(Regex("^(?:\\d+[.)]|Step\\s*\\d+:?|Schritt\\s*\\d+:?)\\s*"), "").trim()
                     if (cleaned.isNotBlank()) rawStepTexts.add(cleaned)
                 } else if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*") || isIngredientLike(line)) {
-                    ingredients.add(parseIngredientLine(line, isGerman))
+                    ingredients.add(parseIngredientLine(line, isGerman, currentGroup))
                 } else {
                     rawStepTexts.add(line)
                 }
@@ -297,43 +312,90 @@ object OfflineRecipeParser {
             )
         }
 
+        val extractedCookTime = extractCookTimeMinutes(rawText, steps)
+        val extractedPrepTime = extractPrepTimeMinutes(rawText)
+        val extractedServings = extractServings(rawText)
+        val extractedDifficulty = extractDifficulty(rawText, extractedCookTime, steps.size)
+
         return ParsedRecipeDto(
             titleGerman = titleDe.ifBlank { "Traditionelles Rezept" },
             titleEnglish = titleEn.ifBlank { "Traditional Recipe" },
             category = inferCategory(rawText),
-            servings = "4-6 servings",
-            prepTimeMinutes = 20,
-            cookTimeMinutes = 35,
-            difficulty = "Medium",
+            servings = extractedServings,
+            prepTimeMinutes = extractedPrepTime,
+            cookTimeMinutes = extractedCookTime,
+            difficulty = extractedDifficulty,
             ingredients = ingredients,
             steps = steps,
-            notesGerman = if (isGerman) "Aus Omas altem Kochbuch handgeschrieben." else "Handgeschriebenes Familienrezept.",
-            notesEnglish = if (!isGerman) "Handwritten note from family recipe notebook." else "Transcribed from Grandma's vintage handwritten recipe cards.",
+            notesGerman = if (isGerman) "Aus Omas Kochbuch." else "Familienrezept.",
+            notesEnglish = if (!isGerman) "Recipe notes from family collection." else "Transcribed from Grandma's recipe cards.",
             detectedSourceLanguage = if (isGerman) "de" else "en"
         )
     }
 
-    private fun isIngredientLike(line: String): Boolean {
-        val lower = line.lowercase()
-        return lower.contains("sugar") || lower.contains("zucker") || lower.contains("flour") || lower.contains("mehl") ||
-                lower.contains("butter") || lower.contains("salt") || lower.contains("salz") || lower.contains("spoon") ||
-                lower.contains("tsp") || lower.contains("tbsp") || lower.contains("cup") || lower.contains("g ") || lower.contains("ml") ||
-                lower.matches(Regex(".*\\d+/\\d+.*"))
+    private fun isStepLike(line: String): Boolean {
+        val lower = line.lowercase().trim()
+        if (lower.matches(Regex("^(?:\\d+[.)]|step\\s*\\d+:?|schritt\\s*\\d+:?).*"))) return true
+        if (lower.startsWith("preheat") || lower.startsWith("vorheizen") || lower.startsWith("bake") || lower.startsWith("backen") ||
+            lower.startsWith("mix ") || lower.startsWith("whisk") || lower.startsWith("stir ") || lower.startsWith("combine ") ||
+            lower.startsWith("knead") || lower.startsWith("kneten") || lower.startsWith("roll out") || lower.startsWith("ausrollen") ||
+            lower.startsWith("place ") || lower.startsWith("legen") || lower.startsWith("heat ") || lower.startsWith("erhitzen") ||
+            lower.startsWith("pour ") || lower.startsWith("gießen") || lower.startsWith("in a bowl") || lower.startsWith("in einer schüssel") ||
+            lower.startsWith("in a medium") || lower.startsWith("in a large") || lower.startsWith("let cool") || lower.startsWith("abkühlen lassen") ||
+            lower.startsWith("serve ") || lower.startsWith("servieren") || lower.startsWith("garnish") || lower.startsWith("garnieren")) {
+            return true
+        }
+        return line.length > 85 && (lower.contains("minute") || lower.contains("oven") || lower.contains("ofen") || lower.contains("bowl") || lower.contains("schüssel"))
     }
 
-    private fun parseIngredientLine(line: String, isSourceGerman: Boolean): ParsedIngredientDto {
+    private fun isIngredientLike(line: String): Boolean {
+        val lower = line.lowercase().trim()
+        if (lower.isBlank() || isStepLike(line)) return false
+
+        // Starts with amount (e.g. "2 cups", "1/2 tsp", "3 eggs", "100g", "1-2 tbsp", "2.5")
+        if (lower.matches(Regex("^[0-9.,/\\s-]+(?:\\s*[-/]\\s*[0-9.,/\\s-]+)?\\s+.*"))) return true
+        if (lower.matches(Regex("^(?:one|two|three|four|five|six|half|quarter|ein|eine|zwei|drei|vier|fünf|sechs|halb|halbe|halber|viertel)\\s+.*"))) return true
+
+        // Contains common units or fraction symbols
+        if (lower.contains("cup") || lower.contains("cups") || lower.contains("tbsp") || lower.contains("tablespoon") ||
+            lower.contains("tsp") || lower.contains("teaspoon") || lower.contains("oz") || lower.contains("ounce") ||
+            lower.contains("lb") || lower.contains("lbs") || lower.contains("pound") || lower.contains("gram") ||
+            lower.contains(" g ") || lower.endsWith(" g") || lower.contains("kg") || lower.contains("ml") || lower.contains(" l ") ||
+            lower.contains("el.") || lower.contains("el ") || lower.contains("tl.") || lower.contains("tl ") ||
+            lower.contains("prise") || lower.contains("pinch") || lower.contains("msp.") || lower.contains("msp ") ||
+            lower.contains("tasse") || lower.contains("tassen") || lower.contains("stk") || lower.contains("stück") ||
+            lower.contains("clove") || lower.contains("zehe") || lower.contains("can ") || lower.contains("cans ") ||
+            lower.contains("package") || lower.contains("packung") || lower.contains("pkg") || lower.contains("stick") ||
+            lower.contains("slice") || lower.contains("scheibe") || lower.contains("dash") || lower.contains("spritzer") ||
+            lower.contains("bunch") || lower.contains("bund") || lower.contains("bottle") || lower.contains("flasche") ||
+            lower.contains("jar") || lower.contains("glas") || lower.matches(Regex(".*\\d+/\\d+.*"))) {
+            return true
+        }
+
+        // Contains common ingredient food words
+        val foodWords = listOf(
+            "sugar", "zucker", "flour", "mehl", "butter", "oil", "öl", "salt", "salz", "pepper", "pfeffer",
+            "egg", "eggs", "eier", "ei", "milk", "milch", "cream", "sahne", "water", "wasser", "yeast", "hefe",
+            "vanilla", "vanille", "cinnamon", "zimt", "baking powder", "backpulver", "baking soda", "natron",
+            "garlic", "knoblauch", "onion", "onions", "zwiebel", "cheese", "käse", "chocolate", "schokolade",
+            "cocoa", "kakao", "almond", "almonds", "mandeln", "walnut", "walnuts", "walnüsse", "cranberry", "cranberries",
+            "raisin", "raisins", "rosinen", "apple", "apples", "apfel", "lemon", "zitrone", "orange", "chicken", "hähnchen",
+            "beef", "rindfleisch", "pork", "schweinefleisch", "bacon", "speck", "pasta", "nudeln", "rice", "reis",
+            "potato", "potatoes", "kartoffeln", "carrot", "carrots", "karotten", "parsley", "petersilie", "thyme", "thymian"
+        )
+        return foodWords.any { lower.contains(it) }
+    }
+
+    fun parseIngredientLine(line: String, isSourceGerman: Boolean, group: String? = null): ParsedIngredientDto {
         var clean = line.replace(Regex("^[-•*#]\\s*"), "").trim()
 
         // Normalize spoken/written fractions and slash combinations:
-        // e.g. "quarter / half spoon sugar" -> "1/4 - 1/2 spoon sugar"
-        // "quarter slash half spoon sugar" -> "1/4 - 1/2 spoon sugar"
-        // "1/4 / 1/2 spoon sugar" -> "1/4 - 1/2 spoon sugar"
-        // "1/4/1/2" -> "1/4 - 1/2"
         clean = clean
             .replace(Regex("(?i)quarter\\s*(?:/|slash|to|or|-)\\s*half"), "1/4 - 1/2")
             .replace(Regex("(?i)viertel\\s*(?:/|slash|bis|oder|-)\\s*halb(?:er|es)?"), "1/4 - 1/2")
             .replace(Regex("(?i)one\\s*quarter"), "1/4")
             .replace(Regex("(?i)one\\s*half"), "1/2")
+            .replace(Regex("(?i)three\\s*quarters?"), "3/4")
             .replace(Regex("(?i)quarter"), "1/4")
             .replace(Regex("(?i)half\\s*(?:a\\s*)?"), "1/2")
             .replace(Regex("(?i)viertel"), "1/4")
@@ -341,8 +403,8 @@ object OfflineRecipeParser {
             .replace(Regex("(\\d+/\\d+)\\s*[/\\\\-]\\s*(\\d+/\\d+)"), "$1 - $2")
             .replace(Regex("(\\d+/\\d+)\\s*(?:or|to|bis|oder)\\s*(\\d+/\\d+)"), "$1 - $2")
 
-        // Regex for amount (numbers, fractions, ranges like 1/4 - 1/2 or 1.5), unit, and item
-        val regex = Regex("^([0-9.,/\\s-]+)?\\s*(g|kg|ml|l|el\\.?|tl\\.?|tbsp|tsp|spoonful|spoons?|sp\\.?|löffel|cup|cups|oz|lb|lbs|pfd\\.?|pfund|prise|prisen|pinch|pinches|msp\\.?|messerspitze|tasse|tassen|stk\\.?|stück|slices?|scheiben?|bd\\.?|bund|schuss|spritzer)?\\s*(?:of\\s+|von\\s+)?(.*)", RegexOption.IGNORE_CASE)
+        // Comprehensive regex for amount (numbers, fractions, ranges like 1/4 - 1/2 or 1.5), unit, and item
+        val regex = Regex("^([0-9.,/\\s-]+)?\\s*(g|kg|ml|l|el\\.?|tl\\.?|tbsp|tablespoons?|tsp|teaspoons?|spoonful|spoons?|sp\\.?|löffel|cups?|tassen?|oz\\.?|ounces?|lbs?\\.?|pounds?|pfd\\.?|pfund|prisen?|pinches?|pinch|msp\\.?|messerspitze|stk\\.?|stück|slices?|scheiben?|bd\\.?|bund|schuss|spritzer|cloves?|zehen?|cans?|dosen?|packages?|pkg\\.?|pck\\.?|packung(?:en)?|sticks?|stangen?|jars?|gläser|glas|bottles?|flaschen?|becher|bags?|tüten?|head|köpfe|stalks?|sprigs?|zweige|leaves|blätter|blatt)?\\s*(?:of\\s+|von\\s+)?(.*)", RegexOption.IGNORE_CASE)
         val match = regex.find(clean)
 
         var amount = match?.groupValues?.getOrNull(1)?.trim() ?: ""
@@ -385,8 +447,10 @@ object OfflineRecipeParser {
         return ParsedIngredientDto(
             nameGerman = nameDe,
             nameEnglish = nameEn,
+            name = nameEn,
             amount = amount,
             unit = unit,
+            group = group,
             isOptional = clean.contains("optional", ignoreCase = true) || clean.contains("nach Belieben", ignoreCase = true)
         )
     }
@@ -474,6 +538,70 @@ object OfflineRecipeParser {
         val minRegex = Regex("(\\d+)\\s*(min|minutes|minuten)", RegexOption.IGNORE_CASE)
         val match = minRegex.find(text)
         return match?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+    }
+
+    private fun extractCookTimeMinutes(text: String, steps: List<ParsedStepDto>): Int {
+        // 1. Check explicit cook/bake/simmer patterns in raw text
+        // e.g. "Bake for 45 min", "Backzeit: ca. 35-40 Minuten", "Cook time: 30 mins", "1 1/2 Std. backen"
+        val hourPattern = Regex("(?i)(?:bake|cook|roast|simmer|boil|backzeit|kochzeit|bratzeit|garzeit|backen|kochen|schmoren)[^.\n]*?(\\d+(?:[.,]\\d+)?|1/2|1\\s*1/2|2)\\s*(?:hours?|hrs?|std\\.?|stunden?)")
+        val hourMatch = hourPattern.find(text)
+        if (hourMatch != null) {
+            val rawHrs = hourMatch.groupValues[1].replace(",", ".").trim()
+            val hrs = when (rawHrs) {
+                "1/2" -> 0.5
+                "1 1/2", "11/2" -> 1.5
+                else -> rawHrs.toDoubleOrNull() ?: 1.0
+            }
+            return (hrs * 60).toInt()
+        }
+
+        val minPattern = Regex("(?i)(?:bake|cook|roast|simmer|boil|backzeit|kochzeit|bratzeit|garzeit|backen|kochen|schmoren)[^.\n]*?(\\d+)(?:\\s*-\\s*(\\d+))?\\s*(?:minutes?|mins?|minuten|min\\.?)")
+        val minMatch = minPattern.find(text)
+        if (minMatch != null) {
+            val upperMin = minMatch.groupValues[2].toIntOrNull()
+            val lowerMin = minMatch.groupValues[1].toIntOrNull()
+            if (upperMin != null && upperMin > 0) return upperMin
+            if (lowerMin != null && lowerMin > 0) return lowerMin
+        }
+
+        // 2. If steps have timers (e.g. "Bake at 180°C for 35 min"), take the max/sum of cooking timers
+        val stepTimers = steps.mapNotNull { it.timerMinutes }.filter { it > 0 }
+        if (stepTimers.isNotEmpty()) {
+            val maxTimer = stepTimers.maxOrNull() ?: 0
+            if (maxTimer >= 10) return maxTimer
+            return stepTimers.sum()
+        }
+
+        // 3. Fallback to standard 30 min default
+        return 30
+    }
+
+    private fun extractPrepTimeMinutes(text: String): Int {
+        val prepPattern = Regex("(?i)(?:prep|preparation|vorbereitung|zubereitungszeit)[^.\n]*?(\\d+)\\s*(?:minutes?|mins?|minuten|min\\.?)")
+        val match = prepPattern.find(text)
+        if (match != null) {
+            return match.groupValues[1].toIntOrNull() ?: 15
+        }
+        return 20
+    }
+
+    private fun extractServings(text: String): String {
+        val servPattern = Regex("(?i)(?:serves|servings|portionen|für|yield|makes)\\s*[:=-]?\\s*(\\d+(?:\\s*-\\s*\\d+)?)\\s*(?:persons?|personen|servings?|portionen|pieces?|stk\\.?)?")
+        val match = servPattern.find(text)
+        if (match != null) {
+            val count = match.groupValues[1].trim()
+            return "$count servings"
+        }
+        return "4-6 servings"
+    }
+
+    private fun extractDifficulty(text: String, cookTime: Int, stepCount: Int): String {
+        val lower = text.lowercase()
+        return when {
+            lower.contains("easy") || lower.contains("einfach") || lower.contains("beginner") || (cookTime <= 20 && stepCount <= 3) -> "Easy"
+            lower.contains("advanced") || lower.contains("hard") || lower.contains("schwer") || lower.contains("aufwändig") || cookTime > 90 || stepCount >= 7 -> "Advanced"
+            else -> "Medium"
+        }
     }
 
     private fun inferCategory(text: String): String {

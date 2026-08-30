@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -105,6 +106,9 @@ fun ScanRecipeBottomSheet(
     draftRecipe: RecipeEntity?,
     errorMessage: String? = null,
     duplicatePrompt: com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData? = null,
+    lastAutoSavedRecipe: RecipeEntity? = null,
+    scanBatchSuccessTimestamp: Long? = null,
+    scanBatchCount: Int = 0,
     onResolveDuplicateUpdate: ((com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData) -> Unit)? = null,
     onResolveDuplicateSaveCopy: ((com.example.ui.viewmodel.RecipeViewModel.DuplicatePromptData) -> Unit)? = null,
     onDismissDuplicate: (() -> Unit)? = null,
@@ -135,10 +139,7 @@ fun ScanRecipeBottomSheet(
                 }
             }
             if (scannedPages.isNotEmpty()) {
-                val allBitmaps = scannedPages.map { it.bitmap }
-                val primaryPath = scannedPages.firstOrNull()?.filePath ?: ""
-                Toast.makeText(context, "${scannedPages.size} page(s) loaded! Automatically scanning...", Toast.LENGTH_SHORT).show()
-                onScan(allBitmaps, null, primaryPath)
+                Toast.makeText(context, "${scannedPages.size} page(s) loaded! Ready to scan or add more.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -156,25 +157,19 @@ fun ScanRecipeBottomSheet(
                 if (bitmap != null) {
                     val savedImagePath = ImageUtils.saveLowResReferenceImage(context, bitmap) ?: ""
                     scannedPages.add(ScannedPageThumbnail(bitmap, savedImagePath))
+                    val count = scannedPages.size
+                    Toast.makeText(context, "✓ Page $count captured! Opening camera for Page ${count + 1} (press Back when done)...", Toast.LENGTH_SHORT).show()
                     
-                    if (scannedPages.size == 1) {
-                        Toast.makeText(context, "Page 1 captured! Opening camera for Page 2 (or tap back/cancel if 1 page)...", Toast.LENGTH_LONG).show()
-                        coroutineScope.launch {
-                            delay(400)
-                            try {
-                                val uri = ImageUtils.createTempCameraUri(context)
-                                pendingCameraUri = uri
-                                cameraLauncherRef?.launch(uri)
-                            } catch (e: Throwable) {
-                                Toast.makeText(context, "Could not open camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                            }
+                    // Immediately reopen camera for next page in sequence!
+                    coroutineScope.launch {
+                        delay(350)
+                        try {
+                            val uri = ImageUtils.createTempCameraUri(context)
+                            pendingCameraUri = uri
+                            cameraLauncherRef?.launch(uri)
+                        } catch (e: Throwable) {
+                            Toast.makeText(context, "Could not open camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         }
-                    } else {
-                        // 2 or more pages captured -> automatically synthesize and convert!
-                        Toast.makeText(context, "${scannedPages.size} pages captured! Automatically scanning & transcribing...", Toast.LENGTH_SHORT).show()
-                        val allBitmaps = scannedPages.map { it.bitmap }
-                        val primaryPath = scannedPages.firstOrNull()?.filePath ?: savedImagePath
-                        onScan(allBitmaps, null, primaryPath)
                     }
                 } else {
                     Toast.makeText(context, "Could not process photo from camera", Toast.LENGTH_SHORT).show()
@@ -183,8 +178,9 @@ fun ScanRecipeBottomSheet(
                 Toast.makeText(context, "Error processing photo: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         } else if (!success && scannedPages.isNotEmpty()) {
-            // User cancelled/backed out of camera after page 1 -> automatically process the 1 page captured!
-            Toast.makeText(context, "1 page captured! Automatically scanning & transcribing...", Toast.LENGTH_SHORT).show()
+            // User pressed Back/cancelled camera -> they are finished capturing pages for this recipe!
+            val count = scannedPages.size
+            Toast.makeText(context, "Synthesizing $count captured page(s) into recipe...", Toast.LENGTH_SHORT).show()
             val allBitmaps = scannedPages.map { it.bitmap }
             val primaryPath = scannedPages.firstOrNull()?.filePath ?: ""
             onScan(allBitmaps, null, primaryPath)
@@ -229,6 +225,18 @@ fun ScanRecipeBottomSheet(
     LaunchedEffect(Unit) {
         if (!hasAutoOpenedCamera && scannedPages.isEmpty() && draftRecipe == null && !isScanning) {
             hasAutoOpenedCamera = true
+            requestCameraOrLaunch()
+        }
+    }
+
+    // Continuous Batch Scanning loop: when a recipe is saved, clear page state and reopen camera immediately!
+    LaunchedEffect(scanBatchSuccessTimestamp) {
+        if (scanBatchSuccessTimestamp != null) {
+            scannedPages.clear()
+            rawTextEntry = ""
+            val title = lastAutoSavedRecipe?.title?.ifBlank { "Recipe" } ?: "Recipe"
+            Toast.makeText(context, "✓ Saved '$title' to Cookbook! Opening camera for next recipe...", Toast.LENGTH_SHORT).show()
+            delay(400)
             requestCameraOrLaunch()
         }
     }
@@ -587,7 +595,7 @@ fun ScanRecipeBottomSheet(
                 ) {
                     Column {
                         Text(
-                            text = "📸 Scan Recipe",
+                            text = "📸 Continuous Recipe Scanner",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = TerracottaPrimary,
@@ -595,12 +603,68 @@ fun ScanRecipeBottomSheet(
                             )
                         )
                         Text(
-                            text = "Supports multi-page recipe cards, notebooks & cursive",
+                            text = "Auto-saves cards and loops directly into the next scan",
                             style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF431407), fontWeight = FontWeight.Medium)
                         )
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF18120C))
+                    }
+                }
+
+                if (scanBatchCount > 0) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFECFDF5),
+                        border = BorderStroke(1.5.dp, Color(0xFF10B981)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color(0xFF059669),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "$scanBatchCount recipe(s) saved to Cookbook!",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF065F46)
+                                        )
+                                    )
+                                }
+                                if (lastAutoSavedRecipe != null) {
+                                    Text(
+                                        text = "Latest: ${lastAutoSavedRecipe.title.ifBlank { "Recipe" }}",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = Color(0xFF047857),
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = onDismiss,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Done", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                            }
+                        }
                     }
                 }
 
@@ -661,14 +725,14 @@ fun ScanRecipeBottomSheet(
                             ) {
                                 Column {
                                     Text(
-                                        text = if (pageCount == 1) "📸 Page 1 Captured" else "📑 $pageCount Pages Captured",
+                                        text = if (pageCount == 1) "📸 1 Page Captured" else "📑 $pageCount Pages Captured",
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = TerracottaPrimary
                                         )
                                     )
                                     Text(
-                                        text = if (pageCount == 1) "Need a 2nd page (back of card / next steps)?" else "Front & back / multiple pages ready for AI parsing",
+                                        text = "Snap more pages or scan all pages into one recipe",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = Color(0xFF431407),
                                             fontWeight = FontWeight.Medium
@@ -678,7 +742,7 @@ fun ScanRecipeBottomSheet(
                                 TextButton(
                                     onClick = { scannedPages.clear() }
                                 ) {
-                                    Text("Clear", color = Color(0xFF991B1B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("Clear All", color = Color(0xFF991B1B), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
 
@@ -710,7 +774,7 @@ fun ScanRecipeBottomSheet(
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
                                                 Text(
-                                                    text = if (index == 0) "Page 1 (Front)" else if (index == 1) "Page 2 (Back)" else "Page ${index + 1}",
+                                                    text = "Page ${index + 1}",
                                                     color = Color.White,
                                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                                     modifier = Modifier.padding(vertical = 3.dp),
@@ -740,91 +804,49 @@ fun ScanRecipeBottomSheet(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            if (pageCount == 1) {
-                                // Smart 2nd Page Prompt
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Button(
-                                        onClick = { requestCameraOrLaunch() },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Icon(Icons.Default.CameraAlt, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("📸 Take Page 2 Photo (Back of Card)", fontWeight = FontWeight.Bold)
-                                    }
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Button(
-                                            onClick = {
-                                                val bitmaps = scannedPages.map { it.bitmap }
-                                                val primaryPath = scannedPages.firstOrNull()?.filePath
-                                                onScan(bitmaps, null, primaryPath)
-                                            },
-                                            modifier = Modifier.weight(1.3f),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ) {
-                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Convert 1 Page Now", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
-                                        }
-
-                                        OutlinedButton(
-                                            onClick = { multiGalleryLauncher.launch("image/*") },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ) {
-                                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF5B21B6))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("+ Photos", fontSize = 13.sp, color = Color(0xFF5B21B6), fontWeight = FontWeight.Bold)
-                                        }
-                                    }
+                            // Unified Multi-Page Action Buttons
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Button(
+                                    onClick = {
+                                        val bitmaps = scannedPages.map { it.bitmap }
+                                        val primaryPath = scannedPages.firstOrNull()?.filePath
+                                        onScan(bitmaps, null, primaryPath)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (pageCount == 1) "✨ Scan & Parse 1 Page" else "✨ Scan & Synthesize All $pageCount Pages",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
                                 }
-                            } else {
-                                // Multi-page actions
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Button(
-                                        onClick = {
-                                            val bitmaps = scannedPages.map { it.bitmap }
-                                            val primaryPath = scannedPages.firstOrNull()?.filePath
-                                            onScan(bitmaps, null, primaryPath)
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { requestCameraOrLaunch() },
+                                        modifier = Modifier.weight(1.1f),
                                         shape = RoundedCornerShape(10.dp)
                                     ) {
-                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("✨ Scan & Synthesize All $pageCount Pages", fontWeight = FontWeight.Bold, color = Color.White)
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp), tint = TerracottaPrimary)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("+ Page ${pageCount + 1}", fontSize = 13.sp, color = TerracottaPrimary, fontWeight = FontWeight.Bold)
                                     }
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    OutlinedButton(
+                                        onClick = { multiGalleryLauncher.launch("image/*") },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
                                     ) {
-                                        OutlinedButton(
-                                            onClick = { requestCameraOrLaunch() },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ) {
-                                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp), tint = TerracottaPrimary)
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("+ Page ${pageCount + 1}", fontSize = 13.sp, color = TerracottaPrimary, fontWeight = FontWeight.Bold)
-                                        }
-
-                                        OutlinedButton(
-                                            onClick = { multiGalleryLauncher.launch("image/*") },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ) {
-                                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF5B21B6))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("+ Photos", fontSize = 13.sp, color = Color(0xFF5B21B6), fontWeight = FontWeight.Bold)
-                                        }
+                                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF5B21B6))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("+ Photos", fontSize = 13.sp, color = Color(0xFF5B21B6), fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -838,7 +860,6 @@ fun ScanRecipeBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                scannedPages.clear()
                                 requestCameraOrLaunch()
                             },
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF3C7)),
@@ -858,14 +879,14 @@ fun ScanRecipeBottomSheet(
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "📸 Take Photo (1 or 2 Pages)",
+                                    text = if (scannedPages.isEmpty()) "📸 Photograph Recipe Pages" else "📸 Snap Page ${scannedPages.size + 1}",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF431407)
                                     )
                                 )
                                 Text(
-                                    text = "Snaps Page 1 then automatically opens for Page 2 (press Back/Cancel if 1 page)",
+                                    text = "Snaps Page 1 -> Page 2 -> Page 3 -> ... auto-scans when Back is pressed",
                                     style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF431407), fontWeight = FontWeight.Medium)
                                 )
                             }
@@ -1017,6 +1038,20 @@ fun ScanRecipeBottomSheet(
                     Icon(Icons.Default.AutoAwesome, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("AI Parse & Translate Recipe", fontWeight = FontWeight.Bold)
+                }
+
+                if (scanBatchCount > 0) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.5.dp, SageGreen)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = SageGreen)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Finish & View Bookshelf ($scanBatchCount saved)", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

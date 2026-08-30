@@ -30,7 +30,11 @@ data class RecipeEntity(
     val rating: Int = 5,
     val timesCooked: Int = 0,
     val originStory: String = "Handwritten family recipe from grandmother's kitchen.",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false,
+    val syncStatus: String = "PENDING", // "SYNCED" or "PENDING"
+    val coverPhotoName: String? = null
 ) {
     val totalTimeMinutes: Int get() = prepTimeMinutes + cookTimeMinutes
 }

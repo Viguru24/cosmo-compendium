@@ -833,8 +833,12 @@ fun BackupRestoreDialog(
                                         )
                                     },
                                     colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color(0xFF18120C),
+                                        unfocusedTextColor = Color(0xFF18120C),
                                         focusedContainerColor = Color.White,
-                                        unfocusedContainerColor = Color.White
+                                        unfocusedContainerColor = Color.White,
+                                        focusedBorderColor = SageGreen,
+                                        unfocusedBorderColor = Color(0xFFD1D5DB)
                                     ),
                                     shape = RoundedCornerShape(8.dp)
                                 )

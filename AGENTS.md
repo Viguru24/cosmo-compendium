@@ -7,15 +7,15 @@ This document specifies the critical rules, architecture, and extraction contrac
 ## 1. Recipe Scanning & Vision Pipeline
 
 ### Multimodal Vision Flow
-1. **Multi-Page Support**:
-   - Recipe cards often consist of a Front (Ingredients / Title / Metadata) and Back (Directions / Steps / Oven instructions) or multiple scrapbook pages.
-   - All captured or uploaded pages are downscaled and converted to JPEG Base64 parts within a single Gemini `generateContent` request.
-   - The multimodal prompt instructs the model to synthesize both pages into a unified, coherent recipe entity.
+1. **Unlimited Multi-Page Support**:
+   - Recipe cards often consist of a Front (Ingredients / Title / Metadata), Back (Directions / Steps), or 3 to 4+ scrapbook pages, notebook spreads, or folded inserts.
+   - All captured or uploaded pages (unlimited count) are downscaled and converted to JPEG Base64 parts within a single Gemini `generateContent` request.
+   - The multimodal prompt instructs the model to synthesize all provided pages in order into a single unified, coherent recipe entity.
 
-2. **Automatic Camera & Multi-Page Sequencing**:
-   - When the user captures **Page 1**, the camera flow automatically prompts and opens for **Page 2** (Back of card).
-   - Once **2 or more pages** are captured (or if user selects multiple images from the gallery), the app automatically triggers transcription and translation (`onScan(...)`).
-   - If the user only has a 1-page recipe and exits the second camera capture, the app automatically transcribes the single captured page.
+2. **Rapid Continuous Camera Snapping (Page 1 -> Page 2 -> Page 3 -> ... until Back Pressed)**:
+   - When the user snaps Page 1, the camera immediately and automatically reopens for Page 2.
+   - When user snaps Page 2, it reopens for Page 3, then Page 4, etc.
+   - Whenever the user is done with that recipe and presses the Back button / cancel on the camera, the app immediately and automatically scans, synthesizes all captured pages (1, 2, 3, 4+ pages), and saves the recipe into the cookbook without requiring manual button taps!
 
 ---
 
@@ -49,3 +49,11 @@ This document specifies the critical rules, architecture, and extraction contrac
 
 - If the scanned card includes a food photograph alongside text, the vision model returns a normalized bounding box (`ymin`, `xmin`, `ymax`, `xmax`, 0-1000).
 - The app automatically crops and saves only the food photograph as the recipe's cover image.
+
+---
+
+## 5. Continuous Batch Scanning & Direct Auto-Save Flow
+
+- **Direct Auto-Save**: Because AI scan transcription accuracy is high, completed recipe scans are automatically inserted directly into the database without interrupting the user with an intermediate inspection/review screen or navigating out to the recipe page.
+- **Continuous Camera Loop**: After a recipe is scanned and saved, the app immediately reopens the camera for the next recipe card (Page 1) so the user can scan stacks of recipe cards in rapid succession.
+- **Session Progress & Completion**: The scan interface maintains a session counter (e.g. "X recipes saved") and offers a "Done Scanning" action to cleanly return to the bookshelf when finished.

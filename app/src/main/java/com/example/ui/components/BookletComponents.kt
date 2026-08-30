@@ -162,6 +162,9 @@ fun RecipeCoverPage(
     onOpenBook: () -> Unit,
     onOpenStory: () -> Unit,
     onEditRecipe: (() -> Unit)? = null,
+    onGenerateAiCover: (() -> Unit)? = null,
+    onRemoveCoverPhoto: (() -> Unit)? = null,
+    isGeneratingCover: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val theme = try {
@@ -281,6 +284,61 @@ fun RecipeCoverPage(
                                 )
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // AI Cover Art Generator Action Button
+                        if (isGeneratingCover) {
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0x99000000),
+                                border = BorderStroke(1.dp, Color(0xFFE5D4B8))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    androidx.compose.material3.CircularProgressIndicator(
+                                        modifier = Modifier.size(13.dp),
+                                        color = Color(0xFFFFD54F),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Creating AI Food Photo...",
+                                        color = Color(0xFFFFFDF9),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        } else if (onGenerateAiCover != null) {
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0x44000000),
+                                border = BorderStroke(1.dp, Color(0x66E5D4B8)),
+                                modifier = Modifier.clickable { onGenerateAiCover() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFFD54F),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = if (hasPhoto) "✨ Regenerate AI Photo" else "✨ Generate AI Cover Photo",
+                                        color = Color(0xFFFFFDF9),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Bottom info & turn page CTA
@@ -326,45 +384,34 @@ fun RecipeCoverPage(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                        Button(
+                        Surface(
                             onClick = onOpenBook,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFEDE4D6),
-                                contentColor = Color(0xFF382314)
-                            ),
-                            shape = RoundedCornerShape(24.dp),
-                            border = BorderStroke(1.dp, Color(0xFFD6C8B8)),
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .testTag("open_recipe_button")
+                            color = Color(0x33FFFFFF),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, Color(0x44FFFFFF)),
+                            modifier = Modifier.testTag("open_recipe_button")
                         ) {
-                            Icon(
-                                Icons.Default.MenuBook,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = Color(0xFF382314)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Open Recipe Book",
-                                color = Color(0xFF382314),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Swipe or tap to open",
+                                    color = Color(0xFFFBF7F0),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    Icons.Default.ArrowForward,
+                                    contentDescription = "Swipe to turn page",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = Color(0xFFFBF7F0)
+                                )
+                            }
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Tap cover or swipe to turn pages",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xCCEADBCE),
-                                fontSize = 11.sp
-                            )
-                        )
                     }
                 }
             }
@@ -695,7 +742,7 @@ fun RecipeLoreTableOfContentsPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Page 2: Ingredients (${recipe.ingredients.size} items) & Scaler",
+                        "Page 2: Ingredients (${recipe.ingredients.size} items)",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF3B2E24)
@@ -823,6 +870,137 @@ fun RecipeLoreTableOfContentsPage(
 }
 
 // ==========================================
+// INTERACTIVE MEASUREMENT DROPDOWN PILL
+// ==========================================
+@Composable
+fun InteractiveMeasurementDropdownPill(
+    amountText: String,
+    currentUnitSystem: UnitSystem,
+    onSelectUnitSystem: (UnitSystem) -> Unit,
+    onOpenConverter: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    isChecked: Boolean = false,
+    showChevron: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Surface(
+            color = if (isChecked) Color(0xFFD8D2C5) else Color(0xFFEDE5D8),
+            shape = RoundedCornerShape(6.dp),
+            border = BorderStroke(1.dp, if (isChecked) Color(0xFFC7BFAF) else Color(0xFFD8C9B5)),
+            modifier = Modifier.clickable { expanded = true }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = amountText,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = if (isChecked) Color(0xFF78716C) else Color(0xFF451A03)
+                    )
+                )
+                if (showChevron) {
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Switch measurement unit",
+                        tint = if (isChecked) Color(0xFF78716C) else TerracottaPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(Color(0xFFFAF6F0))
+                .border(1.dp, Color(0xFFD8C9B5), RoundedCornerShape(8.dp))
+        ) {
+            Text(
+                text = "Change Measurement System:",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF8C7A6B)
+                ),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+            )
+
+            HorizontalDivider(color = Color(0xFFE2D6C5))
+
+            UnitSystem.values().forEach { sys ->
+                val isSelected = currentUnitSystem == sys
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(sys.icon, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = sys.label,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) TerracottaPrimary else Color(0xFF292524)
+                                    )
+                                )
+                                Text(
+                                    text = sys.shortLabel,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFF78716C),
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
+                        }
+                    },
+                    trailingIcon = {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = TerracottaPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
+                    onClick = {
+                        onSelectUnitSystem(sys)
+                        expanded = false
+                    }
+                )
+            }
+
+            if (onOpenConverter != null) {
+                HorizontalDivider(color = Color(0xFFE2D6C5))
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("📐", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Precision Unit Converter...",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = TerracottaPrimary
+                                )
+                            )
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onOpenConverter()
+                    }
+                )
+            }
+        }
+    }
+}
+
+// ==========================================
 // 3. INGREDIENTS & PORTION SCALER (Page 2)
 // ==========================================
 @OptIn(ExperimentalLayoutApi::class)
@@ -838,7 +1016,7 @@ fun RecipeIngredientsPage(
     onOpenGlossary: (String) -> Unit,
     checkedIngredients: Set<Int>,
     onToggleCheck: (Int) -> Unit,
-    onNextPage: () -> Unit,
+    onNextPage: (() -> Unit)? = null,
     onEditIngredients: (() -> Unit)? = null,
     onAddToShoppingList: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -848,377 +1026,52 @@ fun RecipeIngredientsPage(
     Surface(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .shadow(10.dp, RoundedCornerShape(12.dp))
-            .border(1.dp, ParchmentPageEdge, RoundedCornerShape(12.dp)),
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .shadow(6.dp, RoundedCornerShape(10.dp))
+            .border(1.dp, ParchmentPageEdge, RoundedCornerShape(10.dp)),
         color = ParchmentPage
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(14.dp)
                 .verticalScroll(scrollState)
         ) {
-            // Header
+            // Clean Minimal Header at Top
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Page 2 • Ingredients",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = Color(0xFF6B5B4E),
-                        fontStyle = FontStyle.Italic,
-                        fontWeight = FontWeight.Bold
+                    text = "Ingredients (${recipe.ingredients.size})",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold,
+                        color = TerracottaPrimary,
+                        fontSize = 17.sp
                     )
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Ingredients Checklist",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            color = TerracottaPrimary
-                        )
-                    )
-                    if (onEditIngredients != null) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        IconButton(
-                            onClick = onEditIngredients,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit Ingredients",
-                                tint = TerracottaPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                thickness = 1.dp,
-                color = Color(0xFFD6C7B2)
-            )
-
-            // UNIT SYSTEM SELECTOR (Metric / US Cups / UK Imperial / Baker's)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5EFE6)),
-                border = BorderStroke(1.dp, Color(0xFFE2D6C5)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Units of Measurement",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF5A4535)
-                            )
-                        )
-                        Text(
-                            text = unitSystem.shortLabel,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = TerracottaPrimary
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        UnitSystem.values().forEach { system ->
-                            val isSelected = unitSystem == system
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = if (isSelected) TerracottaPrimary else Color(0xFFE5DCD0),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { onUnitSystemChange(system) }
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(vertical = 7.dp, horizontal = 2.dp)
-                                ) {
-                                    Text(
-                                        text = when (system) {
-                                            UnitSystem.METRIC_GRAMS -> "Metric"
-                                            UnitSystem.CUPS_US -> "US (Cups)"
-                                            UnitSystem.UK_IMPERIAL -> "British"
-                                            UnitSystem.BAKERS_PRECISION -> "Baker's"
-                                        },
-                                        color = if (isSelected) Color.White else Color(0xFF451A03),
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (onOpenConverter != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFFFBEB),
-                            border = BorderStroke(1.2.dp, Color(0xFFFCD34D)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onOpenConverter("baking_soda", "2", "g") }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("✨", fontSize = 14.sp)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    "Smart Spoon & Knife-Tip Converter",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF78350F),
-                                        fontSize = 11.5.sp
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = Color(0xFFFEF3C7),
-                                    border = BorderStroke(0.8.dp, Color(0xFFF59E0B))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            "Open",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = Color(0xFFB45309),
-                                                fontSize = 10.5.sp
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.width(2.dp))
-                                        Icon(
-                                            Icons.Default.ArrowForward,
-                                            contentDescription = null,
-                                            tint = Color(0xFFB45309),
-                                            modifier = Modifier.size(11.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // PORTION SCALER BAR (0.5x, 1x, 1.5x, 2x, 3x)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5EFE6)),
-                border = BorderStroke(1.dp, Color(0xFFE2D6C5)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Portion Scaler",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF5A4535)
-                            )
-                        )
-
-                        Text(
-                            text = "Multiplier: ${if (servingMultiplier % 1.0f == 0f) "${servingMultiplier.toInt()}x" else "${servingMultiplier}x"}",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = TerracottaPrimary
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        listOf(0.5f, 1.0f, 1.5f, 2.0f, 3.0f).forEach { scale ->
-                            val isSelected = servingMultiplier == scale
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = if (isSelected) TerracottaPrimary else Color(0xFFE5DCD0),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { onSetMultiplier(scale) }
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = "${if (scale % 1f == 0f) scale.toInt() else scale}x",
-                                        color = if (isSelected) Color.White else Color(0xFF451A03),
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (onAddToShoppingList != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFF7F0E4),
-                    border = BorderStroke(1.2.dp, Color(0xFFD8BEA0)),
-                    shadowElevation = 1.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { onAddToShoppingList() }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFFFEDD5),
-                            border = BorderStroke(1.dp, Color(0xFFFED7AA)),
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.ShoppingCart,
-                                    contentDescription = null,
-                                    tint = TerracottaPrimary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Send to Shopping List",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF451A03),
-                                    fontSize = 13.sp
-                                ),
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "Add all ${recipe.ingredients.size} items (${if (servingMultiplier % 1f == 0f) "${servingMultiplier.toInt()}x" else "${servingMultiplier}x"} scaled)",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color(0xFF78350F),
-                                    fontSize = 11.sp
-                                ),
-                                maxLines = 1
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = TerracottaPrimary,
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.clickable { onAddToShoppingList() }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text(
-                                    text = "Add All",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    ),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (onEditIngredients != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFF7F2E8), RoundedCornerShape(8.dp))
-                        .border(1.dp, Color(0xFFE2D6C5), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Ingredients (${recipe.ingredients.size} items)",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF5A4535)
-                        )
-                    )
+                if (onEditIngredients != null) {
                     IconButton(
                         onClick = onEditIngredients,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = "Edit Ingredients",
                             tint = TerracottaPrimary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 6.dp),
+                thickness = 1.dp,
+                color = Color(0xFFD6C7B2)
+            )
 
             // Ingredients List by Group
             val groupedIngredients = recipe.ingredients.groupBy { it.group ?: "Main Ingredients" }
@@ -1231,9 +1084,10 @@ fun RecipeIngredientsPage(
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF5A4535),
-                            fontFamily = FontFamily.Serif
+                            fontFamily = FontFamily.Serif,
+                            fontSize = 13.sp
                         ),
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
                     )
                 }
 
@@ -1247,7 +1101,7 @@ fun RecipeIngredientsPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onToggleCheck(index) }
-                            .padding(vertical = 5.dp),
+                            .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
@@ -1257,35 +1111,28 @@ fun RecipeIngredientsPage(
                                 checkedColor = SageGreen,
                                 uncheckedColor = Color(0xFF8C7A6B)
                             ),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
 
-                        // Scaled Measurement Amount & Unit
+                        // Scaled Measurement Amount & Unit with Pull-Down Menu
                         val measurementText = ingredient.getConvertedAmount(unitSystem, servingMultiplier)
                         if (measurementText.isNotBlank()) {
-                            Surface(
-                                color = if (isChecked) Color(0xFFD8D2C5) else Color(0xFFEDE5D8),
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier.clickable(enabled = onOpenConverter != null) {
+                            InteractiveMeasurementDropdownPill(
+                                amountText = measurementText,
+                                currentUnitSystem = unitSystem,
+                                onSelectUnitSystem = onUnitSystemChange,
+                                onOpenConverter = {
                                     onOpenConverter?.invoke(
                                         ingredient.name,
                                         ingredient.amount,
                                         ingredient.unit
                                     )
-                                }
-                            ) {
-                                Text(
-                                    text = measurementText,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isChecked) Color(0xFF78716C) else Color(0xFF451A03)
-                                    )
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
+                                },
+                                isChecked = isChecked
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
                         }
 
                         // Ingredient Name
@@ -1296,7 +1143,8 @@ fun RecipeIngredientsPage(
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontWeight = FontWeight.Medium,
                                         textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                                        color = if (isChecked) Color(0xFF8C857B) else Color(0xFF292524)
+                                        color = if (isChecked) Color(0xFF8C857B) else Color(0xFF292524),
+                                        fontSize = 13.5.sp
                                     )
                                 )
                             }
@@ -1306,7 +1154,8 @@ fun RecipeIngredientsPage(
                                     text = "(optional)",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontStyle = FontStyle.Italic,
-                                        color = Color(0xFF8C7A6B)
+                                        color = Color(0xFF8C7A6B),
+                                        fontSize = 10.sp
                                     )
                                 )
                             }
@@ -1316,13 +1165,13 @@ fun RecipeIngredientsPage(
                         if (isGermanIngredient) {
                             IconButton(
                                 onClick = { onOpenGlossary(ingredient.nameGerman ?: ingredient.name) },
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(24.dp)
                             ) {
                                 Icon(
                                     Icons.Default.HelpOutline,
                                     contentDescription = "Substitution info",
                                     tint = TerracottaPrimary,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -1330,16 +1179,167 @@ fun RecipeIngredientsPage(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Bottom Page Turn CTA
-            Button(
-                onClick = onNextPage,
-                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 6.dp),
+                thickness = 0.8.dp,
+                color = Color(0xFFD6C7B2)
+            )
+
+            // CONTROLS AT THE BOTTOM: Unit Selector & Portion Scaler (Clean & Compact)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFFF5EFE6),
+                border = BorderStroke(0.8.dp, Color(0xFFE2D6C5)),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Go to Step 1 ➔", fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.padding(8.dp)) {
+                    // Unit selector pills
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        UnitSystem.values().forEach { system ->
+                            val isSelected = unitSystem == system
+                            Surface(
+                                shape = RoundedCornerShape(5.dp),
+                                color = if (isSelected) TerracottaPrimary else Color(0xFFE5DCD0),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onUnitSystemChange(system) }
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(vertical = 5.dp, horizontal = 1.dp)
+                                ) {
+                                    Text(
+                                        text = when (system) {
+                                            UnitSystem.METRIC_GRAMS -> "Metric"
+                                            UnitSystem.CUPS_US -> "US Cups"
+                                            UnitSystem.UK_IMPERIAL -> "UK"
+                                            UnitSystem.BAKERS_PRECISION -> "Baker's"
+                                        },
+                                        color = if (isSelected) Color.White else Color(0xFF451A03),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Portion Scaler row (Clean inline without bulky headers)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        listOf(0.5f, 1.0f, 1.5f, 2.0f, 3.0f).forEach { scale ->
+                            val isSelected = servingMultiplier == scale
+                            Surface(
+                                shape = RoundedCornerShape(5.dp),
+                                color = if (isSelected) TerracottaPrimary else Color(0xFFE5DCD0),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onSetMultiplier(scale) }
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "${if (scale % 1f == 0f) scale.toInt() else scale}x",
+                                        color = if (isSelected) Color.White else Color(0xFF451A03),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (onOpenConverter != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFFFFFBEB),
+                            border = BorderStroke(0.8.dp, Color(0xFFFCD34D)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { onOpenConverter("baking_soda", "2", "g") }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("✨", fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    "Precision Converter",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF78350F),
+                                        fontSize = 11.sp
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    "Open ➔",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFFB45309),
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ADD TO SHOPPING LIST BUTTON (Compact)
+            if (onAddToShoppingList != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFF7F0E4),
+                    border = BorderStroke(1.dp, Color(0xFFD8BEA0)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onAddToShoppingList() }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.ShoppingCart,
+                            contentDescription = null,
+                            tint = TerracottaPrimary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Add All to Shopping List",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF451A03),
+                                fontSize = 11.5.sp
+                            )
+                        )
+                    }
+                }
             }
         }
     }
@@ -1348,20 +1348,40 @@ fun RecipeIngredientsPage(
 // ==========================================
 // 4. STEP-BY-STEP PAGE (Pages 3..N+2)
 // ==========================================
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecipeStepPage(
     step: RecipeStep,
     totalSteps: Int,
+    recipe: RecipeEntity? = null,
+    unitSystem: UnitSystem = UnitSystem.METRIC_GRAMS,
+    onUnitSystemChange: ((UnitSystem) -> Unit)? = null,
+    onOpenConverter: ((String?, String, String) -> Unit)? = null,
+    servingMultiplier: Float = 1.0f,
     languageMode: LanguageMode,
     isCompleted: Boolean,
     onToggleCompleted: () -> Unit,
     onStartTimer: (Int) -> Unit,
     onSpeak: (String, Boolean) -> Unit,
-    onNextPage: () -> Unit,
+    onNextPage: (() -> Unit)? = null,
     onEditStep: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+
+    // Dynamically match ingredients mentioned in this step for both new and existing recipes
+    val matchedIngredients = remember(step.getInstruction(), recipe?.ingredients, unitSystem, servingMultiplier) {
+        if (recipe != null) {
+            com.example.ui.util.StepIngredientMatcher.findIngredientsInStep(
+                stepInstruction = step.getInstruction(),
+                ingredients = recipe.ingredients,
+                unitSystem = unitSystem,
+                multiplier = servingMultiplier
+            )
+        } else {
+            emptyList()
+        }
+    }
 
     Surface(
         modifier = modifier
@@ -1429,7 +1449,7 @@ fun RecipeStepPage(
                         // Step Read Loud / TTS button
                         IconButton(
                             onClick = {
-                                onSpeak(step.getInstruction(), false)
+                                onSpeak(step.getInstruction(languageMode, unitSystem), false)
                             }
                         ) {
                             Icon(
@@ -1447,9 +1467,176 @@ fun RecipeStepPage(
                     color = Color(0xFFD6C7B2)
                 )
 
-                // Step Instructions
+                // INGREDIENT AMOUNTS BADGES FOR THIS STEP (Context-Aware)
+                if (matchedIngredients.isNotEmpty()) {
+                    Surface(
+                        color = Color(0xFFF7F2E8),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE2D5C3)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🥣", fontSize = 13.sp)
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "Amounts needed for this step (${unitSystem.shortLabel}):",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF5A4535)
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                matchedIngredients.forEach { item ->
+                                    var badgeMenuExpanded by remember { mutableStateOf(false) }
+
+                                    Box {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFEDE3D3),
+                                            border = BorderStroke(1.dp, Color(0xFFD8C9B5)),
+                                            modifier = Modifier.clickable {
+                                                if (onUnitSystemChange != null) {
+                                                    badgeMenuExpanded = true
+                                                }
+                                            }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = item.displayAmount,
+                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        color = Color(0xFF451A03)
+                                                    )
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = item.matchedName,
+                                                    style = MaterialTheme.typography.bodySmall.copy(
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = Color(0xFF292524)
+                                                    )
+                                                )
+                                                if (onUnitSystemChange != null) {
+                                                    Spacer(modifier = Modifier.width(2.dp))
+                                                    Icon(
+                                                        Icons.Default.ArrowDropDown,
+                                                        contentDescription = "Switch measurement unit",
+                                                        tint = TerracottaPrimary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        DropdownMenu(
+                                            expanded = badgeMenuExpanded,
+                                            onDismissRequest = { badgeMenuExpanded = false },
+                                            modifier = Modifier
+                                                .background(Color(0xFFFAF6F0))
+                                                .border(1.dp, Color(0xFFD8C9B5), RoundedCornerShape(8.dp))
+                                        ) {
+                                            Text(
+                                                text = "Convert ${item.matchedName}:",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF8C7A6B)
+                                                ),
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                            )
+
+                                            HorizontalDivider(color = Color(0xFFE2D6C5))
+
+                                            UnitSystem.values().forEach { sys ->
+                                                val isSelected = unitSystem == sys
+                                                val convertedAmt = item.ingredient.getConvertedAmount(sys, servingMultiplier)
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Text(sys.icon, fontSize = 14.sp)
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            Column {
+                                                                Text(
+                                                                    text = "${sys.label} ($convertedAmt)",
+                                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                                        color = if (isSelected) TerracottaPrimary else Color(0xFF292524)
+                                                                    )
+                                                                )
+                                                                Text(
+                                                                    text = sys.shortLabel,
+                                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                                        color = Color(0xFF78716C),
+                                                                        fontSize = 10.sp
+                                                                    )
+                                                                )
+                                                            }
+                                                        }
+                                                    },
+                                                    trailingIcon = {
+                                                        if (isSelected) {
+                                                            Icon(
+                                                                Icons.Default.Check,
+                                                                contentDescription = "Selected",
+                                                                tint = TerracottaPrimary,
+                                                                modifier = Modifier.size(18.dp)
+                                                            )
+                                                        }
+                                                    },
+                                                    onClick = {
+                                                        onUnitSystemChange?.invoke(sys)
+                                                        badgeMenuExpanded = false
+                                                    }
+                                                )
+                                            }
+
+                                            if (onOpenConverter != null) {
+                                                HorizontalDivider(color = Color(0xFFE2D6C5))
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Text("📐", fontSize = 14.sp)
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            Text(
+                                                                text = "Precision Unit Converter...",
+                                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                                    fontWeight = FontWeight.Medium,
+                                                                    color = TerracottaPrimary
+                                                                )
+                                                            )
+                                                        }
+                                                    },
+                                                    onClick = {
+                                                        badgeMenuExpanded = false
+                                                        onOpenConverter.invoke(
+                                                            item.ingredient.name,
+                                                            item.ingredient.amount,
+                                                            item.ingredient.unit
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step Instructions (with dynamic unit-aware temperature conversion)
                 Text(
-                    text = step.getInstruction(),
+                    text = step.getInstruction(languageMode, unitSystem),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = Color(0xFF292524),
                         lineHeight = 26.sp,
@@ -1556,7 +1743,7 @@ fun RecipeCookJournalPage(
     recipe: RecipeEntity,
     onSaveJournal: (String, Int) -> Unit,
     onIncrementCooked: () -> Unit,
-    onStartCookingMode: () -> Unit,
+    onStartCookingMode: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var notesText by remember(recipe.id) { mutableStateOf(recipe.notes) }
@@ -1787,20 +1974,6 @@ fun RecipeCookJournalPage(
                 ),
                 shape = RoundedCornerShape(8.dp)
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Cook Mode Button
-            Button(
-                onClick = onStartCookingMode,
-                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Open Kitchen Cook Mode", fontWeight = FontWeight.Bold)
-            }
         }
     }
 }
@@ -2807,26 +2980,58 @@ fun EditRecipeDialog(
                                                     value = editAmt,
                                                     onValueChange = { editAmt = it },
                                                     label = { Text("Amount") },
-                                                    modifier = Modifier.weight(1f)
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedTextColor = Color(0xFF18120C),
+                                                        unfocusedTextColor = Color(0xFF18120C),
+                                                        focusedContainerColor = Color.White,
+                                                        unfocusedContainerColor = Color.White,
+                                                        focusedBorderColor = TerracottaPrimary,
+                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                    )
                                                 )
                                                 OutlinedTextField(
                                                     value = editUnit,
                                                     onValueChange = { editUnit = it },
                                                     label = { Text("Unit") },
-                                                    modifier = Modifier.weight(1f)
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedTextColor = Color(0xFF18120C),
+                                                        unfocusedTextColor = Color(0xFF18120C),
+                                                        focusedContainerColor = Color.White,
+                                                        unfocusedContainerColor = Color.White,
+                                                        focusedBorderColor = TerracottaPrimary,
+                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                    )
                                                 )
                                             }
                                             OutlinedTextField(
                                                 value = editName,
                                                 onValueChange = { editName = it },
                                                 label = { Text("Ingredient Name") },
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedTextColor = Color(0xFF18120C),
+                                                    unfocusedTextColor = Color(0xFF18120C),
+                                                    focusedContainerColor = Color.White,
+                                                    unfocusedContainerColor = Color.White,
+                                                    focusedBorderColor = TerracottaPrimary,
+                                                    unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                )
                                             )
                                             OutlinedTextField(
                                                 value = editGroup,
                                                 onValueChange = { editGroup = it },
                                                 label = { Text("Section/Group (e.g. Dough, Filling, Sauce)") },
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedTextColor = Color(0xFF18120C),
+                                                    unfocusedTextColor = Color(0xFF18120C),
+                                                    focusedContainerColor = Color.White,
+                                                    unfocusedContainerColor = Color.White,
+                                                    focusedBorderColor = TerracottaPrimary,
+                                                    unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                )
                                             )
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
@@ -2943,14 +3148,30 @@ fun EditRecipeDialog(
                                         OutlinedTextField(
                                             value = newIngAmount,
                                             onValueChange = { newIngAmount = it },
-                                            placeholder = { Text("Qty (e.g. 250, 1/2)") },
-                                            modifier = Modifier.weight(1f)
+                                            placeholder = { Text("Qty (e.g. 250, 1/2)", color = Color(0xFF78716C)) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedTextColor = Color(0xFF18120C),
+                                                unfocusedTextColor = Color(0xFF18120C),
+                                                focusedContainerColor = Color.White,
+                                                unfocusedContainerColor = Color.White,
+                                                focusedBorderColor = TerracottaPrimary,
+                                                unfocusedBorderColor = Color(0xFFD6C7B2)
+                                            )
                                         )
                                         OutlinedTextField(
                                             value = newIngUnit,
                                             onValueChange = { newIngUnit = it },
-                                            placeholder = { Text("Unit (g, ml, cup)") },
-                                            modifier = Modifier.weight(1f)
+                                            placeholder = { Text("Unit (g, ml, cup)", color = Color(0xFF78716C)) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedTextColor = Color(0xFF18120C),
+                                                unfocusedTextColor = Color(0xFF18120C),
+                                                focusedContainerColor = Color.White,
+                                                unfocusedContainerColor = Color.White,
+                                                focusedBorderColor = TerracottaPrimary,
+                                                unfocusedBorderColor = Color(0xFFD6C7B2)
+                                            )
                                         )
                                     }
 
@@ -2973,15 +3194,31 @@ fun EditRecipeDialog(
                                     OutlinedTextField(
                                         value = newIngName,
                                         onValueChange = { newIngName = it },
-                                        placeholder = { Text("Ingredient name") },
-                                        modifier = Modifier.fillMaxWidth()
+                                        placeholder = { Text("Ingredient name", color = Color(0xFF78716C)) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedTextColor = Color(0xFF18120C),
+                                            unfocusedTextColor = Color(0xFF18120C),
+                                            focusedContainerColor = Color.White,
+                                            unfocusedContainerColor = Color.White,
+                                            focusedBorderColor = TerracottaPrimary,
+                                            unfocusedBorderColor = Color(0xFFD6C7B2)
+                                        )
                                     )
 
                                     OutlinedTextField(
                                         value = newIngGroup,
                                         onValueChange = { newIngGroup = it },
-                                        placeholder = { Text("Group / Section (e.g. Dough, Filling)") },
-                                        modifier = Modifier.fillMaxWidth()
+                                        placeholder = { Text("Group / Section (e.g. Dough, Filling)", color = Color(0xFF78716C)) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedTextColor = Color(0xFF18120C),
+                                            unfocusedTextColor = Color(0xFF18120C),
+                                            focusedContainerColor = Color.White,
+                                            unfocusedContainerColor = Color.White,
+                                            focusedBorderColor = TerracottaPrimary,
+                                            unfocusedBorderColor = Color(0xFFD6C7B2)
+                                        )
                                     )
 
                                     // Quick Group Chips
@@ -3056,20 +3293,44 @@ fun EditRecipeDialog(
                                                 value = editStepEn,
                                                 onValueChange = { editStepEn = it },
                                                 label = { Text("Step Instruction") },
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedTextColor = Color(0xFF18120C),
+                                                    unfocusedTextColor = Color(0xFF18120C),
+                                                    focusedContainerColor = Color.White,
+                                                    unfocusedContainerColor = Color.White,
+                                                    focusedBorderColor = TerracottaPrimary,
+                                                    unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                )
                                             )
                                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                                 OutlinedTextField(
                                                     value = editStepTimer,
                                                     onValueChange = { editStepTimer = it },
                                                     label = { Text("Timer (minutes)") },
-                                                    modifier = Modifier.weight(1f)
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedTextColor = Color(0xFF18120C),
+                                                        unfocusedTextColor = Color(0xFF18120C),
+                                                        focusedContainerColor = Color.White,
+                                                        unfocusedContainerColor = Color.White,
+                                                        focusedBorderColor = TerracottaPrimary,
+                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                    )
                                                 )
                                                 OutlinedTextField(
                                                     value = editStepTip,
                                                     onValueChange = { editStepTip = it },
                                                     label = { Text("Chef's Tip") },
-                                                    modifier = Modifier.weight(2f)
+                                                    modifier = Modifier.weight(2f),
+                                                    colors = OutlinedTextFieldDefaults.colors(
+                                                        focusedTextColor = Color(0xFF18120C),
+                                                        unfocusedTextColor = Color(0xFF18120C),
+                                                        focusedContainerColor = Color.White,
+                                                        unfocusedContainerColor = Color.White,
+                                                        focusedBorderColor = TerracottaPrimary,
+                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
+                                                    )
                                                 )
                                             }
                                             Row(
@@ -3182,22 +3443,46 @@ fun EditRecipeDialog(
                                     OutlinedTextField(
                                         value = newStepEn,
                                         onValueChange = { newStepEn = it },
-                                        placeholder = { Text("Step instruction") },
-                                        modifier = Modifier.fillMaxWidth()
+                                        placeholder = { Text("Step instruction", color = Color(0xFF78716C)) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedTextColor = Color(0xFF18120C),
+                                            unfocusedTextColor = Color(0xFF18120C),
+                                            focusedContainerColor = Color.White,
+                                            unfocusedContainerColor = Color.White,
+                                            focusedBorderColor = TerracottaPrimary,
+                                            unfocusedBorderColor = Color(0xFFD6C7B2)
+                                        )
                                     )
 
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         OutlinedTextField(
                                             value = newStepTimer,
                                             onValueChange = { newStepTimer = it },
-                                            placeholder = { Text("Timer (min)") },
-                                            modifier = Modifier.weight(1f)
+                                            placeholder = { Text("Timer (min)", color = Color(0xFF78716C)) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedTextColor = Color(0xFF18120C),
+                                                unfocusedTextColor = Color(0xFF18120C),
+                                                focusedContainerColor = Color.White,
+                                                unfocusedContainerColor = Color.White,
+                                                focusedBorderColor = TerracottaPrimary,
+                                                unfocusedBorderColor = Color(0xFFD6C7B2)
+                                            )
                                         )
                                         OutlinedTextField(
                                             value = newStepTip,
                                             onValueChange = { newStepTip = it },
-                                            placeholder = { Text("Chef's tip (optional)") },
-                                            modifier = Modifier.weight(2f)
+                                            placeholder = { Text("Chef's tip (optional)", color = Color(0xFF78716C)) },
+                                            modifier = Modifier.weight(2f),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedTextColor = Color(0xFF18120C),
+                                                unfocusedTextColor = Color(0xFF18120C),
+                                                focusedContainerColor = Color.White,
+                                                unfocusedContainerColor = Color.White,
+                                                focusedBorderColor = TerracottaPrimary,
+                                                unfocusedBorderColor = Color(0xFFD6C7B2)
+                                            )
                                         )
                                     }
 

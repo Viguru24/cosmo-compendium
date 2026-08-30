@@ -2,6 +2,7 @@ package com.example.ui.viewmodel
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.VibrationEffect
@@ -22,6 +23,10 @@ import com.example.data.model.LanguageMode
 import com.example.data.model.UnitSystem
 import com.example.data.repository.RecipeRepository
 import com.example.ui.util.getDisplayTitle
+import com.example.ui.util.RecipeImageClassifier
+import com.example.ui.util.RecipeImageType
+import com.example.ui.util.RecipePhotoStats
+import com.example.ui.util.BatchCoverFilter
 import com.example.util.pdf.RecipePdfGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,6 +58,8 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                 if (!hasSeeded && repository.getRecipeCount() == 0) {
                     repository.restoreDefaultRecipes(replaceExisting = false)
                     prefs.edit().putBoolean("pref_has_seeded_initial_recipes", true).apply()
+                } else {
+                    repository.deduplicateCollection()
                 }
                 // Automatic weekly backup if enabled
                 if (autoWeeklyBackupEnabled.value) {
@@ -59,6 +67,8 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                     BackupManager.performWeeklyBackupIfDue(application, all)
                 }
                 refreshSavedBackups()
+                // Instant pull delta sync on app launch if sync is enabled
+                syncManager?.triggerImmediateSync()
             } catch (e: Exception) {
                 // Ignore initialization errors
             }
@@ -145,6 +155,130 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         }
     )
 
+    // Image Generation Provider Configuration (Gemini vs. Local ComfyUI)
+    val imageGenEngine = MutableStateFlow(
+        try {
+            com.example.ai.ImageGenEngine.valueOf(prefs.getString("pref_image_gen_engine", com.example.ai.ImageGenEngine.GEMINI.name) ?: com.example.ai.ImageGenEngine.GEMINI.name)
+        } catch (e: Exception) {
+            com.example.ai.ImageGenEngine.GEMINI
+        }
+    )
+
+    val comfyUiUrl = MutableStateFlow(prefs.getString("pref_comfy_ui_url", "http://192.168.1.54:8188") ?: "http://192.168.1.54:8188")
+    val comfyUiCheckpoint = MutableStateFlow(prefs.getString("pref_comfy_ui_ckpt", "v1-5-pruned-emaonly.safetensors") ?: "v1-5-pruned-emaonly.safetensors")
+    val comfyUiCustomWorkflow = MutableStateFlow(prefs.getString("pref_comfy_ui_custom_workflow", "") ?: "")
+    val comfyUiTestStatus = MutableStateFlow<String?>(null)
+    val isTestingComfyConnection = MutableStateFlow(false)
+
+    // ==========================================
+    // CLOUD & FAMILY SYNC (SELF-HOSTED VPS)
+    // ==========================================
+    val syncConfig = repository.syncConfig
+    val syncManager = repository.syncManager
+
+    val isCloudSyncEnabled = MutableStateFlow(syncConfig?.isSyncEnabled ?: false)
+    val syncServerUrl = MutableStateFlow(syncConfig?.serverUrl ?: "")
+    val syncSecretToken = MutableStateFlow(syncConfig?.syncToken ?: "")
+    val isAutoSyncWifi = MutableStateFlow(syncConfig?.autoSyncWifi ?: false)
+    val isTestingSyncConnection = MutableStateFlow(false)
+    val syncConnectionTestResult = MutableStateFlow<Pair<Boolean, String>?>(null)
+
+    val isSyncing: StateFlow<Boolean> = syncManager?.isSyncing ?: MutableStateFlow(false)
+    val lastSyncStatus: StateFlow<String?> = syncManager?.lastSyncStatus ?: MutableStateFlow(null)
+    val lastSyncTimestamp: StateFlow<Long> = syncManager?.lastSyncTimestamp ?: MutableStateFlow(0L)
+
+    fun setCloudSyncEnabled(enabled: Boolean) {
+        isCloudSyncEnabled.value = enabled
+        syncConfig?.isSyncEnabled = enabled
+        if (enabled && syncManager != null && syncConfig?.serverUrl?.isNotBlank() == true) {
+            triggerSyncNow()
+        }
+    }
+
+    fun setSyncServerUrl(url: String) {
+        syncServerUrl.value = url.trim()
+        syncConfig?.serverUrl = url.trim()
+        syncConnectionTestResult.value = null
+    }
+
+    fun setSyncSecretToken(token: String) {
+        syncSecretToken.value = token.trim()
+        syncConfig?.syncToken = token.trim()
+        syncConnectionTestResult.value = null
+    }
+
+    fun setAutoSyncWifi(enabled: Boolean) {
+        isAutoSyncWifi.value = enabled
+        syncConfig?.autoSyncWifi = enabled
+    }
+
+    fun testSyncConnection() {
+        val manager = syncManager ?: return
+        viewModelScope.launch {
+            isTestingSyncConnection.value = true
+            syncConnectionTestResult.value = null
+            val result = manager.testConnection()
+            if (result.isSuccess) {
+                syncConnectionTestResult.value = Pair(true, result.getOrNull() ?: "Connected successfully (Server Online)")
+            } else {
+                syncConnectionTestResult.value = Pair(false, result.exceptionOrNull()?.message ?: "Connection Failed")
+            }
+            isTestingSyncConnection.value = false
+        }
+    }
+
+    fun triggerSyncNow() {
+        val manager = syncManager ?: return
+        viewModelScope.launch {
+            manager.performSync()
+        }
+    }
+
+    /**
+     * Called when the app is brought to the foreground / resumed.
+     * Silently pulls delta changes from the VPS in the background.
+     */
+    fun onAppForegroundResume() {
+        syncManager?.triggerImmediateSync()
+    }
+
+    fun setImageGenEngine(engine: com.example.ai.ImageGenEngine) {
+        imageGenEngine.value = engine
+        prefs.edit().putString("pref_image_gen_engine", engine.name).apply()
+    }
+
+    fun setComfyUiUrl(url: String) {
+        comfyUiUrl.value = url.trim()
+        prefs.edit().putString("pref_comfy_ui_url", url.trim()).apply()
+    }
+
+    fun setComfyUiCheckpoint(ckpt: String) {
+        comfyUiCheckpoint.value = ckpt.trim()
+        prefs.edit().putString("pref_comfy_ui_ckpt", ckpt.trim()).apply()
+    }
+
+    fun setComfyUiCustomWorkflow(workflowJson: String) {
+        comfyUiCustomWorkflow.value = workflowJson.trim()
+        prefs.edit().putString("pref_comfy_ui_custom_workflow", workflowJson.trim()).apply()
+    }
+
+    fun testComfyUiConnection() {
+        viewModelScope.launch {
+            isTestingComfyConnection.value = true
+            comfyUiTestStatus.value = "Testing connection to ${comfyUiUrl.value}..."
+            val res = com.example.ai.ComfyUiClient.testConnection(comfyUiUrl.value)
+            if (res.isSuccess) {
+                val msg = res.getOrNull() ?: "Connected to ComfyUI successfully!"
+                comfyUiTestStatus.value = "✓ $msg"
+                // Automatically switch and persist ComfyUI as active image generation engine
+                setImageGenEngine(com.example.ai.ImageGenEngine.COMFY_UI)
+            } else {
+                comfyUiTestStatus.value = "✗ ${res.exceptionOrNull()?.localizedMessage ?: "Failed to connect"}"
+            }
+            isTestingComfyConnection.value = false
+        }
+    }
+
     val isSettingsOpen = MutableStateFlow(false)
     val isShoppingListOpen = MutableStateFlow(false)
 
@@ -189,6 +323,85 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         isSettingsOpen.value = false
     }
 
+    // Total Recipe Count & Collection Statistics
+    val totalRecipeCount: StateFlow<Int> = repository.allRecipes.map { it.size }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0
+    )
+
+    data class CookbookStats(
+        val totalRecipes: Int = 0,
+        val totalFavorites: Int = 0,
+        val recipesWithPhotos: Int = 0,
+        val aiPhotosCount: Int = 0,
+        val scannedCardsCount: Int = 0,
+        val unphotographedCount: Int = 0,
+        val estimatedStorageMb: Double = 0.0
+    )
+
+    val cookbookStats: StateFlow<CookbookStats> = repository.allRecipes.map { all ->
+        var favs = 0
+        var photos = 0
+        var aiPhotos = 0
+        var scannedCards = 0
+        var unphotographed = 0
+        var totalBytes = 0L
+        for (r in all) {
+            if (r.isFavorite) favs++
+            val imgType = RecipeImageClassifier.getImageType(r.imageUri)
+            when (imgType) {
+                RecipeImageType.AI_GENERATED -> aiPhotos++
+                RecipeImageType.SCANNED_CARD -> scannedCards++
+                RecipeImageType.NONE -> unphotographed++
+            }
+            r.imageUri?.let { path ->
+                try {
+                    val f = File(path)
+                    if (f.exists()) {
+                        photos++
+                        totalBytes += f.length()
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+        CookbookStats(
+            totalRecipes = all.size,
+            totalFavorites = favs,
+            recipesWithPhotos = photos,
+            aiPhotosCount = aiPhotos,
+            scannedCardsCount = scannedCards,
+            unphotographedCount = unphotographed,
+            estimatedStorageMb = totalBytes / (1024.0 * 1024.0)
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = CookbookStats()
+    )
+
+    val recipePhotoStats: StateFlow<RecipePhotoStats> = repository.allRecipes.map { all ->
+        RecipeImageClassifier.computeStats(all)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = RecipePhotoStats()
+    )
+
+    fun quickAssignCategory(recipe: RecipeEntity, newCategory: String) {
+        val trimmed = newCategory.trim()
+        if (trimmed.isBlank()) return
+        // Ensure the new category is also registered in the categories list if not present
+        addCategory(trimmed)
+        val updated = recipe.copy(category = trimmed)
+        if (selectedRecipe.value?.id == recipe.id) {
+            selectedRecipe.value = updated
+        }
+        viewModelScope.launch {
+            repository.updateRecipe(updated)
+        }
+    }
+
     // Filtered recipes
     val recipes: StateFlow<List<RecipeEntity>> = combine(
         repository.allRecipes,
@@ -197,23 +410,15 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         onlyFavorites
     ) { all, query, category, favOnly ->
         all.filter { recipe ->
-            val matchesCategory = category == "All" || recipe.category.equals(category, ignoreCase = true)
-            val matchesFav = !favOnly || recipe.isFavorite
-            val matchesQuery = if (query.isBlank()) {
+            val matchesCategory = if (category == "All") {
                 true
             } else {
-                val q = query.trim().lowercase()
-                recipe.title.lowercase().contains(q) ||
-                        recipe.titleGerman.lowercase().contains(q) ||
-                        recipe.titleEnglish.lowercase().contains(q) ||
-                        recipe.category.lowercase().contains(q) ||
-                        recipe.notes.lowercase().contains(q) ||
-                        recipe.ingredients.any {
-                            it.name.lowercase().contains(q) ||
-                                    it.nameGerman?.lowercase()?.contains(q) == true ||
-                                    it.nameEnglish?.lowercase()?.contains(q) == true
-                        }
+                recipe.category.equals(category, ignoreCase = true) ||
+                    recipe.category.split(",", "/", "&", ";").map { it.trim() }
+                        .any { it.equals(category, ignoreCase = true) }
             }
+            val matchesFav = !favOnly || recipe.isFavorite
+            val matchesQuery = com.example.ui.util.FuzzySearchHelper.matches(recipe, query)
             matchesCategory && matchesFav && matchesQuery
         }
     }.stateIn(
@@ -521,6 +726,15 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     val duplicatePrompt = MutableStateFlow<DuplicatePromptData?>(null)
+    val lastAutoSavedRecipe = MutableStateFlow<RecipeEntity?>(null)
+    val scanBatchSuccessEvent = MutableStateFlow<Long?>(null)
+    val scanBatchCount = MutableStateFlow(0)
+
+    fun resetScanBatchSession() {
+        scanBatchCount.value = 0
+        lastAutoSavedRecipe.value = null
+        scanBatchSuccessEvent.value = null
+    }
 
     fun scanRecipe(bitmap: Bitmap?, rawText: String?, imageUri: String? = null) {
         val bitmaps = if (bitmap != null) listOf(bitmap) else emptyList()
@@ -541,8 +755,13 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                         rawBitmaps = bitmaps
                     )
                 } else {
-                    // Open the interactive review & edit sheet so user can inspect or adjust the AI extracted recipe before finalizing
-                    scannedDraftRecipe.value = parsed
+                    // Auto-save recipe directly into the database for continuous rapid scanning
+                    val id = repository.insertRecipe(parsed)
+                    val inserted = repository.getRecipeDirect(id) ?: parsed.copy(id = id)
+                    lastAutoSavedRecipe.value = inserted
+                    scanBatchCount.value += 1
+                    scannedDraftRecipe.value = null
+                    scanBatchSuccessEvent.value = System.currentTimeMillis()
                 }
             } catch (t: Throwable) {
                 scanErrorMessage.value = "Scanning error: ${t.localizedMessage ?: "Unable to read recipe"}"
@@ -574,8 +793,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             val updated = repository.getRecipeDirect(merged.id) ?: merged
             duplicatePrompt.value = null
             scannedDraftRecipe.value = null
-            selectRecipe(updated)
-            navigateToRecipeEvent.value = updated
+            lastAutoSavedRecipe.value = updated
+            scanBatchCount.value += 1
+            scanBatchSuccessEvent.value = System.currentTimeMillis()
         }
     }
 
@@ -596,8 +816,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             val inserted = repository.getRecipeDirect(newId) ?: variationRecipe.copy(id = newId)
             duplicatePrompt.value = null
             scannedDraftRecipe.value = null
-            selectRecipe(inserted)
-            navigateToRecipeEvent.value = inserted
+            lastAutoSavedRecipe.value = inserted
+            scanBatchCount.value += 1
+            scanBatchSuccessEvent.value = System.currentTimeMillis()
         }
     }
 
@@ -621,6 +842,244 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         selectedRecipe.value = updated
         viewModelScope.launch {
             repository.updateRecipe(updated)
+        }
+    }
+
+    // AI Cover Image Generation State & Actions
+    val isGeneratingCover = MutableStateFlow(false)
+    val coverGenerationError = MutableStateFlow<String?>(null)
+    val lastCoverGenerationLog = MutableStateFlow<String?>(null)
+    val showCoverErrorDialog = MutableStateFlow(false)
+
+    // Batch AI Cover Generation
+    val isBatchGeneratingCovers = MutableStateFlow(false)
+    val batchCoverProgress = MutableStateFlow(Pair(0, 0)) // current, total
+    val batchCoverCurrentTitle = MutableStateFlow("")
+    val batchCoverSuccessCount = MutableStateFlow(0)
+    val batchCoverFailCount = MutableStateFlow(0)
+    val batchCoverIsCancelled = MutableStateFlow(false)
+    val batchCoverLog = MutableStateFlow<String?>(null)
+    val showBatchCoverDialog = MutableStateFlow(false)
+    val selectedBatchFilter = MutableStateFlow(BatchCoverFilter.MISSING_AI_PHOTOS)
+
+    val recipesMissingPhotosCount: StateFlow<Int> = recipes.map { list ->
+        list.count { RecipeImageClassifier.isMissingAiPhoto(it.imageUri) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun openBatchCoverDialog() {
+        showBatchCoverDialog.value = true
+    }
+
+    fun closeBatchCoverDialog() {
+        showBatchCoverDialog.value = false
+    }
+
+    fun setBatchFilter(filter: BatchCoverFilter) {
+        selectedBatchFilter.value = filter
+    }
+
+    fun startBatchGenerateMissingCovers(context: Context, customFilter: BatchCoverFilter? = null) {
+        if (isBatchGeneratingCovers.value) return
+        val filterToUse = customFilter ?: selectedBatchFilter.value
+        viewModelScope.launch(Dispatchers.IO) {
+            isBatchGeneratingCovers.value = true
+            showBatchCoverDialog.value = true
+            batchCoverIsCancelled.value = false
+            batchCoverSuccessCount.value = 0
+            batchCoverFailCount.value = 0
+
+            val allRecipes = repository.getAllRecipesDirect()
+            val targetRecipes = RecipeImageClassifier.filterRecipes(allRecipes, filterToUse)
+
+            val total = targetRecipes.size
+            batchCoverProgress.value = Pair(0, total)
+
+            if (total == 0) {
+                batchCoverLog.value = "No recipes found matching '${filterToUse.shortLabel}'!"
+                isBatchGeneratingCovers.value = false
+                return@launch
+            }
+
+            batchCoverLog.value = "Starting batch photo generation for $total recipes (${filterToUse.shortLabel}) using ${imageGenEngine.value.displayName}..."
+
+            var success = 0
+            var failed = 0
+
+            for ((index, recipe) in targetRecipes.withIndex()) {
+                if (batchCoverIsCancelled.value) {
+                    batchCoverLog.value = "Generation cancelled ($success finished)."
+                    break
+                }
+
+                val currentNum = index + 1
+                batchCoverProgress.value = Pair(currentNum, total)
+                batchCoverCurrentTitle.value = recipe.getDisplayTitle()
+                batchCoverLog.value = "[$currentNum/$total] Generating photo for '${recipe.getDisplayTitle()}'..."
+
+                try {
+                    val ingList = recipe.ingredients.map { "${it.amount} ${it.unit} ${it.name}".trim() }
+                    val stepsList = recipe.steps.take(4).map { it.getInstruction() }
+                    val title = recipe.getDisplayTitle()
+
+                    // If recipe already has a scanned card photo, try loading it as reference bitmap for ComfyUI if desired
+                    var refBitmap: Bitmap? = null
+                    if (!recipe.imageUri.isNullOrBlank() && File(recipe.imageUri).exists()) {
+                        try {
+                            refBitmap = BitmapFactory.decodeFile(recipe.imageUri)
+                        } catch (_: Exception) {}
+                    }
+
+                    val result = if (imageGenEngine.value == com.example.ai.ImageGenEngine.COMFY_UI) {
+                        com.example.ai.ComfyUiClient.generateRecipeImage(
+                            baseUrl = comfyUiUrl.value,
+                            title = title,
+                            titleGerman = recipe.titleGerman,
+                            category = recipe.category,
+                            ingredients = ingList,
+                            steps = stepsList,
+                            notes = recipe.notes.ifBlank { recipe.originStory },
+                            referenceBitmap = refBitmap,
+                            customCheckPoint = comfyUiCheckpoint.value,
+                            customWorkflowJson = comfyUiCustomWorkflow.value.ifBlank { null }
+                        )
+                    } else {
+                        com.example.ai.GeminiClient.generateRecipeCoverImage(
+                            title = title,
+                            titleGerman = recipe.titleGerman,
+                            category = recipe.category,
+                            ingredients = ingList,
+                            steps = stepsList,
+                            notes = recipe.notes.ifBlank { recipe.originStory },
+                            referenceBitmap = refBitmap
+                        )
+                    }
+
+                    if (result.isSuccess && result.getOrNull() != null) {
+                        val bitmap = result.getOrNull()!!
+                        val file = File(context.filesDir, "recipe_cover_${recipe.id}_${System.currentTimeMillis()}.jpg")
+                        file.outputStream().use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                        }
+                        val updated = recipe.copy(imageUri = file.absolutePath)
+                        repository.updateRecipe(updated)
+                        success++
+                        batchCoverSuccessCount.value = success
+                        batchCoverLog.value = "✓ [$currentNum/$total] Saved AI photo for '${recipe.getDisplayTitle()}'"
+                    } else {
+                        failed++
+                        batchCoverFailCount.value = failed
+                        val err = result.exceptionOrNull()?.localizedMessage ?: "Generation failed"
+                        batchCoverLog.value = "✗ [$currentNum/$total] Failed '${recipe.getDisplayTitle()}': $err"
+                    }
+                } catch (e: Exception) {
+                    failed++
+                    batchCoverFailCount.value = failed
+                    batchCoverLog.value = "✗ [$currentNum/$total] Error: ${e.localizedMessage}"
+                }
+
+                if (index < total - 1 && !batchCoverIsCancelled.value) {
+                    delay(800)
+                }
+            }
+
+            if (!batchCoverIsCancelled.value) {
+                batchCoverLog.value = "Completed! Successfully generated $success photos ($failed failed)."
+            }
+            isBatchGeneratingCovers.value = false
+        }
+    }
+
+    fun cancelBatchCoverGeneration() {
+        batchCoverIsCancelled.value = true
+    }
+
+    fun clearCoverGenerationError() {
+        coverGenerationError.value = null
+        showCoverErrorDialog.value = false
+    }
+
+    fun openCoverErrorDialog() {
+        showCoverErrorDialog.value = true
+    }
+
+    fun closeCoverErrorDialog() {
+        showCoverErrorDialog.value = false
+    }
+
+    fun generateRecipeCoverArt(recipe: RecipeEntity, context: Context, referenceBitmap: Bitmap? = null) {
+        if (isGeneratingCover.value) return
+        viewModelScope.launch {
+            isGeneratingCover.value = true
+            coverGenerationError.value = null
+            lastCoverGenerationLog.value = "Starting image generation using ${imageGenEngine.value.displayName}..."
+            try {
+                // Only use referenceBitmap if explicitly passed in (e.g. from camera/gallery scanner)
+                val refBitmap = referenceBitmap
+
+                val ingList = recipe.ingredients.map { "${it.amount} ${it.unit} ${it.name}".trim() }
+                val stepsList = recipe.steps.take(4).map { it.getInstruction() }
+                val title = recipe.getDisplayTitle()
+
+                val result = if (imageGenEngine.value == com.example.ai.ImageGenEngine.COMFY_UI) {
+                    lastCoverGenerationLog.value = "Connecting to ComfyUI at ${comfyUiUrl.value} with checkpoint '${comfyUiCheckpoint.value}'..."
+                    com.example.ai.ComfyUiClient.generateRecipeImage(
+                        baseUrl = comfyUiUrl.value,
+                        title = title,
+                        titleGerman = recipe.titleGerman,
+                        category = recipe.category,
+                        ingredients = ingList,
+                        steps = stepsList,
+                        notes = recipe.notes.ifBlank { recipe.originStory },
+                        referenceBitmap = refBitmap,
+                        customCheckPoint = comfyUiCheckpoint.value,
+                        customWorkflowJson = comfyUiCustomWorkflow.value.ifBlank { null }
+                    )
+                } else {
+                    lastCoverGenerationLog.value = "Sending image generation request to Google Cloud AI..."
+                    com.example.ai.GeminiClient.generateRecipeCoverImage(
+                        title = title,
+                        titleGerman = recipe.titleGerman,
+                        category = recipe.category,
+                        ingredients = ingList,
+                        steps = stepsList,
+                        notes = recipe.notes.ifBlank { recipe.originStory },
+                        referenceBitmap = refBitmap
+                    )
+                }
+                if (result.isSuccess) {
+                    val bitmap = result.getOrNull()
+                    if (bitmap != null) {
+                        val file = File(context.filesDir, "recipe_cover_${recipe.id}_${System.currentTimeMillis()}.jpg")
+                        file.outputStream().use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                        }
+                        val updated = recipe.copy(imageUri = file.absolutePath)
+                        repository.updateRecipe(updated)
+                        selectedRecipe.value = updated
+                        lastCoverGenerationLog.value = "✓ Image generated and saved successfully (${file.length() / 1024} KB)"
+                    }
+                } else {
+                    val errMsg = result.exceptionOrNull()?.localizedMessage ?: "Failed to generate cover photo"
+                    coverGenerationError.value = errMsg
+                    lastCoverGenerationLog.value = "✗ Error: $errMsg"
+                    showCoverErrorDialog.value = true
+                }
+            } catch (e: Exception) {
+                val errMsg = e.localizedMessage ?: "Error generating cover photo"
+                coverGenerationError.value = errMsg
+                lastCoverGenerationLog.value = "✗ Exception: $errMsg"
+                showCoverErrorDialog.value = true
+            } finally {
+                isGeneratingCover.value = false
+            }
+        }
+    }
+
+    fun removeRecipeCoverPhoto(recipe: RecipeEntity) {
+        viewModelScope.launch {
+            val updated = recipe.copy(imageUri = null)
+            repository.updateRecipe(updated)
+            selectedRecipe.value = updated
         }
     }
 
@@ -735,7 +1194,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     return@launch
                 }
-                val parseResult = BackupManager.parseBackup(content)
+                val parseResult = BackupManager.parseBackup(content, getApplication())
                 val manifest = parseResult.getOrNull()
                 if (manifest == null || manifest.recipes.isEmpty()) {
                     withContext(Dispatchers.Main) {
@@ -798,7 +1257,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     fun generateBackupJson(onReady: (String, Int) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val all = repository.getAllRecipesDirect()
-            val json = BackupManager.exportToJson(all)
+            val json = BackupManager.exportToJson(all, getApplication())
             // Also ensure it's saved locally
             if (all.isNotEmpty()) {
                 BackupManager.createLocalBackup(getApplication(), all, "Manual Export")
@@ -820,7 +1279,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     fun shareBackup(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             val all = repository.getAllRecipesDirect()
-            val json = BackupManager.exportToJson(all)
+            val json = BackupManager.exportToJson(all, getApplication())
             if (all.isNotEmpty()) {
                 BackupManager.createLocalBackup(getApplication(), all, "Shared Backup")
             }
@@ -856,7 +1315,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
 
-        val parseResult = BackupManager.parseBackup(text)
+        val parseResult = BackupManager.parseBackup(text, getApplication())
         if (parseResult.isSuccess) {
             val manifest = parseResult.getOrThrow()
             if (manifest.recipes.isEmpty()) {

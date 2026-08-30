@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,14 +20,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,13 +42,17 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material.icons.filled.Search
@@ -59,6 +72,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import coil.compose.AsyncImage
 import java.io.File
 import com.example.ui.components.RealisticLeatherBackground
@@ -102,6 +117,7 @@ import com.example.data.local.RecipeEntity
 import com.example.data.model.CoverTheme
 import com.example.data.model.LanguageMode
 import com.example.ui.components.BackupRestoreDialog
+import com.example.ui.components.BatchCoverGenerationDialog
 import com.example.ui.components.EditRecipeDialog
 import com.example.ui.components.ScanRecipeBottomSheet
 import com.example.ui.components.SettingsDialog
@@ -149,6 +165,23 @@ fun BookshelfScreen(
     val autoWeeklyBackupEnabled by viewModel.autoWeeklyBackupEnabled.collectAsStateWithLifecycle()
     val savedBackups by viewModel.savedBackupsList.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val imageGenEngine by viewModel.imageGenEngine.collectAsStateWithLifecycle()
+    val comfyUiUrl by viewModel.comfyUiUrl.collectAsStateWithLifecycle()
+    val comfyUiCheckpoint by viewModel.comfyUiCheckpoint.collectAsStateWithLifecycle()
+    val comfyUiCustomWorkflow by viewModel.comfyUiCustomWorkflow.collectAsStateWithLifecycle()
+    val comfyUiTestStatus by viewModel.comfyUiTestStatus.collectAsStateWithLifecycle()
+    val isTestingComfyConnection by viewModel.isTestingComfyConnection.collectAsStateWithLifecycle()
+
+    // Cloud & Family Sync States
+    val isCloudSyncEnabled by viewModel.isCloudSyncEnabled.collectAsStateWithLifecycle()
+    val syncServerUrl by viewModel.syncServerUrl.collectAsStateWithLifecycle()
+    val syncSecretToken by viewModel.syncSecretToken.collectAsStateWithLifecycle()
+    val isAutoSyncWifi by viewModel.isAutoSyncWifi.collectAsStateWithLifecycle()
+    val isTestingSyncConnection by viewModel.isTestingSyncConnection.collectAsStateWithLifecycle()
+    val syncConnectionTestResult by viewModel.syncConnectionTestResult.collectAsStateWithLifecycle()
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val lastSyncStatus by viewModel.lastSyncStatus.collectAsStateWithLifecycle()
+    val lastSyncTimestamp by viewModel.lastSyncTimestamp.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val isRecipeEditorOpen by viewModel.isRecipeEditorOpen.collectAsStateWithLifecycle()
@@ -157,10 +190,58 @@ fun BookshelfScreen(
     val uncheckedShoppingCount by viewModel.uncheckedShoppingCount.collectAsStateWithLifecycle()
     val shoppingItems by viewModel.shoppingItems.collectAsStateWithLifecycle()
     val navigateToRecipe by viewModel.navigateToRecipeEvent.collectAsStateWithLifecycle()
+    val lastAutoSavedRecipe by viewModel.lastAutoSavedRecipe.collectAsStateWithLifecycle()
+    val scanBatchSuccessEvent by viewModel.scanBatchSuccessEvent.collectAsStateWithLifecycle()
+    val scanBatchCount by viewModel.scanBatchCount.collectAsStateWithLifecycle()
+    val totalRecipeCount by viewModel.totalRecipeCount.collectAsStateWithLifecycle()
+    val cookbookStats by viewModel.cookbookStats.collectAsStateWithLifecycle()
+    val recipePhotoStats by viewModel.recipePhotoStats.collectAsStateWithLifecycle()
+    val selectedBatchFilter by viewModel.selectedBatchFilter.collectAsStateWithLifecycle()
+    val isBatchGeneratingCovers by viewModel.isBatchGeneratingCovers.collectAsStateWithLifecycle()
+    val batchCoverProgress by viewModel.batchCoverProgress.collectAsStateWithLifecycle()
+    val batchCoverCurrentTitle by viewModel.batchCoverCurrentTitle.collectAsStateWithLifecycle()
+    val batchCoverSuccessCount by viewModel.batchCoverSuccessCount.collectAsStateWithLifecycle()
+    val batchCoverFailCount by viewModel.batchCoverFailCount.collectAsStateWithLifecycle()
+    val batchCoverLog by viewModel.batchCoverLog.collectAsStateWithLifecycle()
+    val showBatchCoverDialog by viewModel.showBatchCoverDialog.collectAsStateWithLifecycle()
+    val recipesMissingPhotosCount by viewModel.recipesMissingPhotosCount.collectAsStateWithLifecycle()
 
     var showScanSheet by remember { mutableStateOf(false) }
     var recipePendingDelete by remember { mutableStateOf<RecipeEntity?>(null) }
     var recipePendingShare by remember { mutableStateOf<RecipeEntity?>(null) }
+    var showAddCategoryPersonDialog by remember { mutableStateOf(false) }
+    var recipeForQuickCategoryAssign by remember { mutableStateOf<RecipeEntity?>(null) }
+
+    // Search text state with automatic end-of-text cursor positioning
+    var searchTextFieldValue by remember {
+        mutableStateOf(TextFieldValue(text = searchQuery, selection = TextRange(searchQuery.length)))
+    }
+
+    LaunchedEffect(searchQuery) {
+        if (searchTextFieldValue.text != searchQuery) {
+            searchTextFieldValue = TextFieldValue(
+                text = searchQuery,
+                selection = TextRange(searchQuery.length)
+            )
+        }
+    }
+
+    // Voice Search / Push to Talk launcher
+    val speechRecognizerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spokenText.isNullOrBlank()) {
+                val clean = spokenText.trim()
+                viewModel.searchQuery.value = clean
+                searchTextFieldValue = TextFieldValue(
+                    text = clean,
+                    selection = TextRange(clean.length)
+                )
+            }
+        }
+    }
 
     LaunchedEffect(navigateToRecipe) {
         navigateToRecipe?.let { recipe ->
@@ -178,74 +259,136 @@ fun BookshelfScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "📖", fontSize = 22.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
+                    Column(verticalArrangement = Arrangement.Center) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "📖", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = AppLocalization.getAppTitle(languageMode),
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = FontFamily.Serif,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TerracottaPrimary
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        val subtitleText = if (searchQuery.isNotBlank() || selectedCategory != "All" || onlyFavorites) {
+                            "${recipes.size} of $totalRecipeCount recipes"
+                        } else {
+                            if (totalRecipeCount == 1) "1 recipe in collection" else "$totalRecipeCount recipes in collection"
+                        }
                         Text(
-                            text = AppLocalization.getAppTitle(languageMode),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                color = TerracottaPrimary
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            text = subtitleText,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                color = Color(0xFF6B5848),
+                                fontWeight = FontWeight.Medium
+                            )
                         )
                     }
                 },
                 actions = {
-                    // Shopping List button with badge
-                    IconButton(
-                        onClick = { viewModel.openShoppingList() },
-                        modifier = Modifier.testTag("open_shopping_list_button")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(end = 4.dp)
                     ) {
-                        BadgedBox(
-                            badge = {
-                                if (uncheckedShoppingCount > 0) {
-                                    Badge(
-                                        containerColor = TerracottaPrimary,
-                                        contentColor = Color.White
-                                    ) {
-                                        Text(text = "$uncheckedShoppingCount", fontSize = 10.sp)
+                        // Shopping List button with badge
+                        IconButton(
+                            onClick = { viewModel.openShoppingList() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("open_shopping_list_button")
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (uncheckedShoppingCount > 0) {
+                                        Badge(
+                                            containerColor = TerracottaPrimary,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text(text = "$uncheckedShoppingCount", fontSize = 9.sp)
+                                        }
                                     }
                                 }
+                            ) {
+                                Icon(
+                                    Icons.Default.ShoppingCart,
+                                    contentDescription = "Shopping List",
+                                    tint = TerracottaPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
+                        }
+
+                        // Batch AI Photo Studio Button
+                        IconButton(
+                            onClick = { viewModel.openBatchCoverDialog() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("open_batch_cover_gen_button")
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (isBatchGeneratingCovers) {
+                                        Badge(
+                                            containerColor = SageGreen,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text(text = "AI", fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    } else if (recipesMissingPhotosCount > 0) {
+                                        Badge(
+                                            containerColor = Color(0xFFD97706),
+                                            contentColor = Color.White
+                                        ) {
+                                            Text(text = "$recipesMissingPhotosCount", fontSize = 9.sp)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = "AI Photo Studio",
+                                    tint = if (isBatchGeneratingCovers) SageGreen else TerracottaPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // Add Recipe Manual button
+                        IconButton(
+                            onClick = {
+                                viewModel.openNewRecipeEditor()
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("add_manual_recipe_button")
                         ) {
                             Icon(
-                                Icons.Default.ShoppingCart,
-                                contentDescription = "Shopping List",
+                                Icons.Default.AddCircleOutline,
+                                contentDescription = "New Recipe",
                                 tint = TerracottaPrimary,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                    }
 
-                    // Add Recipe Manual button
-                    IconButton(
-                        onClick = {
-                            viewModel.openNewRecipeEditor()
-                        },
-                        modifier = Modifier.testTag("add_manual_recipe_button")
-                    ) {
-                        Icon(
-                            Icons.Default.AddCircleOutline,
-                            contentDescription = "New Recipe",
-                            tint = TerracottaPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    // Settings Gear Button
-                    IconButton(
-                        onClick = { viewModel.openSettings() },
-                        modifier = Modifier.testTag("open_settings_button")
-                    ) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = TerracottaPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        // Settings Gear Button
+                        IconButton(
+                            onClick = { viewModel.openSettings() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("open_settings_button")
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = TerracottaPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -291,17 +434,28 @@ fun BookshelfScreen(
             Surface(
                 color = Color(0xFFFFFDF9),
                 shadowElevation = 2.dp,
-                border = BorderStroke(1.dp, Color(0xFFE8DFD5))
+                border = BorderStroke(1.dp, Color(0xFFE8DFD5)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Instant Fuzzy Search Bar
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 880.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                    // Instant Fuzzy Search Bar with Push-to-Talk Voice Input
                     OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.searchQuery.value = it },
+                        value = searchTextFieldValue,
+                        onValueChange = { newValue ->
+                            val text = newValue.text
+                            // Ensure cursor is positioned at the right-hand side (end of text)
+                            searchTextFieldValue = newValue.copy(selection = TextRange(text.length))
+                            viewModel.searchQuery.value = text
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
@@ -323,9 +477,52 @@ fun BookshelfScreen(
                             )
                         },
                         trailingIcon = {
-                            if (searchQuery.isNotBlank()) {
-                                IconButton(onClick = { viewModel.searchQuery.value = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear search", modifier = Modifier.size(18.dp), tint = Color(0xFF18120C))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                if (searchQuery.isNotBlank()) {
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.searchQuery.value = ""
+                                            searchTextFieldValue = TextFieldValue("", selection = TextRange(0))
+                                        },
+                                        modifier = Modifier.testTag("clear_search_button")
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Clear search",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = Color(0xFF18120C)
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                                putExtra(
+                                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                                )
+                                                putExtra(
+                                                    RecognizerIntent.EXTRA_PROMPT,
+                                                    "Speak recipe title, ingredient, or note..."
+                                                )
+                                            }
+                                            speechRecognizerLauncher.launch(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Speech recognition unavailable", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    modifier = Modifier.testTag("voice_search_button")
+                                ) {
+                                    Icon(
+                                        Icons.Default.Mic,
+                                        contentDescription = "Push to Talk Voice Search",
+                                        tint = TerracottaPrimary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         },
@@ -349,12 +546,18 @@ fun BookshelfScreen(
                         contentPadding = PaddingValues(end = 8.dp)
                     ) {
                         item {
+                            val favCount = cookbookStats.totalFavorites
+                            val favLabel = if (favCount > 0) {
+                                "${AppLocalization.getFavoritesLabel(languageMode)} ($favCount)"
+                            } else {
+                                AppLocalization.getFavoritesLabel(languageMode)
+                            }
                             FilterChip(
                                 selected = onlyFavorites,
                                 onClick = { viewModel.onlyFavorites.value = !onlyFavorites },
                                 label = {
                                     Text(
-                                        AppLocalization.getFavoritesLabel(languageMode),
+                                        favLabel,
                                         fontSize = 12.sp,
                                         fontWeight = if (onlyFavorites) FontWeight.Bold else FontWeight.Medium
                                     )
@@ -385,7 +588,12 @@ fun BookshelfScreen(
 
                         items(rawCategories) { cat ->
                             val isSelected = selectedCategory == cat && !onlyFavorites
-                            val displayLabel = AppLocalization.getCategoryLabel(cat, languageMode)
+                            val baseLabel = AppLocalization.getCategoryLabel(cat, languageMode)
+                            val displayLabel = if (cat == "All") {
+                                "$baseLabel ($totalRecipeCount)"
+                            } else {
+                                baseLabel
+                            }
                             FilterChip(
                                 selected = isSelected,
                                 onClick = {
@@ -414,15 +622,53 @@ fun BookshelfScreen(
                                 )
                             )
                         }
+
+                        // Add Custom Category / Family Member Button
+                        item {
+                            FilterChip(
+                                selected = false,
+                                onClick = { showAddCategoryPersonDialog = true },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.PersonAdd,
+                                            contentDescription = null,
+                                            tint = TerracottaPrimary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            "+ Add Category / Person",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TerracottaPrimary
+                                        )
+                                    }
+                                },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFFFFF7ED),
+                                    labelColor = TerracottaPrimary
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = false,
+                                    borderColor = TerracottaPrimary,
+                                    borderWidth = 1.5.dp
+                                )
+                            )
+                        }
                     }
                 }
             }
+        }
 
             // Recipe Bookshelf Grid
             if (recipes.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .weight(1f)
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -477,18 +723,33 @@ fun BookshelfScreen(
                     }
                 }
             } else {
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    val columns = if (maxWidth < 600.dp) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    val isTablet = maxWidth >= 600.dp
+                    val columns = if (!isTablet) {
                         GridCells.Fixed(2)
+                    } else if (maxWidth >= 1000.dp) {
+                        GridCells.Adaptive(minSize = 220.dp)
                     } else {
-                        GridCells.Adaptive(minSize = 160.dp)
+                        GridCells.Adaptive(minSize = 190.dp)
                     }
                     LazyVerticalGrid(
                         columns = columns,
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 96.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxSize()
+                        contentPadding = PaddingValues(
+                            start = if (isTablet) 24.dp else 12.dp,
+                            end = if (isTablet) 24.dp else 12.dp,
+                            top = if (isTablet) 18.dp else 12.dp,
+                            bottom = 96.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .widthIn(max = 1280.dp)
                     ) {
                         items(recipes, key = { it.id }) { recipe ->
                             RecipeBookCard(
@@ -497,6 +758,7 @@ fun BookshelfScreen(
                                 onClick = { onRecipeClick(recipe) },
                                 onToggleFavorite = { viewModel.toggleFavorite(recipe) },
                                 onEditClick = { viewModel.openRecipeEditor(recipe) },
+                                onAssignCategoryClick = { recipeForQuickCategoryAssign = recipe },
                                 onShareClick = { recipePendingShare = recipe },
                                 onDeleteClick = { recipePendingDelete = recipe }
                             )
@@ -533,6 +795,33 @@ fun BookshelfScreen(
                 onAddCategory = { viewModel.addCategory(it) },
                 onRenameCategory = { old, new -> viewModel.renameCategory(old, new) },
                 onDeleteCategory = { viewModel.deleteCategory(it) },
+                imageGenEngine = imageGenEngine,
+                onImageGenEngineChange = { viewModel.setImageGenEngine(it) },
+                comfyUiUrl = comfyUiUrl,
+                onComfyUiUrlChange = { viewModel.setComfyUiUrl(it) },
+                comfyUiCheckpoint = comfyUiCheckpoint,
+                onComfyUiCheckpointChange = { viewModel.setComfyUiCheckpoint(it) },
+                comfyUiCustomWorkflow = comfyUiCustomWorkflow,
+                onComfyUiCustomWorkflowChange = { viewModel.setComfyUiCustomWorkflow(it) },
+                onTestComfyUiConnection = { viewModel.testComfyUiConnection() },
+                comfyUiTestStatus = comfyUiTestStatus,
+                isTestingComfyConnection = isTestingComfyConnection,
+                // Cloud & Family Sync bindings
+                isCloudSyncEnabled = isCloudSyncEnabled,
+                onToggleCloudSync = { viewModel.setCloudSyncEnabled(it) },
+                syncServerUrl = syncServerUrl,
+                onSyncServerUrlChange = { viewModel.setSyncServerUrl(it) },
+                syncSecretToken = syncSecretToken,
+                onSyncSecretTokenChange = { viewModel.setSyncSecretToken(it) },
+                onTestSyncConnection = { viewModel.testSyncConnection() },
+                isTestingSyncConnection = isTestingSyncConnection,
+                syncConnectionTestResult = syncConnectionTestResult,
+                onTriggerSyncNow = { viewModel.triggerSyncNow() },
+                isSyncing = isSyncing,
+                lastSyncStatus = lastSyncStatus,
+                lastSyncTimestamp = lastSyncTimestamp,
+                autoSyncWifi = isAutoSyncWifi,
+                onToggleAutoSyncWifi = { viewModel.setAutoSyncWifi(it) },
                 onOpenBackup = {
                     viewModel.closeSettings()
                     viewModel.openBackupDialog()
@@ -544,7 +833,36 @@ fun BookshelfScreen(
                 onDeleteAllRecipes = {
                     viewModel.deleteAllRecipes()
                 },
+                totalRecipeCount = totalRecipeCount,
+                recipesWithPhotos = cookbookStats.recipesWithPhotos,
+                aiPhotosCount = cookbookStats.aiPhotosCount,
+                scannedCardsCount = cookbookStats.scannedCardsCount,
+                unphotographedCount = cookbookStats.unphotographedCount,
+                photoStorageMb = cookbookStats.estimatedStorageMb,
+                onOpenBatchCoverGen = {
+                    viewModel.closeSettings()
+                    viewModel.openBatchCoverDialog()
+                },
                 onDismiss = { viewModel.closeSettings() }
+            )
+        }
+
+        // Batch AI Photo Studio Dialog
+        if (showBatchCoverDialog) {
+            BatchCoverGenerationDialog(
+                isGenerating = isBatchGeneratingCovers,
+                progress = batchCoverProgress,
+                currentTitle = batchCoverCurrentTitle,
+                successCount = batchCoverSuccessCount,
+                failCount = batchCoverFailCount,
+                stats = recipePhotoStats,
+                selectedFilter = selectedBatchFilter,
+                engine = imageGenEngine,
+                statusLog = batchCoverLog,
+                onFilterChange = { viewModel.setBatchFilter(it) },
+                onStartBatch = { filter -> viewModel.startBatchGenerateMissingCovers(context, filter) },
+                onCancelBatch = { viewModel.cancelBatchCoverGeneration() },
+                onDismiss = { viewModel.closeBatchCoverDialog() }
             )
         }
 
@@ -603,19 +921,19 @@ fun BookshelfScreen(
                 draftRecipe = scannedDraftRecipe,
                 errorMessage = scanErrorMessage,
                 duplicatePrompt = duplicatePrompt,
+                lastAutoSavedRecipe = lastAutoSavedRecipe,
+                scanBatchSuccessTimestamp = scanBatchSuccessEvent,
+                scanBatchCount = scanBatchCount,
                 onResolveDuplicateUpdate = { prompt ->
                     viewModel.resolveDuplicateUpdate(prompt)
-                    showScanSheet = false
                     Toast.makeText(context, "Updated existing '${prompt.existingRecipe.title}' with new scan details", Toast.LENGTH_SHORT).show()
                 },
                 onResolveDuplicateSaveCopy = { prompt ->
                     viewModel.resolveDuplicateSaveAsCopy(prompt)
-                    showScanSheet = false
                     Toast.makeText(context, "Saved as new recipe variation", Toast.LENGTH_SHORT).show()
                 },
                 onDismissDuplicate = {
                     viewModel.dismissDuplicatePrompt()
-                    showScanSheet = false
                 },
                 onClearError = { viewModel.scanErrorMessage.value = null },
                 onScan = { bitmaps, text, imageUri ->
@@ -630,6 +948,7 @@ fun BookshelfScreen(
                     viewModel.scannedDraftRecipe.value = null
                     viewModel.scanErrorMessage.value = null
                     viewModel.dismissDuplicatePrompt()
+                    viewModel.resetScanBatchSession()
                 }
             )
         }
@@ -679,6 +998,34 @@ fun BookshelfScreen(
                 onClearAll = { viewModel.clearAllShoppingItems() },
                 onShareList = { viewModel.shareShoppingList(context) },
                 onDismiss = { viewModel.closeShoppingList() }
+            )
+        }
+
+        // Quick Assign Category / Family Member Dialog
+        if (recipeForQuickCategoryAssign != null) {
+            val targetRecipe = recipeForQuickCategoryAssign!!
+            QuickAssignCategoryDialog(
+                recipe = targetRecipe,
+                categories = categories,
+                languageMode = languageMode,
+                onAssign = { selectedCat ->
+                    viewModel.quickAssignCategory(targetRecipe, selectedCat)
+                    recipeForQuickCategoryAssign = null
+                },
+                onDismiss = { recipeForQuickCategoryAssign = null }
+            )
+        }
+
+        // Add Category or Family Member Dialog
+        if (showAddCategoryPersonDialog) {
+            AddCategoryPersonDialog(
+                onAdd = { newName ->
+                    viewModel.addCategory(newName)
+                    viewModel.onlyFavorites.value = false
+                    viewModel.selectedCategory.value = newName
+                    showAddCategoryPersonDialog = false
+                },
+                onDismiss = { showAddCategoryPersonDialog = false }
             )
         }
 
@@ -738,6 +1085,7 @@ fun RecipeBookCard(
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     onEditClick: () -> Unit,
+    onAssignCategoryClick: () -> Unit = {},
     onShareClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -885,6 +1233,14 @@ fun RecipeBookCard(
                                     }
                                 )
                                 DropdownMenuItem(
+                                    text = { Text("Assign Category / Person") },
+                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = TerracottaPrimary, modifier = Modifier.size(18.dp)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onAssignCategoryClick()
+                                    }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Share Recipe") },
                                     leadingIcon = { Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                     onClick = {
@@ -993,6 +1349,14 @@ fun RecipeBookCard(
                                             onClick = {
                                                 showMenu = false
                                                 onEditClick()
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Assign Category / Person") },
+                                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = TerracottaPrimary, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                showMenu = false
+                                                onAssignCategoryClick()
                                             }
                                         )
                                         DropdownMenuItem(
@@ -1112,3 +1476,229 @@ fun RecipeBookCard(
         }
     }
 }
+
+@Composable
+fun AddCategoryPersonDialog(
+    onAdd: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    val quickSuggestions = listOf(
+        "Wife's Recipes",
+        "Daughter's Recipes",
+        "Mom's Specials",
+        "Dad's Bakery",
+        "Grandma's Classics",
+        "Kids' Favorites",
+        "Holiday & Party"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.PersonAdd,
+                contentDescription = null,
+                tint = TerracottaPrimary,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Add Category or Family Member",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary)
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Create a dedicated recipe section for your wife, daughter, or anyone in the family:",
+                    style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF5A4535))
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Category / Person Name") },
+                    placeholder = { Text("e.g. Wife's Recipes or Sarah") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TerracottaPrimary,
+                        focusedLabelColor = TerracottaPrimary
+                    )
+                )
+
+                Text(
+                    text = "Quick Suggestions:",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF786250))
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(vertical = 2.dp)
+                ) {
+                    items(quickSuggestions) { suggestion ->
+                        FilterChip(
+                            selected = name.equals(suggestion, ignoreCase = true),
+                            onClick = { name = suggestion },
+                            label = { Text(suggestion, fontSize = 11.sp) },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onAdd(name.trim())
+                    }
+                },
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Add & Select", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun QuickAssignCategoryDialog(
+    recipe: RecipeEntity,
+    categories: List<String>,
+    languageMode: LanguageMode,
+    onAssign: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var customCategory by remember { mutableStateOf("") }
+    val allOptions = (listOf("Wife's Recipes", "Daughter's Recipes") + categories).distinct()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                tint = TerracottaPrimary,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Assign Category / Person",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary)
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Assign '${recipe.getDisplayTitle(languageMode)}' to:",
+                    style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF5A4535), fontWeight = FontWeight.Medium)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 240.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    allOptions.forEach { cat ->
+                        val isAssigned = recipe.category.equals(cat, ignoreCase = true)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onAssign(cat) },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isAssigned) Color(0xFFFFEDD5) else Color(0xFFF9F6F0),
+                            border = BorderStroke(1.dp, if (isAssigned) TerracottaPrimary else Color(0xFFE5DDD3))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = cat,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = if (isAssigned) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isAssigned) Color(0xFF431407) else Color(0xFF18120C)
+                                )
+                                if (isAssigned) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = TerracottaPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = customCategory,
+                        onValueChange = { customCategory = it },
+                        placeholder = { Text("Or enter new name...", fontSize = 12.sp) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TerracottaPrimary,
+                            focusedLabelColor = TerracottaPrimary
+                        )
+                    )
+                    Button(
+                        onClick = {
+                            if (customCategory.isNotBlank()) {
+                                onAssign(customCategory.trim())
+                            }
+                        },
+                        enabled = customCategory.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Assign", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+

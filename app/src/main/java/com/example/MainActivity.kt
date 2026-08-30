@@ -42,6 +42,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Instant pull delta sync when app opens or resumes to foreground
+        recipeViewModel.onAppForegroundResume()
+    }
 }
 
 @Composable

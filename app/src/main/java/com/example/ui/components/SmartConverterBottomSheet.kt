@@ -302,6 +302,8 @@ fun SmartConverterBottomSheet(
                         .testTag("converter_amount_input"),
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF231A12),
+                        unfocusedTextColor = Color(0xFF231A12),
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
                         focusedBorderColor = TerracottaPrimary,
@@ -744,6 +746,46 @@ private fun calculateConversions(
             note = "Liquid measuring jug"
         )
     )
+
+    // Add UK Kitchen Standard conversion based on Blueprint
+    val ukResult = if (grams <= 15.0) {
+        val spoon = when {
+            grams <= 0.8 -> "1 pinch"
+            grams <= 1.8 -> "¼ tsp"
+            grams <= 3.2 -> "½ tsp"
+            grams <= 4.2 -> "¾ tsp"
+            grams <= 6.5 -> "1 tsp"
+            grams <= 8.5 -> "1½ tsp"
+            grams <= 12.0 -> "2 tsp"
+            else -> "1 tbsp"
+        }
+        ConversionResult(
+            valueStr = spoon,
+            unitStr = "UK Spoon (Blueprint)",
+            note = "Native UK kitchen measure (< 15g)",
+            handyKitchenHint = "Standard UK spoon measure instead of awkward small gram weights"
+        )
+    } else {
+        val isLiq = ingredient.category == "Dairy & Liquids" || ingredient.name.lowercase().contains("water") || ingredient.name.lowercase().contains("milk")
+        if (isLiq) {
+            val ukMl = (Math.round(grams * (250.0 / density) / 5.0) * 5).toInt()
+            ConversionResult(
+                valueStr = "$ukMl ml",
+                unitStr = "UK Liquid Volume (ml)",
+                note = "Native UK metric liquid (1 cup = 250ml)",
+                handyKitchenHint = "UK metric standard for liquids"
+            )
+        } else {
+            val ukGrams = (Math.round(grams / 5.0) * 5).toInt()
+            ConversionResult(
+                valueStr = if (ukGrams >= 1000) String.format("%.2f kg", ukGrams / 1000.0) else "$ukGrams g",
+                unitStr = "UK Solid Weight (g)",
+                note = "Natural 5g scale increment",
+                handyKitchenHint = "UK dry/solid standard (never cups)"
+            )
+        }
+    }
+    results.add(0, ukResult)
 
     return results
 }

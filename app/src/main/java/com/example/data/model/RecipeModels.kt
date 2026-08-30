@@ -14,10 +14,25 @@ data class RecipeIngredient(
 ) {
     fun getDisplayName(language: LanguageMode = LanguageMode.ENGLISH): String {
         val en = nameEnglish?.takeIf { it.isNotBlank() } ?: name
-        if (en.contains("/")) {
-            return en.split("/").firstOrNull()?.trim() ?: en
+        val raw = if (en.contains("/")) {
+            en.split("/").firstOrNull()?.trim() ?: en
+        } else {
+            en
         }
-        return en
+        return cleanIngredientName(raw)
+    }
+
+    companion object {
+        fun cleanIngredientName(name: String): String {
+            return name
+                .replace(Regex("(?i)\\btipo,\\s*0,\\s*0\\b"), "Tipo 00")
+                .replace(Regex("(?i)\\btipo\\s+0\\s+0\\b"), "Tipo 00")
+                .replace(Regex("(?i)\\btype,\\s*0,\\s*0\\b"), "Type 00")
+                .replace(Regex("(?i)\\bflower\\b"), "flour")
+                .replace(Regex("(?i)\\btipo\\s*00\\s*flour\\b"), "Tipo 00 Flour")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+        }
     }
 
     fun getLocalizedGroup(language: LanguageMode = LanguageMode.ENGLISH): String? {
@@ -42,8 +57,7 @@ data class RecipeIngredient(
      * Converts the ingredient amount and unit according to the selected measuring style:
      * - METRIC_GRAMS: g, kg, ml, l
      * - CUPS_US: cups, tbsp, tsp, oz, lbs, fl oz
-     * - GERMAN_TRADITIONAL: Gramm, EL (Esslöffel), TL (Teelöffel), Prise, Msp., Pck., Tasse
-     * - UK_IMPERIAL: oz, lbs, fl oz, pt, tbsp, tsp
+     * - UK_IMPERIAL: Funneled UK Blueprint (UK spoons for <15g/<15ml, Grams for dry/solids, ml for liquids, °C / Gas Mark)
      * - BAKERS_PRECISION: exact decimal grams (e.g. 250.0 g)
      */
     fun getConvertedAmount(targetSystem: UnitSystem, multiplier: Float = 1.0f): String {
@@ -53,50 +67,59 @@ data class RecipeIngredient(
         val u = unit.lowercase().trim()
         val itemName = (nameEnglish ?: name).lowercase()
 
-        // Approximate density factors (grams per 1 cup / 240ml):
-        // Flour ~ 125g, Sugar ~ 200g, Brown Sugar ~ 220g, Butter ~ 227g, Powdered Sugar ~ 120g, Liquids ~ 240g
+        // Comprehensive Density factors (grams per 1 cup / ~240ml):
         val density = when {
-            itemName.contains("powdered sugar") || itemName.contains("puderzucker") -> 120.0
-            itemName.contains("flour") || itemName.contains("mehl") || itemName.contains("stärke") || itemName.contains("starch") -> 125.0
-            itemName.contains("brown sugar") || itemName.contains("brauner zucker") -> 220.0
-            itemName.contains("sugar") || itemName.contains("zucker") -> 200.0
+            itemName.contains("powdered sugar") || itemName.contains("puderzucker") || itemName.contains("icing sugar") -> 120.0
+            itemName.contains("flour") || itemName.contains("mehl") || itemName.contains("stärke") || itemName.contains("starch") || itemName.contains("cornstarch") || itemName.contains("cornflour") -> 125.0
+            itemName.contains("brown sugar") || itemName.contains("brauner zucker") || itemName.contains("muscovado") -> 220.0
+            itemName.contains("sugar") || itemName.contains("zucker") || itemName.contains("caster") || itemName.contains("castor") -> 200.0
             itemName.contains("butter") || itemName.contains("margarine") -> 227.0
             itemName.contains("cocoa") || itemName.contains("kakao") -> 100.0
-            itemName.contains("honey") || itemName.contains("honig") || itemName.contains("syrup") || itemName.contains("sirup") -> 340.0
-            itemName.contains("bread crumb") || itemName.contains("semmelbrösel") -> 110.0
-            itemName.contains("oat") || itemName.contains("haferflocken") -> 90.0
-            itemName.contains("nut") || itemName.contains("mandel") || itemName.contains("nuss") -> 120.0
+            itemName.contains("honey") || itemName.contains("honig") || itemName.contains("syrup") || itemName.contains("sirup") || itemName.contains("treacle") || itemName.contains("molasses") -> 340.0
+            itemName.contains("bread crumb") || itemName.contains("semmelbrösel") || itemName.contains("breadcrumbs") || itemName.contains("paniermehl") -> 110.0
+            itemName.contains("oat") || itemName.contains("haferflocken") || itemName.contains("porridge") -> 90.0
+            itemName.contains("nut") || itemName.contains("mandel") || itemName.contains("nuss") || itemName.contains("almond") || itemName.contains("hazelnut") || itemName.contains("walnut") -> 100.0
+            itemName.contains("chocolate chip") || itemName.contains("schokotropfen") -> 170.0
+            itemName.contains("raisin") || itemName.contains("rosinen") || itemName.contains("sultana") || itemName.contains("craisin") -> 150.0
             else -> 240.0 // standard liquid
         }
 
         return when (targetSystem) {
+            UnitSystem.UK_IMPERIAL -> {
+                convertToUkFormat(scaled, u, itemName, density)
+            }
+
             UnitSystem.METRIC_GRAMS -> {
                 when (u) {
                     "cup", "cups", "tasse", "tassen" -> {
                         if (isLiquid(itemName)) {
-                            "${(scaled * 240).toInt()} ml"
+                            "${formatScaledNumber(scaled * 240.0)} ml"
                         } else {
-                            "${(scaled * density).toInt()} g"
+                            "${formatScaledNumber(scaled * density)} g"
                         }
                     }
+                    "stick", "sticks" -> {
+                        val grams = scaled * 113.4
+                        "${roundTo5(grams).toInt()} g"
+                    }
                     "tbsp", "tablespoon", "tablespoons", "el", "esslöffel" -> {
-                        if (isLiquid(itemName)) "${(scaled * 15).toInt()} ml" else "${(scaled * (density / 16.0)).toInt().coerceAtLeast(1)} g"
+                        if (isLiquid(itemName)) "${formatScaledNumber(scaled * 15.0)} ml" else "${formatScaledNumber(scaled * (density / 16.0))} g"
                     }
                     "tsp", "teaspoon", "teaspoons", "tl", "teelöffel" -> {
-                        if (isLiquid(itemName)) "${(scaled * 5).toInt()} ml" else "${(scaled * (density / 48.0)).toInt().coerceAtLeast(1)} g"
+                        if (isLiquid(itemName)) "${formatScaledNumber(scaled * 5.0)} ml" else "${formatScaledNumber(scaled * (density / 48.0))} g"
                     }
-                    "oz", "ounce", "ounces" -> "${(scaled * 28.3495).toInt()} g"
-                    "fl oz", "fluid ounce" -> "${(scaled * 29.57).toInt()} ml"
+                    "oz", "ounce", "ounces" -> "${formatScaledNumber(scaled * 28.3495)} g"
+                    "fl oz", "fluid ounce" -> "${formatScaledNumber(scaled * 29.57)} ml"
                     "lb", "lbs", "pound", "pounds" -> {
                         val grams = scaled * 453.592
-                        if (grams >= 1000) "${String.format("%.1f", grams / 1000.0)} kg" else "${grams.toInt()} g"
+                        if (grams >= 1000) "${formatScaledNumber(grams / 1000.0)} kg" else "${formatScaledNumber(grams)} g"
                     }
                     "g", "gram", "grams", "gramm" -> {
-                        if (scaled >= 1000) "${String.format("%.1f", scaled / 1000.0)} kg" else "${scaled.toInt()} g"
+                        if (scaled >= 1000) "${formatScaledNumber(scaled / 1000.0)} kg" else "${formatScaledNumber(scaled)} g"
                     }
-                    "kg" -> "${String.format("%.1f", scaled)} kg"
-                    "ml" -> "${scaled.toInt()} ml"
-                    "l", "liter", "litre" -> "${String.format("%.1f", scaled)} l"
+                    "kg" -> "${formatScaledNumber(scaled)} kg"
+                    "ml" -> "${formatScaledNumber(scaled)} ml"
+                    "l", "liter", "litre" -> "${formatScaledNumber(scaled)} l"
                     "pinch", "prise", "msp.", "messerspitze" -> if (scaled > 1.5) "2 Prisen" else "1 Prise"
                     "pck.", "päckchen", "packet", "packets" -> "${formatScaledNumber(scaled)} Pck."
                     else -> "${formatScaledNumber(scaled)} $unit".trim()
@@ -127,13 +150,14 @@ data class RecipeIngredient(
                             }
                         }
                     }
-                    "kg" -> "${String.format("%.1f", scaled * 2.20462)} lbs"
+                    "kg" -> "${formatScaledNumber(scaled * 2.20462)} lbs"
                     "ml" -> formatCupsFromMl(scaled)
-                    "l", "liter", "litre" -> "${String.format("%.1f", scaled * 4.22675)} cups"
+                    "l", "liter", "litre" -> "${formatScaledNumber(scaled * 4.22675)} cups"
                     "el", "esslöffel" -> "${formatScaledNumber(scaled)} tbsp"
                     "tl", "teelöffel" -> "${formatScaledNumber(scaled)} tsp"
                     "tasse", "tassen" -> "${formatFraction(scaled)} cups"
                     "cup", "cups" -> "${formatFraction(scaled)} cups"
+                    "stick", "sticks" -> "${formatFraction(scaled)} stick${if (scaled > 1) "s" else ""}"
                     "tbsp", "tablespoon", "tablespoons" -> "${formatFraction(scaled)} tbsp"
                     "tsp", "teaspoon", "teaspoons" -> "${formatFraction(scaled)} tsp"
                     "oz", "ounce", "ounces" -> "${formatScaledNumber(scaled)} oz"
@@ -145,82 +169,199 @@ data class RecipeIngredient(
                 }
             }
 
-            UnitSystem.UK_IMPERIAL -> {
-                when (u) {
-                    "g", "gram", "grams", "gramm" -> {
-                        val oz = scaled / 28.3495
-                        if (oz >= 16.0) {
-                            "${String.format("%.1f", oz / 16.0)} lbs"
-                        } else {
-                            "${String.format("%.1f", oz)} oz"
-                        }
-                    }
-                    "kg" -> "${String.format("%.1f", scaled * 2.20462)} lbs"
-                    "ml" -> {
-                        val flOz = scaled / 28.413
-                        if (flOz >= 20.0) {
-                            "${String.format("%.1f", flOz / 20.0)} pt (pints)"
-                        } else if (flOz >= 1.0) {
-                            "${String.format("%.1f", flOz)} fl oz"
-                        } else {
-                            "${(scaled / 5.0).toInt()} tsp"
-                        }
-                    }
-                    "l", "liter" -> "${String.format("%.1f", scaled * 1.75975)} pt"
-                    "cup", "cups" -> "${formatFraction(scaled)} cups"
-                    "tbsp", "tablespoon", "el" -> "${formatScaledNumber(scaled)} tbsp"
-                    "tsp", "teaspoon", "tl" -> "${formatScaledNumber(scaled)} tsp"
-                    "oz", "ounce" -> "${formatScaledNumber(scaled)} oz"
-                    "lb", "lbs" -> "${formatScaledNumber(scaled)} lbs"
-                    "fl oz" -> "${formatScaledNumber(scaled)} fl oz"
-                    "pinch", "prise" -> if (scaled > 1.5) "2 pinches" else "1 pinch"
-                    else -> "${formatScaledNumber(scaled)} $unit".trim()
-                }
-            }
-
             UnitSystem.BAKERS_PRECISION -> {
                 when (u) {
                     "cup", "cups", "tasse" -> {
                         val grams = if (isLiquid(itemName)) scaled * 240.0 else scaled * density
-                        "${String.format("%.1f", grams)} g"
+                        "${formatScaledNumber(grams)} g"
                     }
+                    "stick", "sticks" -> "${formatScaledNumber(scaled * 113.4)} g"
                     "tbsp", "tablespoon", "el" -> {
                         val grams = if (isLiquid(itemName)) scaled * 15.0 else scaled * (density / 16.0)
-                        "${String.format("%.1f", grams)} g"
+                        "${formatScaledNumber(grams)} g"
                     }
                     "tsp", "teaspoon", "tl" -> {
                         val grams = if (isLiquid(itemName)) scaled * 5.0 else scaled * (density / 48.0)
-                        "${String.format("%.1f", grams)} g"
+                        "${formatScaledNumber(grams)} g"
                     }
-                    "oz", "ounce" -> "${String.format("%.1f", scaled * 28.3495)} g"
-                    "lb", "lbs" -> "${String.format("%.1f", scaled * 453.592)} g"
-                    "kg" -> "${String.format("%.1f", scaled * 1000.0)} g"
-                    "g", "gram", "gramm" -> "${String.format("%.1f", scaled)} g"
-                    "ml" -> "${String.format("%.1f", scaled)} ml"
-                    "l" -> "${String.format("%.1f", scaled * 1000.0)} ml"
-                    else -> "${String.format("%.1f", scaled)} $unit".trim()
+                    "oz", "ounce" -> "${formatScaledNumber(scaled * 28.3495)} g"
+                    "lb", "lbs" -> "${formatScaledNumber(scaled * 453.592)} g"
+                    "kg" -> "${formatScaledNumber(scaled * 1000.0)} g"
+                    "g", "gram", "gramm" -> "${formatScaledNumber(scaled)} g"
+                    "ml" -> "${formatScaledNumber(scaled)} ml"
+                    "l" -> "${formatScaledNumber(scaled * 1000.0)} ml"
+                    else -> "${formatScaledNumber(scaled)} $unit".trim()
                 }
             }
         }
     }
 
+    /**
+     * UK Measurement Logic Blueprint implementation:
+     * - Checks if amount is small (< 15ml / < 15g) -> funnels into standardized UK Spoons (tsp, tbsp)
+     * - Solid/dry/sticky ingredients -> Grams (g) or Kilograms (kg) rounded to natural 5g/10g kitchen scale units
+     * - Liquid ingredients (> 15ml) -> Millilitres (ml) or Litres (L)
+     * - Butter sticks -> 115g UK standard block
+     * - 1 Cup liquid -> 250ml
+     * - 1 Cup dry -> grams by ingredient density (~125g flour, ~200g sugar)
+     */
+    private fun convertToUkFormat(scaled: Double, u: String, itemName: String, density: Double): String {
+        val liquid = isLiquid(itemName)
+
+        // 1. Butter Stick translation: 1 stick = 115g standard UK block
+        if (u.contains("stick")) {
+            val butterGrams = scaled * 115.0
+            return if (butterGrams <= 15.0) {
+                formatUkSpoon(butterGrams, isLiquid = false)
+            } else {
+                "${roundTo5(butterGrams).toInt()} g"
+            }
+        }
+
+        // 2. Direct Spoons handling
+        if (u in listOf("tsp", "teaspoon", "teaspoons", "tl", "teelöffel")) {
+            return if (scaled >= 3.0) {
+                "${formatFraction(scaled / 3.0)} tbsp"
+            } else {
+                "${formatFraction(scaled)} tsp"
+            }
+        }
+        if (u in listOf("tbsp", "tablespoon", "tablespoons", "el", "esslöffel")) {
+            return if (scaled <= 3.0) {
+                "${formatFraction(scaled)} tbsp"
+            } else {
+                val metricEquivalent = if (liquid) scaled * 15.0 else scaled * (density / 16.0)
+                if (liquid) "${roundTo5(metricEquivalent).toInt()} ml" else "${roundTo5(metricEquivalent).toInt()} g"
+            }
+        }
+        if (u in listOf("dstsp", "dessertspoon", "dessertspoons")) {
+            return "${formatFraction(scaled)} dstsp"
+        }
+        if (u in listOf("pinch", "prise", "msp.", "messerspitze")) {
+            return if (scaled > 1.5) "2 pinches" else "1 pinch"
+        }
+        if (u in listOf("pck.", "päckchen", "packet", "packets", "sachet", "sachets")) {
+            return "${formatScaledNumber(scaled)} sachet${if (scaled > 1) "s" else ""}"
+        }
+
+        // Calculate metric equivalents (weight or volume)
+        var metricMl: Double? = null
+        var metricGrams: Double? = null
+
+        when (u) {
+            "cup", "cups", "tasse", "tassen" -> {
+                if (liquid) {
+                    metricMl = scaled * 250.0 // UK Standard Metric Cup (250 ml)
+                } else {
+                    metricGrams = scaled * density // e.g. 125g flour, 200g sugar, 227g butter
+                }
+            }
+            "g", "gram", "grams", "gramm" -> {
+                metricGrams = scaled
+            }
+            "kg" -> {
+                metricGrams = scaled * 1000.0
+            }
+            "ml" -> {
+                metricMl = scaled
+            }
+            "l", "liter", "litre" -> {
+                metricMl = scaled * 1000.0
+            }
+            "oz", "ounce", "ounces" -> {
+                if (liquid) {
+                    metricMl = scaled * 28.413 // UK fluid ounce
+                } else {
+                    metricGrams = scaled * 28.3495
+                }
+            }
+            "fl oz", "fluid ounce", "fluid ounces" -> {
+                metricMl = scaled * 28.413
+            }
+            "pt", "pint", "pints" -> {
+                metricMl = scaled * 568.261 // UK Imperial Pint (568ml)
+            }
+            "lb", "lbs", "pound", "pounds" -> {
+                metricGrams = scaled * 453.592
+            }
+            else -> {
+                // Non-convertible count units (eggs, cloves, slices, pieces)
+                return "${formatScaledNumber(scaled)} $u".trim()
+            }
+        }
+
+        // Apply Decision Flow:
+        // [ Is the Ingredient Amount Small? (< 15ml / < 15g) ]
+        if (metricMl != null) {
+            return if (metricMl <= 15.0) {
+                formatUkSpoon(metricMl, isLiquid = true)
+            } else if (metricMl >= 1000.0) {
+                "${formatScaledNumber(metricMl / 1000.0)} L"
+            } else {
+                "${roundTo5(metricMl).toInt()} ml"
+            }
+        }
+
+        if (metricGrams != null) {
+            return if (metricGrams <= 15.0) {
+                formatUkSpoon(metricGrams, isLiquid = false)
+            } else if (metricGrams >= 1000.0) {
+                "${formatScaledNumber(metricGrams / 1000.0)} kg"
+            } else {
+                "${roundTo5(metricGrams).toInt()} g"
+            }
+        }
+
+        return "${formatScaledNumber(scaled)} $u".trim()
+    }
+
+    /**
+     * Standardizes small quantities into friendly UK Spoons (avoiding frustrating "3g salt" or "5ml vanilla").
+     */
+    private fun formatUkSpoon(metricAmt: Double, isLiquid: Boolean): String {
+        return when {
+            metricAmt <= 0.8 -> "1 pinch"
+            metricAmt <= 1.8 -> "¼ tsp"
+            metricAmt <= 3.2 -> "½ tsp"
+            metricAmt <= 4.2 -> "¾ tsp"
+            metricAmt <= 6.5 -> "1 tsp"
+            metricAmt <= 8.5 -> "1½ tsp"
+            metricAmt <= 12.0 -> "2 tsp"
+            metricAmt <= 18.0 -> "1 tbsp"
+            metricAmt <= 25.0 -> "1½ tbsp"
+            metricAmt <= 35.0 -> "2 tbsp"
+            else -> {
+                if (isLiquid) "${roundTo5(metricAmt).toInt()} ml"
+                else "${roundTo5(metricAmt).toInt()} g"
+            }
+        }
+    }
+
+    private fun roundTo5(num: Double): Double {
+        return (Math.round(num / 5.0) * 5).toDouble()
+    }
+
     private fun isLiquid(name: String): Boolean {
-        return name.contains("water") || name.contains("wasser") ||
-                name.contains("milk") || name.contains("milch") ||
-                name.contains("oil") || name.contains("öl") ||
-                name.contains("cream") || name.contains("sahne") ||
-                name.contains("juice") || name.contains("saft") ||
-                name.contains("wine") || name.contains("wein") ||
-                name.contains("broth") || name.contains("brühe") ||
-                name.contains("rum") || name.contains("kirschwasser")
+        val n = name.lowercase()
+        return n.contains("water") || n.contains("wasser") ||
+                n.contains("milk") || n.contains("milch") ||
+                n.contains("oil") || n.contains("öl") ||
+                n.contains("cream") || n.contains("sahne") ||
+                n.contains("juice") || n.contains("saft") ||
+                n.contains("wine") || n.contains("wein") ||
+                n.contains("cider") || n.contains("beer") || n.contains("bier") ||
+                n.contains("broth") || n.contains("brühe") || n.contains("stock") || n.contains("fond") ||
+                n.contains("vinegar") || n.contains("essig") ||
+                n.contains("rum") || n.contains("kirschwasser") || n.contains("liqueur") ||
+                n.contains("coffee") || n.contains("kaffee") || n.contains("tea") || n.contains("tee")
     }
 
     private fun formatCupsFromMl(ml: Double): String {
         val cups = ml / 240.0
         return when {
             cups >= 0.2 -> "${formatFraction(cups)} cups"
-            ml >= 15.0 -> "${(ml / 15.0).toInt()} tbsp"
-            else -> "${(ml / 5.0).toInt()} tsp"
+            ml >= 15.0 -> "${formatScaledNumber(ml / 15.0)} tbsp"
+            else -> "${formatScaledNumber(ml / 5.0)} tsp"
         }
     }
 
@@ -252,7 +393,14 @@ data class RecipeIngredient(
     }
 
     private fun formatScaledNumber(num: Double): String {
-        return if (num % 1.0 == 0.0) num.toInt().toString() else String.format("%.1f", num)
+        val rounded = Math.round(num * 100.0) / 100.0
+        return if (Math.abs(rounded - Math.round(rounded)) < 0.001) {
+            Math.round(rounded).toInt().toString()
+        } else if (Math.abs(rounded * 10.0 - Math.round(rounded * 10.0)) < 0.001) {
+            String.format(java.util.Locale.US, "%.1f", rounded)
+        } else {
+            String.format(java.util.Locale.US, "%.2f", rounded)
+        }
     }
 
     private fun formatFraction(num: Double): String {
@@ -268,9 +416,9 @@ data class RecipeIngredient(
         }
         return when {
             whole > 0 && fracStr.isNotEmpty() -> "$whole $fracStr"
-            whole > 0 && fracStr.isEmpty() -> String.format("%.1f", num)
+            whole > 0 && fracStr.isEmpty() -> formatScaledNumber(num)
             fracStr.isNotEmpty() -> fracStr
-            else -> String.format("%.1f", num)
+            else -> formatScaledNumber(num)
         }
     }
 }
@@ -365,8 +513,11 @@ data class RecipeStep(
     val timerMinutes: Int = 0,
     val tip: String? = null
 ) {
-    fun getInstruction(language: LanguageMode = LanguageMode.ENGLISH): String {
-        return instructionEnglish.ifBlank { instructionGerman }
+    fun getInstruction(language: LanguageMode = LanguageMode.ENGLISH, unitSystem: UnitSystem? = null): String {
+        val base = instructionEnglish.ifBlank { instructionGerman }
+        return if (unitSystem != null) {
+            CulinaryTemperatureConverter.formatTemperatures(base, unitSystem)
+        } else base
     }
 
     fun getLocalizedTip(language: LanguageMode = LanguageMode.ENGLISH): String? {
@@ -377,6 +528,69 @@ data class RecipeStep(
     }
 }
 
+/**
+ * Intelligent temperature converter translating Fahrenheit/Celsius/Gas Mark for UK and global baking standards.
+ */
+object CulinaryTemperatureConverter {
+    fun formatTemperatures(text: String, unitSystem: UnitSystem): String {
+        val regexF = Regex("(?i)\\b(\\d{3})\\s*(?:°\\s*F|degrees?\\s*F(?:ahrenheit)?|F\\b)")
+        val regexC = Regex("(?i)\\b(\\d{2,3})\\s*(?:°\\s*C|degrees?\\s*C(?:elsius)?|C\\b)")
+
+        var result = text
+
+        when (unitSystem) {
+            UnitSystem.UK_IMPERIAL -> {
+                result = regexF.replace(result) { match ->
+                    val fVal = match.groupValues[1].toIntOrNull()
+                    if (fVal != null && fVal in 200..550) {
+                        val cVal = Math.round((fVal - 32) * 5.0 / 9.0).toInt()
+                        val cRounded = (Math.round(cVal / 5.0) * 5).toInt()
+                        val gasMark = getGasMark(cRounded)
+                        "$cRounded°C / $gasMark (${fVal}°F)"
+                    } else match.value
+                }
+            }
+            UnitSystem.METRIC_GRAMS, UnitSystem.BAKERS_PRECISION -> {
+                result = regexF.replace(result) { match ->
+                    val fVal = match.groupValues[1].toIntOrNull()
+                    if (fVal != null && fVal in 200..550) {
+                        val cVal = Math.round((fVal - 32) * 5.0 / 9.0).toInt()
+                        val cRounded = (Math.round(cVal / 5.0) * 5).toInt()
+                        "$cRounded°C (${fVal}°F)"
+                    } else match.value
+                }
+            }
+            UnitSystem.CUPS_US -> {
+                result = regexC.replace(result) { match ->
+                    val cVal = match.groupValues[1].toIntOrNull()
+                    if (cVal != null && cVal in 100..300) {
+                        val fVal = Math.round((cVal * 9.0 / 5.0) + 32).toInt()
+                        val fRounded = (Math.round(fVal / 5.0) * 5).toInt()
+                        "$fRounded°F (${cVal}°C)"
+                    } else match.value
+                }
+            }
+        }
+        return result
+    }
+
+    fun getGasMark(celsius: Int): String {
+        return when {
+            celsius < 125 -> "Gas Mark ½"
+            celsius in 125..145 -> "Gas Mark 1"
+            celsius in 146..160 -> "Gas Mark 2"
+            celsius in 161..175 -> "Gas Mark 3"
+            celsius in 176..185 -> "Gas Mark 4"
+            celsius in 186..195 -> "Gas Mark 5"
+            celsius in 196..210 -> "Gas Mark 6"
+            celsius in 211..225 -> "Gas Mark 7"
+            celsius in 226..240 -> "Gas Mark 8"
+            celsius in 241..255 -> "Gas Mark 9"
+            else -> "Gas Mark 10"
+        }
+    }
+}
+
 enum class LanguageMode(val label: String, val flag: String, val description: String) {
     ENGLISH("English", "🇬🇧", "View all recipes, ingredients, instructions and menus in English")
 }
@@ -384,7 +598,7 @@ enum class LanguageMode(val label: String, val flag: String, val description: St
 enum class UnitSystem(val label: String, val shortLabel: String, val icon: String, val description: String) {
     CUPS_US("US Cups & Spoons", "Cups / Spoons", "🥣", "Cups, tablespoons (tbsp), teaspoons (tsp), oz, lbs, °F"),
     METRIC_GRAMS("Metric Weights & Volume", "Metric (g, ml)", "⚖️", "Grams (g), kilograms (kg), milliliters (ml), liters (l), °C"),
-    UK_IMPERIAL("UK Imperial System", "UK Imperial", "🇬🇧", "Ounces (oz), pounds (lbs), fluid ounces (fl oz), pints (pt), °C"),
+    UK_IMPERIAL("UK Kitchen Standard", "UK (g, ml, Spoons)", "🇬🇧", "Grams (g), millilitres (ml), UK spoons (tsp/tbsp), °C & Gas Mark"),
     BAKERS_PRECISION("Baker's Precision Grams", "Baker's Grams", "🧑‍🍳", "Exact decimal grams (e.g. 250.0g) for precision weighing")
 }
 

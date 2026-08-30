@@ -1,5 +1,6 @@
 package com.example.ai
 
+import android.graphics.BitmapFactory
 import android.graphics.Bitmap
 import android.util.Base64
 import android.util.Log
@@ -21,8 +22,18 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
+import org.json.JSONObject
+import org.json.JSONArray
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 // --- Gemini Request / Response DTOs ---
+@JsonClass(generateAdapter = true)
+data class GeminiImageConfig(
+    val aspectRatio: String = "1:1",
+    val imageSize: String? = "1K"
+)
+
 @JsonClass(generateAdapter = true)
 data class GeminiRequest(
     val contents: List<GeminiContent>,
@@ -48,10 +59,12 @@ data class GeminiInlineData(
 
 @JsonClass(generateAdapter = true)
 data class GeminiGenerationConfig(
-    val temperature: Float = 0.2f,
-    val topP: Float = 0.95f,
-    val topK: Int = 40,
-    val responseMimeType: String = "application/json"
+    val temperature: Float? = null,
+    val topP: Float? = null,
+    val topK: Int? = null,
+    val responseMimeType: String? = null,
+    val responseModalities: List<String>? = null,
+    val imageConfig: GeminiImageConfig? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -201,9 +214,10 @@ object GeminiClient {
                      * "group": section header if grouped (e.g. "Dough", "Filling", "Glaze", "Topping", "Dry Ingredients") or null
                    - Transcribe all brand names, package sizes, and prep notes faithfully (e.g., '6-ounce package Craisins', '3/4 cup sliced almonds', '3 large eggs, beaten').
 
-                2. MULTI-PAGE & TRANSLATION:
+                2. UNLIMITED MULTI-PAGE SYNTHESIS & TRANSLATION:
                    - If source is in German or another language, translate titles, ingredients, and steps into natural English.
-                   - If multiple card photos are provided (Page 1 front, Page 2 back), synthesize them completely into one unified recipe.
+                   - If multiple card photos or scrapbook/notebook pages are provided (Page 1, Page 2, Page 3, Page 4, etc.), synthesize all pages comprehensively into ONE single unified recipe.
+                   - Ingredients and directions distributed across multiple pages/sides must all be combined seamlessly in proper chronological order without dropping any items.
 
                 3. ACCURATE COOK TIME, PREP TIME, YIELD & DIFFICULTY:
                    - Look for prep time and cook time. If multiple baking/cooking periods are specified (e.g. 'bake for 30 minutes', then 'bake for an additional 20 minutes'), sum them up (50 min total cook time).
@@ -275,7 +289,12 @@ object GeminiClient {
 
             val request = GeminiRequest(
                 contents = listOf(GeminiContent(parts = parts)),
-                generationConfig = GeminiGenerationConfig()
+                generationConfig = GeminiGenerationConfig(
+                    temperature = 0.2f,
+                    topP = 0.95f,
+                    topK = 40,
+                    responseMimeType = "application/json"
+                )
             )
 
             val response = try {
@@ -511,6 +530,153 @@ object GeminiClient {
         } catch (t: Throwable) {
             Log.e("GeminiRecipeService", "Error encoding bitmap to Base64", t)
             ""
+        }
+    }
+
+    suspend fun generateRecipeCoverImage(
+        title: String,
+        titleGerman: String? = null,
+        category: String = "Main Dish",
+        ingredients: List<String> = emptyList(),
+        steps: List<String> = emptyList(),
+        notes: String? = null,
+        referenceBitmap: Bitmap? = null
+    ): Result<Bitmap> = withContext(Dispatchers.IO) {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
+            return@withContext Result.failure(Exception("Gemini API key is required to generate AI dish photos. Please configure GEMINI_API_KEY in the Secrets panel."))
+        }
+
+        try {
+            val names = buildList {
+                add(title)
+                if (!titleGerman.isNullOrBlank() && !titleGerman.equals(title, ignoreCase = true)) {
+                    add(titleGerman)
+                }
+            }.joinToString(" / ")
+
+            val ingSummary = if (ingredients.isNotEmpty()) {
+                "Key ingredients include: " + ingredients.take(8).joinToString(", ") + "."
+            } else ""
+
+            val stepsSummary = if (steps.isNotEmpty()) {
+                "Preparation technique: " + steps.take(3).joinToString(" ") + "."
+            } else ""
+
+            val promptText = buildString {
+                append("Create a stunning, mouth-watering, gourmet food photography portrait of the completed dish: \"$names\" ($category). ")
+                if (ingSummary.isNotBlank()) append("$ingSummary ")
+                if (stepsSummary.isNotBlank()) append("$stepsSummary ")
+                if (!notes.isNullOrBlank()) append("Culinary style: $notes. ")
+                if (referenceBitmap != null) {
+                    append("Inspect the attached reference image carefully. Accurately capture the dish's visual characteristics, colors, textures, crust, garnishes, and plating style, elevating it into a clean, professionally lit heirloom cookbook cover photograph.")
+                } else {
+                    append("Render the dish served fresh and beautifully plated in a warm, rustic kitchen setting with soft natural window lighting, gentle steam, appetizing texture, shallow depth of field, 4k culinary studio detail. No watermarks or overlaid text.")
+                }
+            }
+
+            // First try Imagen 3 endpoint via raw OkHttpClient
+            val imagenPayload = JSONObject().apply {
+                put("instances", JSONArray().apply {
+                    put(JSONObject().put("prompt", promptText))
+                })
+                put("parameters", JSONObject().apply {
+                    put("sampleCount", 1)
+                    put("aspectRatio", "1:1")
+                })
+            }
+
+            val imagenRequest = okhttp3.Request.Builder()
+                .url("${BASE_URL}v1beta/models/imagen-3.0-generate-002:predict?key=$apiKey")
+                .post(imagenPayload.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                .build()
+
+            var generatedBitmap: Bitmap? = null
+
+            try {
+                okHttpClient.newCall(imagenRequest).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val bodyStr = resp.body?.string() ?: ""
+                        val json = JSONObject(bodyStr)
+                        val preds = json.optJSONArray("predictions")
+                        if (preds != null && preds.length() > 0) {
+                            val pred = preds.getJSONObject(0)
+                            val b64 = pred.optString("bytesBase64Encoded")
+                            if (b64.isNotBlank()) {
+                                val bytes = Base64.decode(b64, Base64.DEFAULT)
+                                generatedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("GeminiRecipeService", "Imagen 3 generation call failed: ${e.message}")
+            }
+
+            if (generatedBitmap != null) {
+                return@withContext Result.success(generatedBitmap!!)
+            }
+
+            // Fallback: Gemini multimodal generateContent with responseModalities
+            val parts = mutableListOf<GeminiPart>()
+            parts.add(GeminiPart(text = promptText))
+
+            if (referenceBitmap != null) {
+                val b64 = bitmapToBase64(referenceBitmap)
+                if (b64.isNotBlank()) {
+                    parts.add(GeminiPart(inlineData = GeminiInlineData(mimeType = "image/jpeg", data = b64)))
+                }
+            }
+
+            val request = GeminiRequest(
+                contents = listOf(GeminiContent(parts = parts)),
+                generationConfig = GeminiGenerationConfig(
+                    responseModalities = listOf("IMAGE", "TEXT"),
+                    imageConfig = GeminiImageConfig(aspectRatio = "1:1", imageSize = "1K")
+                )
+            )
+
+            // Try supported image generation models
+            val response = try {
+                api.generateContent(model = "gemini-2.0-flash-exp", apiKey = apiKey, request = request)
+            } catch (err1: Throwable) {
+                Log.w("GeminiRecipeService", "gemini-2.0-flash-exp failed: ${err1.message}, trying gemini-2.0-flash")
+                api.generateContent(model = "gemini-2.0-flash", apiKey = apiKey, request = request)
+            }
+
+            val candidates = response.candidates
+            val allParts = candidates?.flatMap { it.content?.parts ?: emptyList() } ?: emptyList()
+            val imagePart = allParts.firstOrNull { it.inlineData != null && it.inlineData.data.isNotBlank() }
+
+            val base64Data = imagePart?.inlineData?.data
+
+            if (!base64Data.isNullOrBlank()) {
+                val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                if (bitmap != null) {
+                    Result.success(bitmap)
+                } else {
+                    Result.failure(Exception("Failed to decode generated image."))
+                }
+            } else {
+                val returnedText = allParts.mapNotNull { it.text }.joinToString(" ")
+                val err = if (returnedText.isNotBlank()) {
+                    "Model response: $returnedText"
+                } else {
+                    "No image data returned by AI model."
+                }
+                Result.failure(Exception(err))
+            }
+        } catch (t: Throwable) {
+            val errorMsg = if (t is retrofit2.HttpException) {
+                val errorBody = t.response()?.errorBody()?.string()
+                Log.e("GeminiRecipeService", "Gemini HTTP error ${t.code()}: $errorBody", t)
+                "Gemini AI error (${t.code()}): ${errorBody ?: t.message()}"
+            } else {
+                Log.e("GeminiRecipeService", "Error generating recipe cover image: ${t.message}", t)
+                t.localizedMessage ?: "Failed to generate recipe cover image"
+            }
+            Result.failure(Exception(errorMsg))
         }
     }
 }

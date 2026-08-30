@@ -14,6 +14,9 @@ import com.example.data.model.RecipeIngredient
 import com.example.data.model.RecipeStep
 import com.example.data.model.ShoppingCategorizer
 import com.example.data.model.UnitSystem
+import com.example.data.sync.SyncConfig
+import com.example.data.sync.SyncManager
+import com.example.data.sync.SyncResult
 import com.example.ui.util.ImageUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,6 +27,11 @@ class RecipeRepository(
     private val recipeDao: RecipeDao,
     private val shoppingDao: ShoppingDao
 ) {
+
+    val syncConfig: SyncConfig? = context?.let { SyncConfig(it) }
+    val syncManager: SyncManager? = if (context != null && syncConfig != null) {
+        SyncManager(context, recipeDao, syncConfig)
+    } else null
 
     val allRecipes: Flow<List<RecipeEntity>> = recipeDao.getAllRecipes()
     val favoriteRecipes: Flow<List<RecipeEntity>> = recipeDao.getFavoriteRecipes()
@@ -189,12 +197,31 @@ class RecipeRepository(
         }
     }
 
-    suspend fun insertRecipe(recipe: RecipeEntity): Long = recipeDao.insertRecipe(recipe)
+    suspend fun insertRecipe(recipe: RecipeEntity): Long {
+        val now = System.currentTimeMillis()
+        val prepared = recipe.copy(
+            updatedAt = now,
+            isDeleted = false,
+            syncStatus = "PENDING"
+        )
+        val id = recipeDao.insertRecipe(prepared)
+        syncManager?.triggerImmediateSync()
+        return id
+    }
 
     suspend fun insertAll(recipes: List<RecipeEntity>) {
+        val now = System.currentTimeMillis()
         recipes.forEach { recipe ->
-            recipeDao.insertRecipe(recipe.copy(id = 0))
+            recipeDao.insertRecipe(
+                recipe.copy(
+                    id = 0,
+                    updatedAt = now,
+                    isDeleted = false,
+                    syncStatus = "PENDING"
+                )
+            )
         }
+        syncManager?.triggerImmediateSync()
     }
 
     suspend fun getAllRecipesDirect(): List<RecipeEntity> = recipeDao.getAllRecipesDirect()
@@ -205,6 +232,7 @@ class RecipeRepository(
         if (replaceExisting) {
             recipeDao.deleteAll()
         }
+        val now = System.currentTimeMillis()
         recipes.forEach { recipe ->
             val cleanTitle = recipe.title.ifBlank {
                 recipe.titleEnglish.ifBlank {
@@ -219,21 +247,46 @@ class RecipeRepository(
                     id = 0,
                     title = cleanTitle,
                     titleGerman = titleGerman,
-                    titleEnglish = titleEnglish
+                    titleEnglish = titleEnglish,
+                    updatedAt = now,
+                    isDeleted = false,
+                    syncStatus = "PENDING"
                 )
             )
         }
+        syncManager?.triggerImmediateSync()
     }
 
-    suspend fun updateRecipe(recipe: RecipeEntity) = recipeDao.updateRecipe(recipe)
+    suspend fun updateRecipe(recipe: RecipeEntity) {
+        val updated = recipe.copy(
+            updatedAt = System.currentTimeMillis(),
+            syncStatus = "PENDING"
+        )
+        recipeDao.updateRecipe(updated)
+        syncManager?.triggerImmediateSync()
+    }
 
     suspend fun updateCategoryName(oldCategory: String, newCategory: String) = recipeDao.updateCategoryName(oldCategory, newCategory)
 
-    suspend fun deleteRecipe(recipe: RecipeEntity) = recipeDao.deleteRecipe(recipe)
+    suspend fun deleteRecipe(recipe: RecipeEntity) {
+        if (syncConfig?.isSyncEnabled == true) {
+            // Soft delete (isDeleted = true) so it propagates cleanly during delta sync to VPS
+            recipeDao.softDeleteRecipe(recipe.id)
+            syncManager?.triggerImmediateSync()
+        } else {
+            recipeDao.deleteRecipe(recipe)
+        }
+    }
 
-    suspend fun toggleFavorite(id: Long, isFavorite: Boolean) = recipeDao.updateFavorite(id, isFavorite)
+    suspend fun toggleFavorite(id: Long, isFavorite: Boolean) {
+        recipeDao.updateFavorite(id, isFavorite)
+        syncManager?.triggerImmediateSync()
+    }
 
-    suspend fun incrementCooked(id: Long) = recipeDao.incrementCooked(id)
+    suspend fun incrementCooked(id: Long) {
+        recipeDao.incrementCooked(id)
+        syncManager?.triggerImmediateSync()
+    }
 
     suspend fun scanAndProcessRecipe(
         imageBitmap: Bitmap?,
@@ -347,6 +400,39 @@ class RecipeRepository(
             imageUri = finalFoodImageUri ?: imageUri,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    suspend fun deduplicateCollection() {
+        val all = recipeDao.getAllRecipesDirect()
+        val seen = mutableListOf<RecipeEntity>()
+        for (recipe in all) {
+            val duplicate = seen.firstOrNull { existing ->
+                normalizeTitle(existing.title) == normalizeTitle(recipe.title) ||
+                (existing.titleEnglish.isNotBlank() && existing.titleEnglish.equals(recipe.titleEnglish, ignoreCase = true)) ||
+                (existing.titleGerman.isNotBlank() && existing.titleGerman.equals(recipe.titleGerman, ignoreCase = true)) ||
+                existing.title.equals(recipe.titleEnglish, ignoreCase = true) ||
+                recipe.title.equals(existing.titleEnglish, ignoreCase = true)
+            }
+
+            if (duplicate != null) {
+                // Merge richer info into the duplicate and hard delete the redundant recipe
+                val merged = duplicate.copy(
+                    titleEnglish = if (duplicate.titleEnglish.isNotBlank()) duplicate.titleEnglish else recipe.titleEnglish,
+                    titleGerman = if (duplicate.titleGerman.isNotBlank()) duplicate.titleGerman else recipe.titleGerman,
+                    imageUri = duplicate.imageUri ?: recipe.imageUri,
+                    coverPhotoName = duplicate.coverPhotoName ?: recipe.coverPhotoName,
+                    notes = if (duplicate.notes.isNotBlank()) duplicate.notes else recipe.notes,
+                    notesGerman = if (duplicate.notesGerman.isNotBlank()) duplicate.notesGerman else recipe.notesGerman,
+                    originStory = if (duplicate.originStory.isNotBlank()) duplicate.originStory else recipe.originStory,
+                    isFavorite = duplicate.isFavorite || recipe.isFavorite,
+                    timesCooked = maxOf(duplicate.timesCooked, recipe.timesCooked)
+                )
+                recipeDao.updateRecipe(merged)
+                recipeDao.hardDeleteRecipe(recipe.id)
+            } else {
+                seen.add(recipe)
+            }
+        }
     }
 
     suspend fun findDuplicateRecipe(candidate: RecipeEntity): RecipeEntity? {

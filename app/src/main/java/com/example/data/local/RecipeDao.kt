@@ -10,13 +10,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecipeDao {
-    @Query("SELECT * FROM recipes ORDER BY createdAt DESC")
+    @Query("SELECT * FROM recipes WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllRecipes(): Flow<List<RecipeEntity>>
 
-    @Query("SELECT * FROM recipes WHERE isFavorite = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM recipes WHERE isFavorite = 1 AND isDeleted = 0 ORDER BY createdAt DESC")
     fun getFavoriteRecipes(): Flow<List<RecipeEntity>>
 
-    @Query("SELECT * FROM recipes WHERE id = :id")
+    @Query("SELECT * FROM recipes WHERE id = :id AND isDeleted = 0")
     fun getRecipeById(id: Long): Flow<RecipeEntity?>
 
     @Query("SELECT * FROM recipes WHERE id = :id")
@@ -24,13 +24,15 @@ interface RecipeDao {
 
     @Query("""
         SELECT * FROM recipes 
-        WHERE title LIKE '%' || :query || '%' 
+        WHERE isDeleted = 0 AND (
+           title LIKE '%' || :query || '%' 
            OR titleGerman LIKE '%' || :query || '%' 
            OR titleEnglish LIKE '%' || :query || '%' 
            OR category LIKE '%' || :query || '%' 
            OR notes LIKE '%' || :query || '%'
            OR notesGerman LIKE '%' || :query || '%'
            OR originStory LIKE '%' || :query || '%'
+        )
         ORDER BY createdAt DESC
     """)
     fun searchRecipes(query: String): Flow<List<RecipeEntity>>
@@ -47,20 +49,35 @@ interface RecipeDao {
     @Delete
     suspend fun deleteRecipe(recipe: RecipeEntity)
 
-    @Query("UPDATE recipes SET isFavorite = :isFavorite WHERE id = :id")
-    suspend fun updateFavorite(id: Long, isFavorite: Boolean)
+    @Query("UPDATE recipes SET isDeleted = 1, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE id = :id")
+    suspend fun softDeleteRecipe(id: Long, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("UPDATE recipes SET timesCooked = timesCooked + 1 WHERE id = :id")
-    suspend fun incrementCooked(id: Long)
+    @Query("DELETE FROM recipes WHERE id = :id")
+    suspend fun hardDeleteRecipe(id: Long)
 
-    @Query("SELECT COUNT(*) FROM recipes")
+    @Query("UPDATE recipes SET isFavorite = :isFavorite, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE id = :id")
+    suspend fun updateFavorite(id: Long, isFavorite: Boolean, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE recipes SET timesCooked = timesCooked + 1, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE id = :id")
+    suspend fun incrementCooked(id: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("SELECT COUNT(*) FROM recipes WHERE isDeleted = 0")
     suspend fun getCount(): Int
 
-    @Query("UPDATE recipes SET category = :newCategory WHERE category = :oldCategory")
-    suspend fun updateCategoryName(oldCategory: String, newCategory: String)
+    @Query("UPDATE recipes SET category = :newCategory, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE category = :oldCategory AND isDeleted = 0")
+    suspend fun updateCategoryName(oldCategory: String, newCategory: String, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("SELECT * FROM recipes ORDER BY createdAt DESC")
+    @Query("SELECT * FROM recipes WHERE isDeleted = 0 ORDER BY createdAt DESC")
     suspend fun getAllRecipesDirect(): List<RecipeEntity>
+
+    @Query("SELECT * FROM recipes WHERE syncStatus = 'PENDING'")
+    suspend fun getPendingSyncRecipes(): List<RecipeEntity>
+
+    @Query("SELECT * FROM recipes WHERE title = :title LIMIT 1")
+    suspend fun getRecipeByTitle(title: String): RecipeEntity?
+
+    @Query("UPDATE recipes SET syncStatus = 'SYNCED' WHERE id IN (:ids)")
+    suspend fun markRecipesSynced(ids: List<Long>)
 
     @Query("DELETE FROM recipes")
     suspend fun deleteAll()

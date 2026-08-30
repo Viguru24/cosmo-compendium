@@ -2,7 +2,10 @@ package com.example.data.backup
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.core.content.FileProvider
 import com.example.ai.OfflineRecipeParser
 import com.example.data.local.RecipeEntity
@@ -14,6 +17,7 @@ import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -60,7 +64,60 @@ object BackupManager {
         return "Cookbook_Backup_$dateStr.json"
     }
 
-    fun exportToJson(recipes: List<RecipeEntity>): String {
+    private fun encodeImageFileToBase64(filePathOrUri: String?, context: Context?): String? {
+        if (filePathOrUri.isNullOrBlank()) return null
+        return try {
+            val file = File(filePathOrUri)
+            if (file.exists() && file.isFile) {
+                val length = file.length()
+                if (length > 1024 * 1024) { // Compress large images down to JPEG 85 to keep backup size efficient
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                    if (bitmap != null) {
+                        val stream = ByteArrayOutputStream()
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+                        Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+                    } else {
+                        Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+                    }
+                } else {
+                    Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+                }
+            } else if (context != null && (filePathOrUri.startsWith("content://") || filePathOrUri.startsWith("file://"))) {
+                val uri = Uri.parse(filePathOrUri)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    Base64.encodeToString(bytes, Base64.NO_WRAP)
+                }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun decodeBase64ToImageFile(context: Context?, base64Str: String?, recipeId: Long = 0L): String? {
+        if (context == null || base64Str.isNullOrBlank()) return null
+        return try {
+            val bytes = Base64.decode(base64Str, Base64.DEFAULT)
+            if (bytes.isNotEmpty()) {
+                val imagesDir = File(context.filesDir, "recipe_images")
+                if (!imagesDir.exists()) imagesDir.mkdirs()
+                val fileName = "recipe_${recipeId}_${System.currentTimeMillis()}_${(1000..9999).random()}.jpg"
+                val file = File(imagesDir, fileName)
+                file.outputStream().use { it.write(bytes) }
+                file.absolutePath
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun exportToJson(recipes: List<RecipeEntity>, context: Context? = null): String {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val manifest = BackupManifest(
             app = "Cookbook",
@@ -70,15 +127,10 @@ object BackupManager {
             recipeCount = recipes.size,
             recipes = recipes
         )
-        return try {
-            manifestAdapter.toJson(manifest)
-        } catch (e: Exception) {
-            // Fallback manual JSON serializer
-            serializeManualJson(manifest)
-        }
+        return serializeManualJson(manifest, context)
     }
 
-    private fun serializeManualJson(manifest: BackupManifest): String {
+    private fun serializeManualJson(manifest: BackupManifest, context: Context? = null): String {
         val root = JSONObject()
         root.put("app", manifest.app)
         root.put("schemaVersion", manifest.schemaVersion)
@@ -102,6 +154,13 @@ object BackupManager {
             robj.put("notesGerman", r.notesGerman)
             robj.put("sourceLanguage", r.sourceLanguage)
             robj.put("imageUri", r.imageUri ?: "")
+
+            // Embed full photo data so images are 100% bundled in backups
+            val b64 = encodeImageFileToBase64(r.imageUri, context)
+            if (!b64.isNullOrBlank()) {
+                robj.put("imageBase64", b64)
+            }
+
             robj.put("coverTheme", r.coverTheme)
             robj.put("isFavorite", r.isFavorite)
             robj.put("rating", r.rating)
@@ -141,7 +200,7 @@ object BackupManager {
         return root.toString(2)
     }
 
-    fun parseBackup(jsonContent: String): Result<BackupManifest> {
+    fun parseBackup(jsonContent: String, context: Context? = null): Result<BackupManifest> {
         val clean = jsonContent.trim().removePrefix("\uFEFF").trim()
         if (clean.isBlank()) {
             return Result.failure(IllegalArgumentException("Backup content is empty."))
@@ -172,7 +231,7 @@ object BackupManager {
         // 2. Resilient Manual JSON Parser (handles all schemas, JSON-LD, Paprika, string arrays, wrapped objects)
         try {
             if (clean.startsWith("{") || clean.startsWith("[")) {
-                val manual = parseManualJson(clean)
+                val manual = parseManualJson(clean, context)
                 if (manual.recipes.isNotEmpty()) {
                     return Result.success(manual)
                 }
@@ -249,7 +308,7 @@ object BackupManager {
         }
     }
 
-    private fun parseManualJson(jsonStr: String): BackupManifest {
+    private fun parseManualJson(jsonStr: String, context: Context? = null): BackupManifest {
         val clean = jsonStr.trim().removePrefix("\uFEFF").trim()
         val recipes = mutableListOf<RecipeEntity>()
         var appName = "Cookbook"
@@ -260,7 +319,7 @@ object BackupManager {
             for (i in 0 until arr.length()) {
                 val obj = arr.optJSONObject(i)
                 if (obj != null) {
-                    val r = parseSingleRecipeObject(obj)
+                    val r = parseSingleRecipeObject(obj, context)
                     if (r != null) recipes.add(r)
                 }
             }
@@ -279,7 +338,7 @@ object BackupManager {
                     foundArray = true
                     for (i in 0 until arr.length()) {
                         val obj = arr.optJSONObject(i) ?: continue
-                        val r = parseSingleRecipeObject(obj)
+                        val r = parseSingleRecipeObject(obj, context)
                         if (r != null) recipes.add(r)
                     }
                     if (recipes.isNotEmpty()) break
@@ -293,7 +352,7 @@ object BackupManager {
                 for (sk in singleObjKeys) {
                     val rObj = root.optJSONObject(sk)
                     if (rObj != null) {
-                        val r = parseSingleRecipeObject(rObj)
+                        val r = parseSingleRecipeObject(rObj, context)
                         if (r != null) {
                             recipes.add(r)
                             foundSingleObj = true
@@ -304,7 +363,7 @@ object BackupManager {
 
                 // If not found in wrappers, try root itself as a single recipe object
                 if (!foundSingleObj) {
-                    val r = parseSingleRecipeObject(root)
+                    val r = parseSingleRecipeObject(root, context)
                     if (r != null) recipes.add(r)
                 }
             }
@@ -320,7 +379,7 @@ object BackupManager {
         )
     }
 
-    private fun parseSingleRecipeObject(obj: JSONObject): RecipeEntity? {
+    private fun parseSingleRecipeObject(obj: JSONObject, context: Context? = null): RecipeEntity? {
         val titleCandidates = listOf(
             obj.optString("title"),
             obj.optString("name"),
@@ -378,7 +437,15 @@ object BackupManager {
         val rating = obj.optInt("rating", 5)
         val timesCooked = obj.optInt("timesCooked", 0)
         val originStory = obj.optString("originStory").takeIf { it.isNotBlank() } ?: "Restored recipe collection."
-        val imageUri = obj.optString("imageUri").takeIf { it.isNotBlank() } ?: obj.optString("image").takeIf { it.isNotBlank() }
+        
+        var imageUri = obj.optString("imageUri").takeIf { it.isNotBlank() } ?: obj.optString("image").takeIf { it.isNotBlank() }
+        val imageBase64 = obj.optString("imageBase64").takeIf { it.isNotBlank() }
+        if (!imageBase64.isNullOrBlank() && context != null) {
+            val restoredPath = decodeBase64ToImageFile(context, imageBase64, obj.optLong("id", 0L))
+            if (restoredPath != null) {
+                imageUri = restoredPath
+            }
+        }
         val createdAt = obj.optLong("createdAt", System.currentTimeMillis())
 
         val ingList = mutableListOf<RecipeIngredient>()
@@ -629,7 +696,7 @@ object BackupManager {
     fun saveLocalSnapshot(context: Context, recipes: List<RecipeEntity>): Boolean {
         return try {
             val file = File(context.filesDir, "cookbook_local_snapshot.json")
-            val json = exportToJson(recipes)
+            val json = exportToJson(recipes, context)
             file.writeText(json, Charsets.UTF_8)
             true
         } catch (e: Exception) {
@@ -706,7 +773,7 @@ object BackupManager {
             val fileName = "${prefix}${fileFormat.format(Date(timestamp))}.json"
             val file = File(backupsDir, fileName)
 
-            val json = exportToJson(recipes)
+            val json = exportToJson(recipes, context)
             file.writeText(json, Charsets.UTF_8)
 
             // Also keep working snapshot
@@ -761,7 +828,7 @@ object BackupManager {
         return files.mapNotNull { file ->
             try {
                 val content = file.readText(Charsets.UTF_8)
-                val parseRes = parseBackup(content)
+                val parseRes = parseBackup(content, context)
                 val count = parseRes.getOrNull()?.recipeCount ?: 0
                 val tag = when {
                     file.name.startsWith("pre_delete_") -> "Pre-Deletion Safety Backup"

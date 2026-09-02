@@ -28,19 +28,19 @@ jobs:
           xcodebuild -project "CosmoCompendium-iOS/CosmoCompendium.xcodeproj" \
                      -scheme "CosmoCompendium" \
                      -destination "generic/platform=macOS,variant=Mac Catalyst" \
-                     -derivedDataPath "build/macOS" \
+                     -derivedDataPath "$GITHUB_WORKSPACE/build/macOS" \
                      -configuration Release \
                      clean build \
                      CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package macOS DMG
         run: |
-          mkdir -p dist
-          APP_PATH="build/macOS/Build/Products/Release-maccatalyst/CosmoCompendium.app"
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          APP_PATH="$GITHUB_WORKSPACE/build/macOS/Build/Products/Release-maccatalyst/CosmoCompendium.app"
           hdiutil create -volname "Cosmo Compendium" \
                          -srcfolder "$APP_PATH" \
                          -ov -format UDZO \
-                         dist/CosmoCompendium-macOS.dmg
+                         "$GITHUB_WORKSPACE/dist/CosmoCompendium-macOS.dmg"
 
       - name: Upload macOS DMG Artifact
         uses: actions/upload-artifact@v4
@@ -63,17 +63,17 @@ jobs:
           xcodebuild -project "CosmoCompendium-iOS/CosmoCompendium.xcodeproj" \
                      -scheme "CosmoCompendium" \
                      -destination "generic/platform=iOS Simulator" \
-                     -derivedDataPath "build/iOS-Simulator" \
+                     -derivedDataPath "$GITHUB_WORKSPACE/build/iOS-Simulator" \
                      -configuration Release \
                      clean build \
                      CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
       - name: Package iOS Simulator Bundle
         run: |
-          mkdir -p dist
-          cd build/iOS-Simulator/Build/Products/Release-iphonesimulator
-          zip -r ../../../../dist/CosmoCompendium-iOS-Simulator.zip CosmoCompendium.app
-          cd ../../../..
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          APP_PATH="$GITHUB_WORKSPACE/build/iOS-Simulator/Build/Products/Release-iphonesimulator/CosmoCompendium.app"
+          cd "$GITHUB_WORKSPACE/build/iOS-Simulator/Build/Products/Release-iphonesimulator"
+          zip -r "$GITHUB_WORKSPACE/dist/CosmoCompendium-iOS-Simulator.zip" CosmoCompendium.app
 
       - name: Upload iOS Simulator Artifact
         uses: actions/upload-artifact@v4

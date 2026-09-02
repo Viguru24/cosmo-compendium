@@ -1,4 +1,4 @@
-name: Build Cosmo Compendium (macOS DMG & iOS)
+name: Build Cosmo Compendium (macOS DMG & iOS IPA)
 
 on:
   push:
@@ -48,8 +48,8 @@ jobs:
           name: CosmoCompendium-macOS-DMG
           path: dist/CosmoCompendium-macOS.dmg
 
-  build-ios-app:
-    name: Build iOS App & Simulator Bundle
+  build-ios-ipa:
+    name: Build iOS IPA & Simulator
     runs-on: macos-14
     steps:
       - name: Check out Git repository
@@ -58,32 +58,33 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app || true
 
-      - name: Build iOS Simulator App
+      - name: Build iOS Device App (ARM64)
         run: |
           xcodebuild -project "CosmoCompendium-iOS/CosmoCompendium.xcodeproj" \
                      -scheme "CosmoCompendium" \
-                     -destination "generic/platform=iOS Simulator" \
-                     -derivedDataPath "$GITHUB_WORKSPACE/build/iOS-Simulator" \
+                     -destination "generic/platform=iOS" \
+                     -derivedDataPath "$GITHUB_WORKSPACE/build/iOS-Device" \
                      -configuration Release \
                      clean build \
                      CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
-      - name: Package iOS Simulator Bundle
+      - name: Package iOS IPA
         run: |
-          mkdir -p "$GITHUB_WORKSPACE/dist"
-          APP_PATH="$GITHUB_WORKSPACE/build/iOS-Simulator/Build/Products/Release-iphonesimulator/CosmoCompendium.app"
-          cd "$GITHUB_WORKSPACE/build/iOS-Simulator/Build/Products/Release-iphonesimulator"
-          zip -r "$GITHUB_WORKSPACE/dist/CosmoCompendium-iOS-Simulator.zip" CosmoCompendium.app
+          mkdir -p "$GITHUB_WORKSPACE/dist/Payload"
+          cp -r "$GITHUB_WORKSPACE/build/iOS-Device/Build/Products/Release-iphoneos/CosmoCompendium.app" "$GITHUB_WORKSPACE/dist/Payload/"
+          cd "$GITHUB_WORKSPACE/dist"
+          zip -r "CosmoCompendium.ipa" "Payload"
+          rm -rf "Payload"
 
-      - name: Upload iOS Simulator Artifact
+      - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CosmoCompendium-iOS-Simulator
-          path: dist/CosmoCompendium-iOS-Simulator.zip
+          name: CosmoCompendium-iOS-IPA
+          path: dist/CosmoCompendium.ipa
 
   publish-release:
     name: Publish to GitHub Releases
-    needs: [build-macos-dmg, build-ios-app]
+    needs: [build-macos-dmg, build-ios-ipa]
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
@@ -97,6 +98,6 @@ jobs:
         with:
           files: |
             artifacts/CosmoCompendium-macOS-DMG/CosmoCompendium-macOS.dmg
-            artifacts/CosmoCompendium-iOS-Simulator/CosmoCompendium-iOS-Simulator.zip
+            artifacts/CosmoCompendium-iOS-IPA/CosmoCompendium.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

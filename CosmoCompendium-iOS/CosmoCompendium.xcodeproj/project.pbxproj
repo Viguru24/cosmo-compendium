@@ -1,0 +1,318 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CCB00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift */; };
+		CCB00022F267FB700E4F0B0 /* CoverTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00022F267FB700E4F0B0 /* CoverTheme.swift */; };
+		CCB00032F267FB700E4F0B0 /* DefaultRecipes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00032F267FB700E4F0B0 /* DefaultRecipes.swift */; };
+		CCB00042F267FB700E4F0B0 /* GermanCulinaryGlossary.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00042F267FB700E4F0B0 /* GermanCulinaryGlossary.swift */; };
+		CCB00052F267FB700E4F0B0 /* Recipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00052F267FB700E4F0B0 /* Recipe.swift */; };
+		CCB00062F267FB700E4F0B0 /* RecipeIngredient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00062F267FB700E4F0B0 /* RecipeIngredient.swift */; };
+		CCB00072F267FB700E4F0B0 /* RecipeStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00072F267FB700E4F0B0 /* RecipeStep.swift */; };
+		CCB00082F267FB700E4F0B0 /* ShoppingItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00082F267FB700E4F0B0 /* ShoppingItem.swift */; };
+		CCB00092F267FB700E4F0B0 /* UnitSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00092F267FB700E4F0B0 /* UnitSystem.swift */; };
+		CCB00102F267FB700E4F0B0 /* RealisticLeatherCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00102F267FB700E4F0B0 /* RealisticLeatherCover.swift */; };
+		CCB00112F267FB700E4F0B0 /* BookletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00112F267FB700E4F0B0 /* BookletView.swift */; };
+		CCB00122F267FB700E4F0B0 /* BookshelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00122F267FB700E4F0B0 /* BookshelfView.swift */; };
+		CCB00132F267FB700E4F0B0 /* DocumentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00132F267FB700E4F0B0 /* DocumentScannerView.swift */; };
+		CCB00142F267FB700E4F0B0 /* KitchenCookModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00142F267FB700E4F0B0 /* KitchenCookModeView.swift */; };
+		CCB00152F267FB700E4F0B0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00152F267FB700E4F0B0 /* SettingsView.swift */; };
+		CCB00162F267FB700E4F0B0 /* ShoppingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00162F267FB700E4F0B0 /* ShoppingListView.swift */; };
+		CCB00172F267FB700E4F0B0 /* SmartConverterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00172F267FB700E4F0B0 /* SmartConverterSheet.swift */; };
+		CCB00182F267FB700E4F0B0 /* GeminiRecipeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00182F267FB700E4F0B0 /* GeminiRecipeService.swift */; };
+		CCB00192F267FB700E4F0B0 /* OfflineRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00192F267FB700E4F0B0 /* OfflineRecipeParser.swift */; };
+		CCB00202F267FB700E4F0B0 /* RecipePdfGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00202F267FB700E4F0B0 /* RecipePdfGenerator.swift */; };
+		CCB00212F267FB700E4F0B0 /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00212F267FB700E4F0B0 /* UnitConverter.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		CCA00012F267FB700E4F0B0 /* CosmoCompendium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CosmoCompendium.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCF00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/CosmoCompendiumApp.swift"; sourceTree = "<group>"; };
+		CCF00022F267FB700E4F0B0 /* CoverTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/CoverTheme.swift"; sourceTree = "<group>"; };
+		CCF00032F267FB700E4F0B0 /* DefaultRecipes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/DefaultRecipes.swift"; sourceTree = "<group>"; };
+		CCF00042F267FB700E4F0B0 /* GermanCulinaryGlossary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/GermanCulinaryGlossary.swift"; sourceTree = "<group>"; };
+		CCF00052F267FB700E4F0B0 /* Recipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/Recipe.swift"; sourceTree = "<group>"; };
+		CCF00062F267FB700E4F0B0 /* RecipeIngredient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/RecipeIngredient.swift"; sourceTree = "<group>"; };
+		CCF00072F267FB700E4F0B0 /* RecipeStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/RecipeStep.swift"; sourceTree = "<group>"; };
+		CCF00082F267FB700E4F0B0 /* ShoppingItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/ShoppingItem.swift"; sourceTree = "<group>"; };
+		CCF00092F267FB700E4F0B0 /* UnitSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/UnitSystem.swift"; sourceTree = "<group>"; };
+		CCF00102F267FB700E4F0B0 /* RealisticLeatherCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Components/RealisticLeatherCover.swift"; sourceTree = "<group>"; };
+		CCF00112F267FB700E4F0B0 /* BookletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/BookletView.swift"; sourceTree = "<group>"; };
+		CCF00122F267FB700E4F0B0 /* BookshelfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/BookshelfView.swift"; sourceTree = "<group>"; };
+		CCF00132F267FB700E4F0B0 /* DocumentScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/DocumentScannerView.swift"; sourceTree = "<group>"; };
+		CCF00142F267FB700E4F0B0 /* KitchenCookModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/KitchenCookModeView.swift"; sourceTree = "<group>"; };
+		CCF00152F267FB700E4F0B0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/SettingsView.swift"; sourceTree = "<group>"; };
+		CCF00162F267FB700E4F0B0 /* ShoppingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/ShoppingListView.swift"; sourceTree = "<group>"; };
+		CCF00172F267FB700E4F0B0 /* SmartConverterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/SmartConverterSheet.swift"; sourceTree = "<group>"; };
+		CCF00182F267FB700E4F0B0 /* GeminiRecipeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/GeminiRecipeService.swift"; sourceTree = "<group>"; };
+		CCF00192F267FB700E4F0B0 /* OfflineRecipeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/OfflineRecipeParser.swift"; sourceTree = "<group>"; };
+		CCF00202F267FB700E4F0B0 /* RecipePdfGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/RecipePdfGenerator.swift"; sourceTree = "<group>"; };
+		CCF00212F267FB700E4F0B0 /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/UnitConverter.swift"; sourceTree = "<group>"; };
+		CCF09992F267FB700E4F0B0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CCR00012F267FB700E4F0B0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		CCG00012F267FB700E4F0B0 = {
+			isa = PBXGroup;
+			children = (
+				CCF00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift */,
+				CCF00022F267FB700E4F0B0 /* CoverTheme.swift */,
+				CCF00032F267FB700E4F0B0 /* DefaultRecipes.swift */,
+				CCF00042F267FB700E4F0B0 /* GermanCulinaryGlossary.swift */,
+				CCF00052F267FB700E4F0B0 /* Recipe.swift */,
+				CCF00062F267FB700E4F0B0 /* RecipeIngredient.swift */,
+				CCF00072F267FB700E4F0B0 /* RecipeStep.swift */,
+				CCF00082F267FB700E4F0B0 /* ShoppingItem.swift */,
+				CCF00092F267FB700E4F0B0 /* UnitSystem.swift */,
+				CCF00102F267FB700E4F0B0 /* RealisticLeatherCover.swift */,
+				CCF00112F267FB700E4F0B0 /* BookletView.swift */,
+				CCF00122F267FB700E4F0B0 /* BookshelfView.swift */,
+				CCF00132F267FB700E4F0B0 /* DocumentScannerView.swift */,
+				CCF00142F267FB700E4F0B0 /* KitchenCookModeView.swift */,
+				CCF00152F267FB700E4F0B0 /* SettingsView.swift */,
+				CCF00162F267FB700E4F0B0 /* ShoppingListView.swift */,
+				CCF00172F267FB700E4F0B0 /* SmartConverterSheet.swift */,
+				CCF00182F267FB700E4F0B0 /* GeminiRecipeService.swift */,
+				CCF00192F267FB700E4F0B0 /* OfflineRecipeParser.swift */,
+				CCF00202F267FB700E4F0B0 /* RecipePdfGenerator.swift */,
+				CCF00212F267FB700E4F0B0 /* UnitConverter.swift */,
+				CCF09992F267FB700E4F0B0 /* Info.plist */,
+				CCG00022F267FB700E4F0B0 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CCG00022F267FB700E4F0B0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CCA00012F267FB700E4F0B0 /* CosmoCompendium.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CCT00012F267FB700E4F0B0 /* CosmoCompendium */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CCL00012F267FB700E4F0B0 /* Build configuration list for PBXNativeTarget "CosmoCompendium" */;
+			buildPhases = (
+				CCS00012F267FB700E4F0B0 /* Sources */,
+				CCR00012F267FB700E4F0B0 /* Frameworks */,
+				CCM00012F267FB700E4F0B0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CosmoCompendium;
+			productName = CosmoCompendium;
+			productReference = CCA00012F267FB700E4F0B0 /* CosmoCompendium.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CCP00012F267FB700E4F0B0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					CCT00012F267FB700E4F0B0 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+				};
+			};
+			buildConfigurationList = CCL00022F267FB700E4F0B0 /* Build configuration list for PBXProject "CosmoCompendium" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = CCG00012F267FB700E4F0B0;
+			productRefGroup = CCG00022F267FB700E4F0B0 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CCT00012F267FB700E4F0B0 /* CosmoCompendium */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CCM00012F267FB700E4F0B0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CCS00012F267FB700E4F0B0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CCB00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift in Sources */,
+				CCB00022F267FB700E4F0B0 /* CoverTheme.swift in Sources */,
+				CCB00032F267FB700E4F0B0 /* DefaultRecipes.swift in Sources */,
+				CCB00042F267FB700E4F0B0 /* GermanCulinaryGlossary.swift in Sources */,
+				CCB00052F267FB700E4F0B0 /* Recipe.swift in Sources */,
+				CCB00062F267FB700E4F0B0 /* RecipeIngredient.swift in Sources */,
+				CCB00072F267FB700E4F0B0 /* RecipeStep.swift in Sources */,
+				CCB00082F267FB700E4F0B0 /* ShoppingItem.swift in Sources */,
+				CCB00092F267FB700E4F0B0 /* UnitSystem.swift in Sources */,
+				CCB00102F267FB700E4F0B0 /* RealisticLeatherCover.swift in Sources */,
+				CCB00112F267FB700E4F0B0 /* BookletView.swift in Sources */,
+				CCB00122F267FB700E4F0B0 /* BookshelfView.swift in Sources */,
+				CCB00132F267FB700E4F0B0 /* DocumentScannerView.swift in Sources */,
+				CCB00142F267FB700E4F0B0 /* KitchenCookModeView.swift in Sources */,
+				CCB00152F267FB700E4F0B0 /* SettingsView.swift in Sources */,
+				CCB00162F267FB700E4F0B0 /* ShoppingListView.swift in Sources */,
+				CCB00172F267FB700E4F0B0 /* SmartConverterSheet.swift in Sources */,
+				CCB00182F267FB700E4F0B0 /* GeminiRecipeService.swift in Sources */,
+				CCB00192F267FB700E4F0B0 /* OfflineRecipeParser.swift in Sources */,
+				CCB00202F267FB700E4F0B0 /* RecipePdfGenerator.swift in Sources */,
+				CCB00212F267FB700E4F0B0 /* UnitConverter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CCC00032F267FB700E4F0B0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		CCC00042F267FB700E4F0B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		CCC00012F267FB700E4F0B0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.viguru24.cosmocompendium;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,6";
+				SUPPORTS_MACCATALYST = YES;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+			};
+			name = Debug;
+		};
+		CCC00022F267FB700E4F0B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.viguru24.cosmocompendium;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,6";
+				SUPPORTS_MACCATALYST = YES;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CCL00022F267FB700E4F0B0 /* Build configuration list for PBXProject "CosmoCompendium" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CCC00032F267FB700E4F0B0 /* Debug */,
+				CCC00042F267FB700E4F0B0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CCL00012F267FB700E4F0B0 /* Build configuration list for PBXNativeTarget "CosmoCompendium" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CCC00012F267FB700E4F0B0 /* Debug */,
+				CCC00022F267FB700E4F0B0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = CCP00012F267FB700E4F0B0 /* Project object */;
+}

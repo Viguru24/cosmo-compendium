@@ -16,3 +16,11 @@
 local.properties
 .env
 debug.keystore
+
+# Xcode & Build Artifacts
+build/
+dist/
+*.xcuserdatad
+*.xcscmblueprint
+DerivedData/
+.build/

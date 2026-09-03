@@ -155,14 +155,45 @@ public final class GeminiRecipeService {
         }
     }
 
-    public static let primaryModel = "gemini-3.7-flash"
+    public static let primaryModel = "gemini-2.5-flash"
+    public static let fallbackModel = "gemini-3.5-flash"
+
+    public var selectedModel: String {
+        get {
+            let val = UserDefaults.standard.string(forKey: "gemini_selected_model")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return val.isEmpty ? Self.primaryModel : val
+        }
+        set {
+            UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "gemini_selected_model")
+        }
+    }
+
+    public func getDiscoveredModels() -> [String] {
+        if !discoveredLiveModels.isEmpty { return discoveredLiveModels }
+        return UserDefaults.standard.stringArray(forKey: "gemini_discovered_models") ?? [
+            Self.primaryModel,
+            Self.fallbackModel,
+            "gemini-flash-latest",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-3.7-flash"
+        ]
+    }
 
     public func getEffectiveModels() async -> [String] {
-        return [
-            "gemini-3.7-flash",
-            "gemini-3.8-flash",
-            "gemini-flash-latest"
-        ]
+        var list: [String] = []
+        let chosen = selectedModel
+        if !chosen.isEmpty && !retiredModels.contains(chosen) {
+            list.append(chosen)
+        }
+
+        let chain = [Self.primaryModel, Self.fallbackModel, "gemini-flash-latest"]
+        for m in chain {
+            if !list.contains(m) && !retiredModels.contains(m) {
+                list.append(m)
+            }
+        }
+        return list
     }
 
     public func generateText(prompt: String, systemInstruction: String? = nil) async throws -> String {
@@ -208,7 +239,7 @@ public final class GeminiRecipeService {
                        let content = first["content"] as? [String: Any],
                        let parts = content["parts"] as? [[String: Any]],
                        let text = parts.first?["text"] as? String {
-                        self.lastSuccessfulModel = model
+                        self.selectedModel = model
                         return text.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                 } else if let http = response as? HTTPURLResponse {
@@ -226,26 +257,27 @@ public final class GeminiRecipeService {
         throw NSError(domain: "GeminiRecipeService", code: -2, userInfo: [NSLocalizedDescriptionKey: lastErrorMessage])
     }
 
-    public func testApiKey(_ rawKey: String? = nil) async -> (Bool, String) {
+    public func testApiKey(_ rawKey: String? = nil) async -> (Bool, String, [String]) {
         let key = Self.sanitizeApiKey(rawKey ?? apiKey)
         guard !key.isEmpty else {
-            return (false, "Please enter an API key.")
+            return (false, "Please enter an API key.", [])
         }
 
         let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(key)"
         guard let url = URL(string: urlString) else {
-            return (false, "Invalid URL structure.")
+            return (false, "Invalid URL structure.", [])
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.timeoutInterval = 10.0
         request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
-                return (false, "No HTTP response.")
+                return (false, "No HTTP response.", [])
             }
             if (200...299).contains(httpResponse.statusCode) {
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -258,18 +290,22 @@ public final class GeminiRecipeService {
                     }
                     if !names.isEmpty {
                         self.discoveredLiveModels = names
-                        let topFlash = names.filter { $0.contains("flash") }
-                        let displayModel = topFlash.first ?? names.first ?? "Gemini"
-                        return (true, "Active! (Connected to \(displayModel))")
+                        UserDefaults.standard.set(names, forKey: "gemini_discovered_models")
+                        let flashModels = names.filter { $0.contains("flash") }
+                        let best = flashModels.first ?? names.first ?? "gemini-2.0-flash"
+                        if UserDefaults.standard.string(forKey: "gemini_selected_model") == nil {
+                            self.selectedModel = best
+                        }
+                        return (true, "Active! Available models: \(names.prefix(4).joined(separator: ", "))", names)
                     }
                 }
-                return (true, "Connected successfully to Google Gemini AI!")
+                return (true, "Connected successfully to Google Gemini AI!", [])
             } else {
                 let errText = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
-                return (false, "API Error (\(httpResponse.statusCode)): \(errText)")
+                return (false, "API Error (\(httpResponse.statusCode)): \(errText)", [])
             }
         } catch {
-            return (false, error.localizedDescription)
+            return (false, error.localizedDescription, [])
         }
     }
 
@@ -395,7 +431,7 @@ public final class GeminiRecipeService {
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
-                    self.lastSuccessfulModel = model
+                    self.selectedModel = model
                     responseData = data
                     break
                 } else {

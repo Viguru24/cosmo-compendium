@@ -9,6 +9,16 @@ public struct SettingsView: View {
     @AppStorage("default_unit_system") private var defaultUnitSystemRaw = UnitSystem.ukImperial.rawValue
     @AppStorage("language_mode") private var languageModeRaw = LanguageMode.both.rawValue
 
+    @AppStorage("gemini_selected_model") private var selectedModel = "gemini-2.5-flash"
+    @State private var availableModels: [String] = [
+        "gemini-2.5-flash",
+        "gemini-3.5-flash",
+        "gemini-flash-latest",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-3.7-flash"
+    ]
+
     @State private var showingResetAlert = false
     @State private var isTestingApiKey = false
     @State private var apiTestResult: (success: Bool, message: String)? = nil
@@ -28,6 +38,13 @@ public struct SettingsView: View {
                                 isTestingApiKey = true
                                 let res = await GeminiRecipeService.shared.testApiKey(geminiApiKey)
                                 apiTestResult = (res.0, res.1)
+                                if !res.2.isEmpty {
+                                    availableModels = res.2
+                                    if !res.2.contains(selectedModel) {
+                                        let flash = res.2.filter { $0.contains("flash") }
+                                        selectedModel = flash.first ?? res.2.first ?? "gemini-2.0-flash"
+                                    }
+                                }
                                 isTestingApiKey = false
                             }
                         } label: {
@@ -57,10 +74,28 @@ public struct SettingsView: View {
                         }
                     }
 
-                    if let res = apiTestResult, !res.success {
+                    if let res = apiTestResult {
                         Text(res.message)
                             .font(.caption2)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(res.success ? Color.secondary : Color.red)
+                    }
+
+                    // Model Selection
+                    Picker("Active Gemini Model", selection: $selectedModel) {
+                        ForEach(availableModels, id: \.self) { m in
+                            Text(m).tag(m)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    HStack {
+                        Text("Model ID:")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        TextField("e.g. gemini-2.5-flash", text: $selectedModel)
+                            .font(.system(size: 13, design: .monospaced))
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
                     }
 
                     Link(destination: URL(string: "https://aistudio.google.com/app/apikey")!) {
@@ -75,7 +110,7 @@ public struct SettingsView: View {
                 } header: {
                     Text("GEMINI VISION AI SCANNER")
                 } footer: {
-                    Text("Empowers continuous multi-page synthesis, handwriting transcription, and food photo auto-cropping. If no key is set or network is offline, the local OCR engine is used automatically.")
+                    Text("Select or enter the exact model ID for your API key tier. The app uses this model first for instant scanning and Sous Chef answers.")
                 }
 
                 Section {
@@ -141,6 +176,12 @@ public struct SettingsView: View {
                 }
             } message: {
                 Text("This will insert any missing default recipes into your collection.")
+            }
+            .onAppear {
+                let saved = GeminiRecipeService.shared.getDiscoveredModels()
+                for s in saved where !availableModels.contains(s) {
+                    availableModels.append(s)
+                }
             }
         }
     }

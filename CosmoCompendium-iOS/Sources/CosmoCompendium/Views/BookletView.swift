@@ -7,6 +7,14 @@ public struct BookletView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage("image_gen_engine") private var imageGenEngineRaw = ImageGenEngine.comfyUi.rawValue
+    @AppStorage("comfyui_url") private var comfyUiUrl = "http://192.168.1.54:8188"
+    @AppStorage("comfyui_checkpoint") private var comfyUiCheckpoint = "v1-5-pruned-emaonly.safetensors"
+
+    @State private var isGeneratingPhoto = false
+    @State private var photoGenStatus = ""
+    @State private var photoGenError: String? = nil
+
     @State private var activeTab = 0 // 0: Overview & Ingredients, 1: Directions, 2: Craft / Notes
     @State private var unitSystem: UnitSystem = .ukImperial
     @State private var checkedIngredients: Set<String> = []
@@ -47,6 +55,26 @@ public struct BookletView: View {
                     .padding(.bottom, 90)
                 }
             }
+
+            if isGeneratingPhoto {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                VStack(spacing: 14) {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+                    Text(photoGenStatus)
+                        .font(.system(size: 14, weight: .semibold, design: .serif))
+                        .foregroundStyle(Color(red: 0x2A / 255.0, green: 0x18 / 255.0, blue: 0x10 / 255.0))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(24)
+                .background(Color(red: 0xFF / 255.0, green: 0xFD / 255.0, blue: 0xF9 / 255.0))
+                .cornerRadius(16)
+                .shadow(radius: 20)
+                .padding(32)
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -82,6 +110,11 @@ public struct BookletView: View {
             if let data = pdfData {
                 ShareSheet(items: [data])
             }
+        }
+        .alert("Cover Photo Generation", isPresented: Binding(get: { photoGenError != nil }, set: { if !$0 { photoGenError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(photoGenError ?? "")
         }
     }
 
@@ -143,6 +176,52 @@ public struct BookletView: View {
             }
             .font(.system(size: 12, design: .serif))
             .foregroundStyle(Color(red: 0x5D / 255.0, green: 0x40 / 255.0, blue: 0x37 / 255.0))
+
+            // Cover Photo Banner & Generator
+            if let path = recipe.imagePath, let uiImg = UIImage(contentsOfFile: path) {
+                ZStack(alignment: .bottomTrailing) {
+                    Image(uiImage: uiImg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+
+                    Button {
+                        generateCoverPhoto()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "sparkles")
+                            Text("Regenerate Photo")
+                                .font(.caption.bold())
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+                    }
+                    .padding(10)
+                }
+            } else {
+                Button {
+                    generateCoverPhoto()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 15))
+                        Text(imageGenEngineRaw == ImageGenEngine.comfyUi.rawValue ? "Generate Cover Photo with Wi-Fi PC" : "Generate Cover Photo with Cloud AI")
+                            .font(.system(size: 13, weight: .bold, design: .serif))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(red: 0xFE / 255.0, green: 0xF3 / 255.0, blue: 0xC7 / 255.0))
+                    .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0).opacity(0.3), lineWidth: 1))
+                }
+            }
 
             Divider()
                 .overlay(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0).opacity(0.2))
@@ -406,6 +485,56 @@ public struct BookletView: View {
         let data = RecipePdfGenerator.generatePdf(for: recipe, unitSystem: unitSystem)
         self.pdfData = data
         self.isShowingShareSheet = true
+    }
+
+    private func generateCoverPhoto() {
+        Task {
+            isGeneratingPhoto = true
+            photoGenStatus = "Preparing recipe details..."
+            do {
+                let img: UIImage
+                if imageGenEngineRaw == ImageGenEngine.comfyUi.rawValue {
+                    img = try await ComfyUiClient.shared.generateRecipeImage(
+                        baseUrl: comfyUiUrl,
+                        title: recipe.title,
+                        category: recipe.category,
+                        ingredients: recipe.ingredients.map { $0.nameEnglish ?? $0.name },
+                        steps: recipe.steps.map(\.instructionEnglish),
+                        customCheckpoint: comfyUiCheckpoint
+                    ) { status in
+                        Task { @MainActor in
+                            photoGenStatus = status
+                        }
+                    }
+                } else {
+                    photoGenStatus = "Connecting to Gemini AI..."
+                    img = try await ComfyUiClient.shared.generateRecipeImage(
+                        baseUrl: comfyUiUrl,
+                        title: recipe.title,
+                        category: recipe.category,
+                        ingredients: recipe.ingredients.map { $0.nameEnglish ?? $0.name },
+                        steps: recipe.steps.map(\.instructionEnglish),
+                        customCheckpoint: comfyUiCheckpoint
+                    ) { status in
+                        Task { @MainActor in
+                            photoGenStatus = status
+                        }
+                    }
+                }
+
+                let filename = "recipe_cover_\(recipe.id)_\(Int(Date().timeIntervalSince1970)).jpg"
+                if let data = img.jpegData(compressionQuality: 0.88) {
+                    let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    let path = docs.appendingPathComponent(filename)
+                    try data.write(to: path)
+                    recipe.imagePath = path.path
+                    try? modelContext.save()
+                }
+            } catch {
+                photoGenError = error.localizedDescription
+            }
+            isGeneratingPhoto = false
+        }
     }
 }
 

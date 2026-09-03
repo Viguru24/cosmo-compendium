@@ -34,6 +34,8 @@
 		CCB00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift */; };
 		CCB00262F267FB700E4F0B0 /* CategoryManagerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00262F267FB700E4F0B0 /* CategoryManagerSheet.swift */; };
 		CCB00272F267FB700E4F0B0 /* CookbookGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */; };
+		CCB00282F267FB700E4F0B0 /* ComfyUiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00282F267FB700E4F0B0 /* ComfyUiClient.swift */; };
+		CCB00292F267FB700E4F0B0 /* CloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00292F267FB700E4F0B0 /* CloudSyncManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +67,8 @@
 		CCF00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/UrlRecipeImportSheet.swift"; sourceTree = "<group>"; };
 		CCF00262F267FB700E4F0B0 /* CategoryManagerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/CategoryManagerSheet.swift"; sourceTree = "<group>"; };
 		CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/CookbookGuideSheet.swift"; sourceTree = "<group>"; };
+		CCF00282F267FB700E4F0B0 /* ComfyUiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/ComfyUiClient.swift"; sourceTree = "<group>"; };
+		CCF00292F267FB700E4F0B0 /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/CloudSyncManager.swift"; sourceTree = "<group>"; };
 		CCF09992F267FB700E4F0B0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -109,6 +113,8 @@
 				CCF00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift */,
 				CCF00262F267FB700E4F0B0 /* CategoryManagerSheet.swift */,
 				CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */,
+				CCF00282F267FB700E4F0B0 /* ComfyUiClient.swift */,
+				CCF00292F267FB700E4F0B0 /* CloudSyncManager.swift */,
 				CCF09992F267FB700E4F0B0 /* Info.plist */,
 				CCG00022F267FB700E4F0B0 /* Products */,
 			);
@@ -216,6 +222,8 @@
 				CCB00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift in Sources */,
 				CCB00262F267FB700E4F0B0 /* CategoryManagerSheet.swift in Sources */,
 				CCB00272F267FB700E4F0B0 /* CookbookGuideSheet.swift in Sources */,
+				CCB00282F267FB700E4F0B0 /* ComfyUiClient.swift in Sources */,
+				CCB00292F267FB700E4F0B0 /* CloudSyncManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

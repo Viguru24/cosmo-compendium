@@ -53,17 +53,76 @@ public final class GeminiRecipeService {
 
     public var apiKey: String {
         get {
-            UserDefaults.standard.string(forKey: "gemini_api_key") ?? ""
+            Self.sanitizeApiKey(UserDefaults.standard.string(forKey: "gemini_api_key"))
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "gemini_api_key")
+            UserDefaults.standard.set(Self.sanitizeApiKey(newValue), forKey: "gemini_api_key")
+        }
+    }
+
+    public static func sanitizeApiKey(_ raw: String?) -> String {
+        guard var key = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else { return "" }
+        key = key.replacingOccurrences(of: "\u{200B}", with: "")
+                 .replacingOccurrences(of: "\u{200C}", with: "")
+                 .replacingOccurrences(of: "\u{200D}", with: "")
+                 .replacingOccurrences(of: "\u{FEFF}", with: "")
+                 .replacingOccurrences(of: "\u{00A0}", with: " ")
+                 .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let prefixes = [
+            "export GEMINI_API_KEY=",
+            "export GOOGLE_API_KEY=",
+            "GEMINI_API_KEY=",
+            "GOOGLE_API_KEY=",
+            "API_KEY=",
+            "key=",
+            "Bearer ",
+            "token="
+        ]
+        for p in prefixes {
+            if key.hasPrefix(p) {
+                key = String(key.dropFirst(p.count))
+            }
+        }
+        return key.trimmingCharacters(in: CharacterSet(charactersIn: "\"' \t\n\r"))
+    }
+
+    public func testApiKey(_ rawKey: String? = nil) async -> (Bool, String) {
+        let key = Self.sanitizeApiKey(rawKey ?? apiKey)
+        guard !key.isEmpty else {
+            return (false, "Please enter an API key.")
+        }
+
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(key)"
+        guard let url = URL(string: urlString) else {
+            return (false, "Invalid URL structure.")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return (false, "No HTTP response.")
+            }
+            if (200...299).contains(httpResponse.statusCode) {
+                return (true, "Connected successfully to Google Gemini AI!")
+            } else {
+                let errText = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+                return (false, "API Error (\(httpResponse.statusCode)): \(errText)")
+            }
+        } catch {
+            return (false, error.localizedDescription)
         }
     }
 
     private init() {}
 
     /**
-     Synthesizes unlimited captured recipe pages into a single unified recipe entity.
+     Synthesizes captured recipe pages into a single unified recipe entity.
      Extracts food photo bounding box if present and crops it.
      */
     public func scanRecipePages(
@@ -149,7 +208,7 @@ public final class GeminiRecipeService {
                     "data": base64
                 ]
             ])
-            progressHandler?("Encoded page \(idx + 1) of \(images.count)...")
+            progressHandler?("Prepared page \(idx + 1) of \(images.count)...")
         }
 
         let requestBody: [String: Any] = [
@@ -180,9 +239,10 @@ public final class GeminiRecipeService {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
 
-            progressHandler?("Scanning with AI model (\(model))...")
+            progressHandler?("Transcribing with Gemini (\(model))...")
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
@@ -190,15 +250,17 @@ public final class GeminiRecipeService {
                     break
                 } else {
                     let errStr = String(data: data, encoding: .utf8) ?? "HTTP error"
-                    lastError = NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "\(model) failed: \(errStr)"])
+                    lastError = NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "\(model): \(errStr)"])
                 }
             } catch {
                 lastError = error
             }
         }
 
+        // If Gemini API fails or is unavailable, gracefully fall back to Offline OCR
         guard let data = responseData else {
-            throw lastError ?? NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "All Gemini AI models unavailable"])
+            progressHandler?("Falling back to local offline transcription...")
+            return parseOffline(images: images)
         }
 
         // Parse candidate response
@@ -208,20 +270,25 @@ public final class GeminiRecipeService {
               let content = firstCandidate["content"] as? [String: Any],
               let resParts = content["parts"] as? [[String: Any]],
               let textResponse = resParts.first?["text"] as? String else {
-            throw NSError(domain: "GeminiRecipeService", code: -4, userInfo: [NSLocalizedDescriptionKey: "Failed to parse Gemini response"])
+            return parseOffline(images: images)
         }
 
-        // Clean JSON markdown fences if present
-        let cleanJson = textResponse
+        // Resilient JSON substring extraction
+        var cleanJson = textResponse
             .replacingOccurrences(of: "^```json\\s*", with: "", options: .regularExpression)
             .replacingOccurrences(of: "\\s*```$", with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let recipeData = cleanJson.data(using: .utf8) else {
-            throw NSError(domain: "GeminiRecipeService", code: -5, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON response"])
+        if let firstBrace = cleanJson.firstIndex(of: "{"),
+           let lastBrace = cleanJson.lastIndex(of: "}") {
+            cleanJson = String(cleanJson[firstBrace...lastBrace])
         }
 
-        let parsed = try JSONDecoder().decode(GeminiRecipeResponse.self, from: recipeData)
+        guard let recipeData = cleanJson.data(using: .utf8),
+              let parsed = try? JSONDecoder().decode(GeminiRecipeResponse.self, from: recipeData) else {
+            // Fallback to offline parsing if JSON decoding fails
+            return parseOffline(images: images)
+        }
 
         // Convert parsed DTO to Recipe model
         let ingredients = (parsed.ingredients ?? []).map { dto in

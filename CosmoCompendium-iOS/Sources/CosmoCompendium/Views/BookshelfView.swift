@@ -5,6 +5,8 @@ public struct BookshelfView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
 
+    @ObservedObject var profileManager = ProfileManager.shared
+
     @State private var searchText = ""
     @State private var selectedCategory: String = "All"
     @State private var showFavoritesOnly = false
@@ -13,7 +15,15 @@ public struct BookshelfView: View {
     @State private var isShowingShoppingList = false
     @State private var isShowingConverter = false
     @State private var isShowingSettings = false
+    @State private var isShowingProfileSwitcher = false
+    @State private var isShowingSousChef = false
+    @State private var isShowingUrlImport = false
+    @State private var isShowingGuide = false
     @State private var recipesScannedInSession = 0
+    @State private var isProcessingScan = false
+    @State private var scanStatusMessage = ""
+    @State private var scanErrorMessage: String? = nil
+    @State private var isShowingErrorAlert = false
 
     private let categories = [
         "All",
@@ -84,8 +94,62 @@ public struct BookshelfView: View {
             .sheet(isPresented: $isShowingSettings) {
                 SettingsView()
             }
+            .sheet(isPresented: $isShowingProfileSwitcher) {
+                ProfileSwitcherSheet()
+            }
+            .sheet(isPresented: $isShowingSousChef) {
+                SousChefChatSheet()
+            }
+            .sheet(isPresented: $isShowingUrlImport) {
+                UrlRecipeImportSheet { r in
+                    selectedRecipe = r
+                }
+            }
+            .sheet(isPresented: $isShowingGuide) {
+                CookbookGuideSheet()
+            }
             .safeAreaInset(edge: .bottom) {
                 bottomActionBar
+            }
+            .overlay {
+                if isProcessingScan {
+                    ZStack {
+                        Color.black.opacity(0.65)
+                            .ignoresSafeArea()
+
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .controlSize(.large)
+                                .tint(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
+
+                            Text("TRANSCRIBING RECIPE")
+                                .font(.system(size: 14, weight: .black, design: .serif))
+                                .tracking(2)
+                                .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
+
+                            Text(scanStatusMessage)
+                                .font(.system(size: 13, design: .serif))
+                                .foregroundStyle(Color.white.opacity(0.9))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
+                        }
+                        .padding(24)
+                        .background(
+                            Color(red: 0x24 / 255.0, green: 0x14 / 255.0, blue: 0x0C / 255.0),
+                            in: RoundedRectangle(cornerRadius: 18)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0).opacity(0.4), lineWidth: 1)
+                        )
+                        .shadow(radius: 20)
+                    }
+                }
+            }
+            .alert("Scanning Notice", isPresented: $isShowingErrorAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(scanErrorMessage ?? "An unexpected error occurred while scanning.")
             }
             .onAppear {
                 seedInitialRecipesIfNeeded()
@@ -95,27 +159,44 @@ public struct BookshelfView: View {
 
     private var headerBar: some View {
         VStack(spacing: 12) {
-            HStack {
+            HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("COSMO COMPENDIUM")
                         .font(.system(size: 11, weight: .black, design: .serif))
                         .tracking(3)
                         .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
 
-                    Text("Heirloom Library")
-                        .font(.system(size: 24, weight: .bold, design: .serif))
-                        .foregroundStyle(Color(red: 0xF7 / 255.0, green: 0xEE / 255.0, blue: 0xE4 / 255.0))
+                    Text("Recipe Library")
+                        .font(.system(size: 13, weight: .semibold, design: .serif))
+                        .foregroundStyle(Color(red: 0xC4 / 255.0, green: 0x9A / 255.0, blue: 0x45 / 255.0))
                 }
 
                 Spacer()
 
+                // Profile Pill
+                ProfilePill(onClick: {
+                    isShowingProfileSwitcher = true
+                })
+
+                // Guide Button
+                Button {
+                    isShowingGuide = true
+                } label: {
+                    Image(systemName: "book.closed.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
+                        .padding(7)
+                        .background(Color.white.opacity(0.08), in: Circle())
+                }
+
+                // Settings Button
                 Button {
                     isShowingSettings = true
                 } label: {
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18))
+                        .font(.system(size: 15))
                         .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
-                        .padding(8)
+                        .padding(7)
                         .background(Color.white.opacity(0.08), in: Circle())
                 }
             }
@@ -210,20 +291,20 @@ public struct BookshelfView: View {
     }
 
     private var bottomActionBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 8) {
             // Smart Converter Button
             Button {
                 isShowingConverter = true
             } label: {
                 VStack(spacing: 3) {
                     Image(systemName: "scalemass.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 15))
                     Text("Converter")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9.5, weight: .semibold))
                 }
                 .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
                 .background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -231,19 +312,39 @@ public struct BookshelfView: View {
                 )
             }
 
-            // Central Scan Button (VisionKit Continuous Camera Loop)
+            // Web URL Import Button
+            Button {
+                isShowingUrlImport = true
+            } label: {
+                VStack(spacing: 3) {
+                    Image(systemName: "link.badge.plus")
+                        .font(.system(size: 15))
+                    Text("Import URL")
+                        .font(.system(size: 9.5, weight: .semibold))
+                }
+                .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+            }
+
+            // Central Scan Button
             Button {
                 isShowingScanner = true
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "camera.viewfinder")
-                        .font(.system(size: 18, weight: .bold))
-                    Text("Scan Recipe")
-                        .font(.system(size: 14, weight: .bold, design: .serif))
+                        .font(.system(size: 16, weight: .bold))
+                    Text("Scan")
+                        .font(.system(size: 13, weight: .bold, design: .serif))
                 }
                 .foregroundStyle(Color(red: 0x2A / 255.0, green: 0x18 / 255.0, blue: 0x10 / 255.0))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
                 .background(
                     LinearGradient(
                         colors: [
@@ -258,19 +359,39 @@ public struct BookshelfView: View {
                 .shadow(color: Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0).opacity(0.35), radius: 8, y: 3)
             }
 
-            // Shopping List Button
+            // AI Sous Chef Button
+            Button {
+                isShowingSousChef = true
+            } label: {
+                VStack(spacing: 3) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 15))
+                    Text("Sous Chef")
+                        .font(.system(size: 9.5, weight: .semibold))
+                }
+                .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+            }
+
+            // Groceries Button
             Button {
                 isShowingShoppingList = true
             } label: {
                 VStack(spacing: 3) {
                     Image(systemName: "cart.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 15))
                     Text("Groceries")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 9.5, weight: .semibold))
                 }
                 .foregroundStyle(Color(red: 0xEF / 255.0, green: 0xC0 / 255.0, blue: 0x50 / 255.0))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
                 .background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -278,7 +399,7 @@ public struct BookshelfView: View {
                 )
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 6)
         .background(
@@ -293,6 +414,16 @@ public struct BookshelfView: View {
 
     private var filteredRecipes: [Recipe] {
         recipes.filter { recipe in
+            if recipe.isDeleted { return false }
+
+            // Filter by active profile
+            if profileManager.activeProfile != "All Family" {
+                let prof = recipe.profileName.isEmpty ? "Louis" : recipe.profileName
+                if prof.caseInsensitiveCompare(profileManager.activeProfile) != .orderedSame {
+                    return false
+                }
+            }
+
             if showFavoritesOnly && !recipe.isFavorite { return false }
             if selectedCategory != "All" && recipe.category != selectedCategory { return false }
             if searchText.isEmpty { return true }
@@ -319,8 +450,17 @@ public struct BookshelfView: View {
 
     private func processScannedPages(_ pages: [UIImage]) async {
         guard !pages.isEmpty else { return }
+        await MainActor.run {
+            isProcessingScan = true
+            scanStatusMessage = "Processing \(pages.count) captured page(s)..."
+        }
+
         do {
-            let (recipe, croppedCover) = try await GeminiRecipeService.shared.scanRecipePages(images: pages)
+            let (recipe, croppedCover) = try await GeminiRecipeService.shared.scanRecipePages(images: pages) { msg in
+                Task { @MainActor in
+                    scanStatusMessage = msg
+                }
+            }
 
             if let cover = croppedCover {
                 let filename = "recipe_cover_\(recipe.id).jpg"
@@ -335,10 +475,15 @@ public struct BookshelfView: View {
                 modelContext.insert(recipe)
                 try? modelContext.save()
                 recipesScannedInSession += 1
+                isProcessingScan = false
                 selectedRecipe = recipe
             }
         } catch {
-            print("Scan failed: \(error.localizedDescription)")
+            await MainActor.run {
+                isProcessingScan = false
+                scanErrorMessage = error.localizedDescription
+                isShowingErrorAlert = true
+            }
         }
     }
 
@@ -401,6 +546,13 @@ struct RecipeBookCard: View {
                         Label("\(recipe.totalTimeMinutes)m", systemImage: "clock")
                             .font(.system(size: 10, design: .serif))
                         Spacer()
+
+                        if ProfileManager.shared.activeProfile == "All Family" {
+                            let prof = recipe.profileName.isEmpty ? "Louis" : recipe.profileName
+                            Text(ProfileManager.getProfileEmoji(name: prof))
+                                .font(.system(size: 11))
+                        }
+
                         Text(recipe.servings)
                             .font(.system(size: 10, design: .serif))
                     }
@@ -411,5 +563,33 @@ struct RecipeBookCard: View {
             .frame(height: 220)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Menu("Move to Cookbook...") {
+                ForEach(ProfileManager.shared.profiles, id: \.self) { p in
+                    Button {
+                        recipe.profileName = p
+                    } label: {
+                        HStack {
+                            Text("\(ProfileManager.getProfileEmoji(name: p)) \(p)'s Cookbook")
+                            if (recipe.profileName.isEmpty ? "Louis" : recipe.profileName).caseInsensitiveCompare(p) == .orderedSame {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button {
+                recipe.isFavorite.toggle()
+            } label: {
+                Label(recipe.isFavorite ? "Unfavorite" : "Favorite", systemImage: recipe.isFavorite ? "star.slash" : "star")
+            }
+
+            Button(role: .destructive) {
+                recipe.isDeleted = true
+            } label: {
+                Label("Delete Recipe", systemImage: "trash")
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@ A native iOS application for **Cosmo Compendium: Recipe & Formula Keeper**, craf
 
 ## Features
 
-- **Heirloom Bookshelf & Realistic Leather Journal**:
+- **Bookshelf & Realistic Leather Journal**:
   - High-fidelity SwiftUI `Canvas` shader rendering antique full-grain leather, scorched carbon corners, aged coffee/oil stains, waxed saddle stitching, and antique weathered brass corner brackets.
   - Category filtering, instant fuzzy search, and tactile book cover cards.
 
@@ -30,7 +30,7 @@ A native iOS application for **Cosmo Compendium: Recipe & Formula Keeper**, craf
   - Automatic department categorization (Produce, Dairy, Meat, Bakery, Spices, Pantry).
   - One-tap ingredient checklist and batch export.
 
-- **Printable Heirloom PDF Generation**:
+- **Printable Recipe PDF Generation**:
   - Native `PDFKit` renderer producing high-resolution, vintage-bordered printable recipe cards.
 
 ---

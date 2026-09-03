@@ -89,7 +89,7 @@ public struct BookletView: View {
         HStack(spacing: 0) {
             tabButton(title: "Ingredients", tag: 0)
             tabButton(title: "Directions", tag: 1)
-            tabButton(title: recipe.craftType != nil ? "Craft Formula" : "Heirloom Notes", tag: 2)
+            tabButton(title: recipe.craftType != nil ? "Craft Formula" : "Recipe Notes", tag: 2)
         }
         .padding(4)
         .background(Color(red: 0xE8 / 255.0, green: 0xDF / 255.0, blue: 0xD0 / 255.0), in: RoundedRectangle(cornerRadius: 10))

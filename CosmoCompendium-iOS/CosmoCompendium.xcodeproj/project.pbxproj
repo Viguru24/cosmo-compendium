@@ -28,6 +28,12 @@
 		CCB00192F267FB700E4F0B0 /* OfflineRecipeParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00192F267FB700E4F0B0 /* OfflineRecipeParser.swift */; };
 		CCB00202F267FB700E4F0B0 /* RecipePdfGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00202F267FB700E4F0B0 /* RecipePdfGenerator.swift */; };
 		CCB00212F267FB700E4F0B0 /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00212F267FB700E4F0B0 /* UnitConverter.swift */; };
+		CCB00222F267FB700E4F0B0 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00222F267FB700E4F0B0 /* ProfileManager.swift */; };
+		CCB00232F267FB700E4F0B0 /* ProfileComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00232F267FB700E4F0B0 /* ProfileComponents.swift */; };
+		CCB00242F267FB700E4F0B0 /* SousChefChatSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00242F267FB700E4F0B0 /* SousChefChatSheet.swift */; };
+		CCB00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift */; };
+		CCB00262F267FB700E4F0B0 /* CategoryManagerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00262F267FB700E4F0B0 /* CategoryManagerSheet.swift */; };
+		CCB00272F267FB700E4F0B0 /* CookbookGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +59,12 @@
 		CCF00192F267FB700E4F0B0 /* OfflineRecipeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/OfflineRecipeParser.swift"; sourceTree = "<group>"; };
 		CCF00202F267FB700E4F0B0 /* RecipePdfGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/RecipePdfGenerator.swift"; sourceTree = "<group>"; };
 		CCF00212F267FB700E4F0B0 /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/UnitConverter.swift"; sourceTree = "<group>"; };
+		CCF00222F267FB700E4F0B0 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/ProfileManager.swift"; sourceTree = "<group>"; };
+		CCF00232F267FB700E4F0B0 /* ProfileComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/ProfileComponents.swift"; sourceTree = "<group>"; };
+		CCF00242F267FB700E4F0B0 /* SousChefChatSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/SousChefChatSheet.swift"; sourceTree = "<group>"; };
+		CCF00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/UrlRecipeImportSheet.swift"; sourceTree = "<group>"; };
+		CCF00262F267FB700E4F0B0 /* CategoryManagerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/CategoryManagerSheet.swift"; sourceTree = "<group>"; };
+		CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/CookbookGuideSheet.swift"; sourceTree = "<group>"; };
 		CCF09992F267FB700E4F0B0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -91,6 +103,12 @@
 				CCF00192F267FB700E4F0B0 /* OfflineRecipeParser.swift */,
 				CCF00202F267FB700E4F0B0 /* RecipePdfGenerator.swift */,
 				CCF00212F267FB700E4F0B0 /* UnitConverter.swift */,
+				CCF00222F267FB700E4F0B0 /* ProfileManager.swift */,
+				CCF00232F267FB700E4F0B0 /* ProfileComponents.swift */,
+				CCF00242F267FB700E4F0B0 /* SousChefChatSheet.swift */,
+				CCF00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift */,
+				CCF00262F267FB700E4F0B0 /* CategoryManagerSheet.swift */,
+				CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */,
 				CCF09992F267FB700E4F0B0 /* Info.plist */,
 				CCG00022F267FB700E4F0B0 /* Products */,
 			);
@@ -192,6 +210,12 @@
 				CCB00192F267FB700E4F0B0 /* OfflineRecipeParser.swift in Sources */,
 				CCB00202F267FB700E4F0B0 /* RecipePdfGenerator.swift in Sources */,
 				CCB00212F267FB700E4F0B0 /* UnitConverter.swift in Sources */,
+				CCB00222F267FB700E4F0B0 /* ProfileManager.swift in Sources */,
+				CCB00232F267FB700E4F0B0 /* ProfileComponents.swift in Sources */,
+				CCB00242F267FB700E4F0B0 /* SousChefChatSheet.swift in Sources */,
+				CCB00252F267FB700E4F0B0 /* UrlRecipeImportSheet.swift in Sources */,
+				CCB00262F267FB700E4F0B0 /* CategoryManagerSheet.swift in Sources */,
+				CCB00272F267FB700E4F0B0 /* CookbookGuideSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

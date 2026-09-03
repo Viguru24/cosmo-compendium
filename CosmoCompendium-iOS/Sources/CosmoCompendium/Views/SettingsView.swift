@@ -10,6 +10,8 @@ public struct SettingsView: View {
     @AppStorage("language_mode") private var languageModeRaw = LanguageMode.both.rawValue
 
     @State private var showingResetAlert = false
+    @State private var isTestingApiKey = false
+    @State private var apiTestResult: (success: Bool, message: String)? = nil
 
     public init() {}
 
@@ -19,6 +21,47 @@ public struct SettingsView: View {
                 Section {
                     SecureField("AI Studio Gemini API Key", text: $geminiApiKey)
                         .font(.system(size: 14, design: .monospaced))
+
+                    HStack {
+                        Button {
+                            Task {
+                                isTestingApiKey = true
+                                let res = await GeminiRecipeService.shared.testApiKey(geminiApiKey)
+                                apiTestResult = (res.0, res.1)
+                                isTestingApiKey = false
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                if isTestingApiKey {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "bolt.badge.checkmark.fill")
+                                }
+                                Text("Test Connection")
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                        }
+                        .disabled(geminiApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isTestingApiKey)
+
+                        Spacer()
+
+                        if let res = apiTestResult {
+                            HStack(spacing: 4) {
+                                Image(systemName: res.success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                    .foregroundStyle(res.success ? .green : .red)
+                                Text(res.success ? "Active" : "Failed")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(res.success ? .green : .red)
+                            }
+                        }
+                    }
+
+                    if let res = apiTestResult, !res.success {
+                        Text(res.message)
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
 
                     Link(destination: URL(string: "https://aistudio.google.com/app/apikey")!) {
                         HStack {
@@ -32,7 +75,7 @@ public struct SettingsView: View {
                 } header: {
                     Text("GEMINI VISION AI SCANNER")
                 } footer: {
-                    Text("Empowers continuous multi-page synthesis, Kurrentschrift/cursive handwritten recipe parsing, and food photo auto-cropping. If no key is set, the offline OCR engine will be used.")
+                    Text("Empowers continuous multi-page synthesis, handwriting transcription, and food photo auto-cropping. If no key is set or network is offline, the local OCR engine is used automatically.")
                 }
 
                 Section {
@@ -57,13 +100,13 @@ public struct SettingsView: View {
                     } label: {
                         HStack {
                             Image(systemName: "arrow.counterclockwise")
-                            Text("Restore Heirloom Recipe Collection")
+                            Text("Restore Default Recipe Collection")
                         }
                     }
                 } header: {
                     Text("DATA MANAGEMENT")
                 } footer: {
-                    Text("Restores the original family recipes (Apple Strudel, Sunday Roast, Black Forest Gateau, and Artisan Soap).")
+                    Text("Restores the original classic recipes (Apple Strudel, Sunday Roast, Black Forest Gateau, and Artisan Soap).")
                 }
 
                 Section {
@@ -91,13 +134,13 @@ public struct SettingsView: View {
                         .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
                 }
             }
-            .alert("Restore Heirloom Recipes?", isPresented: $showingResetAlert) {
+            .alert("Restore Classic Recipes?", isPresented: $showingResetAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Restore", role: .destructive) {
                     restoreDefaultRecipes()
                 }
             } message: {
-                Text("This will insert any missing heirloom recipes into your collection.")
+                Text("This will insert any missing default recipes into your collection.")
             }
         }
     }

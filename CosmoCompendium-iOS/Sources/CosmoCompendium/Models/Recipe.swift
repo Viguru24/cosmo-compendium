@@ -27,6 +27,7 @@ public final class Recipe {
     public var updatedAt: Date
     public var isDeleted: Bool
     public var coverPhotoName: String?
+    public var profileName: String = "Louis"
 
     // Craft / Formula fields (Soap, Balms, Maker notes)
     public var craftType: String?
@@ -61,6 +62,7 @@ public final class Recipe {
         updatedAt: Date = Date(),
         isDeleted: Bool = false,
         coverPhotoName: String? = nil,
+        profileName: String = "Louis",
         craftType: String? = nil,
         lyeRatio: String? = nil,
         waterDiscount: String? = nil,
@@ -92,6 +94,7 @@ public final class Recipe {
         self.updatedAt = updatedAt
         self.isDeleted = isDeleted
         self.coverPhotoName = coverPhotoName
+        self.profileName = profileName
         self.craftType = craftType
         self.lyeRatio = lyeRatio
         self.waterDiscount = waterDiscount

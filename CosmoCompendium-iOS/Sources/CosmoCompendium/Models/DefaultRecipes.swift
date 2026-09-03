@@ -76,7 +76,7 @@ public enum DefaultRecipes {
                 isFavorite: true,
                 rating: 5,
                 timesCooked: 18,
-                originStory: "Heirloom family Sunday dinner ritual."
+                originStory: "Classic family Sunday dinner ritual."
             ),
             Recipe(
                 id: "3",

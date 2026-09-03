@@ -3,20 +3,23 @@ package com.example.ai
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
 import android.util.Base64
-import android.util.Log
 import com.example.BuildConfig
 import com.example.data.model.RecipeIngredient
 import com.example.data.model.RecipeStep
+import com.example.util.AppLogger
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.example.data.network.NetworkModule
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Path
 import retrofit2.http.POST
 import retrofit2.http.Query
@@ -105,7 +108,8 @@ data class ParsedRecipeDto(
     val notesEnglish: String? = null,
     val detectedSourceLanguage: String? = null, // "de" or "en"
     val hasFoodPhoto: Boolean? = false,
-    val foodPhotoBox: FoodPhotoBoxDto? = null
+    val foodPhotoBox: FoodPhotoBoxDto? = null,
+    val cardRotationNeededDegrees: Int? = 0
 )
 
 @JsonClass(generateAdapter = true)
@@ -139,10 +143,28 @@ data class ParsedStepDto(
     val tip: String? = null
 )
 
+@JsonClass(generateAdapter = true)
+data class GeminiModelItemDto(
+    val name: String? = null,
+    val supportedGenerationMethods: List<String>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class GeminiModelListResponseDto(
+    val models: List<GeminiModelItemDto>? = null
+)
+
 interface GeminiApi {
+    @GET("v1beta/models")
+    suspend fun listModels(
+        @Header("x-goog-api-key") apiKeyHeader: String,
+        @Query("key") apiKey: String
+    ): GeminiModelListResponseDto
+
     @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContent(
         @Path("model") model: String,
+        @Header("x-goog-api-key") apiKeyHeader: String,
         @Query("key") apiKey: String,
         @Body request: GeminiRequest
     ): GeminiResponse
@@ -150,15 +172,137 @@ interface GeminiApi {
 
 object GeminiClient {
     private const val BASE_URL = "https://generativelanguage.googleapis.com/"
+    private var customApiKey: String? = null
+    private var customModel: String? = null
+
+    fun sanitizeApiKey(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        var key = raw.trim()
+        // Strip zero-width & invisible whitespace characters
+        key = key.replace("\u200B", "")
+            .replace("\u200C", "")
+            .replace("\u200D", "")
+            .replace("\uFEFF", "")
+            .replace("\u00A0", " ")
+            .trim()
+
+        // Strip common script/export prefixes if pasted from terminal or environment
+        val prefixes = listOf(
+            "export GEMINI_API_KEY=",
+            "export GOOGLE_API_KEY=",
+            "GEMINI_API_KEY=",
+            "GOOGLE_API_KEY=",
+            "API_KEY=",
+            "key=",
+            "Bearer ",
+            "token="
+        )
+        for (p in prefixes) {
+            if (key.startsWith(p, ignoreCase = true)) {
+                key = key.substring(p.length).trim()
+            }
+        }
+
+        // Loop to strip outer quotes, backticks, or escaped quotes
+        var prev = ""
+        while (prev != key) {
+            prev = key
+            key = key.trim('\'', '"', '`', ';', ',', ' ', '\t', '\n', '\r')
+            if (key.startsWith("\\\"") && key.endsWith("\\\"") && key.length >= 4) {
+                key = key.substring(2, key.length - 2).trim()
+            }
+            if (key.startsWith("\\'") && key.endsWith("\\'") && key.length >= 4) {
+                key = key.substring(2, key.length - 2).trim()
+            }
+        }
+        return key
+    }
+
+    fun setCustomApiKey(key: String?) {
+        val cleaned = sanitizeApiKey(key)
+        customApiKey = cleaned.takeIf { it.isNotBlank() }
+    }
+
+    fun setCustomModel(model: String?) {
+        customModel = model?.trim()?.takeIf { it.isNotBlank() && it != "auto" }
+    }
+
+    fun getEffectiveApiKey(): String {
+        val custom = customApiKey
+        if (!custom.isNullOrBlank()) return custom
+        val buildKey = sanitizeApiKey(BuildConfig.GEMINI_API_KEY)
+        if (buildKey.isNotBlank() && buildKey != "MY_GEMINI_API_KEY") return buildKey
+        return ""
+    }
+
+    private var discoveredLiveModels: List<String> = emptyList()
+    private var lastDiscoveryTimestamp: Long = 0L
+    private const val DISCOVERY_TTL_MS = 12 * 60 * 60 * 1000L // 12 hours
+    val retiredModels: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    suspend fun fetchLiveModels(apiKey: String, forceRefresh: Boolean = false): List<String> {
+        val now = System.currentTimeMillis()
+        if (!forceRefresh && discoveredLiveModels.isNotEmpty() && (now - lastDiscoveryTimestamp < DISCOVERY_TTL_MS)) {
+            return discoveredLiveModels.filterNot { retiredModels.contains(it) }
+        }
+        return try {
+            val response = api.listModels(apiKey, apiKey)
+            val list = response.models?.mapNotNull { item ->
+                val name = item.name?.removePrefix("models/") ?: return@mapNotNull null
+                val methods = item.supportedGenerationMethods ?: emptyList()
+                if (methods.contains("generateContent")) name else null
+            } ?: emptyList()
+
+            // Prioritize flash models, then version sorted
+            val sorted = list.filterNot { retiredModels.contains(it) }
+                .sortedWith(
+                    compareByDescending<String> { it.contains("flash", ignoreCase = true) }
+                        .thenByDescending { it.contains("latest", ignoreCase = true) }
+                        .thenByDescending { it }
+                )
+            if (sorted.isNotEmpty()) {
+                discoveredLiveModels = sorted
+                lastDiscoveryTimestamp = now
+                AppLogger.i("GeminiRecipeService", "Dynamically discovered ${sorted.size} live Gemini models: ${sorted.take(4)}")
+            }
+            sorted
+        } catch (e: Throwable) {
+            AppLogger.w("GeminiRecipeService", "Live model discovery query failed: ${e.message}, using fallback pool.")
+            emptyList()
+        }
+    }
+
+    fun markModelRetired(modelName: String) {
+        retiredModels.add(modelName)
+        discoveredLiveModels = discoveredLiveModels.filterNot { it.equals(modelName, ignoreCase = true) }
+        AppLogger.w("GeminiRecipeService", "Auto-blacklisted retired model: $modelName. Active pool: ${getEffectiveModels().take(3)}")
+    }
+
+    fun getEffectiveModels(): List<String> {
+        val specific = customModel?.takeIf { !retiredModels.contains(it) }
+        val live = discoveredLiveModels.filterNot { retiredModels.contains(it) }
+        val staticActive = GeminiModelConfig.ACTIVE_MODELS.filterNot { retiredModels.contains(it) }
+
+        val combined = buildList {
+            if (!specific.isNullOrBlank()) add(specific)
+            addAll(live)
+            addAll(staticActive)
+            add(GeminiModelConfig.PRIMARY_MODEL)
+            add(GeminiModelConfig.FALLBACK_MODEL)
+            add(GeminiModelConfig.LEGACY_FALLBACK_MODEL)
+        }.distinct().filterNot { retiredModels.contains(it) }
+
+        return combined.ifEmpty { listOf("gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-latest") }
+    }
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+    private val okHttpClient = NetworkModule.okHttpClient.newBuilder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
         .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
         .build()
 
@@ -183,55 +327,66 @@ object GeminiClient {
         imageBitmaps: List<Bitmap>,
         recipeText: String?
     ): Result<ParsedRecipeDto> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
+        val apiKey = getEffectiveApiKey()
+        if (apiKey.isBlank()) {
             if (!recipeText.isNullOrBlank()) {
                 return@withContext Result.success(OfflineRecipeParser.parse(recipeText))
             } else {
                 return@withContext Result.failure(
-                    Exception("Gemini API key is required to scan images. Please configure your GEMINI_API_KEY in the AI Studio Secrets panel.")
+                    Exception("Google Gemini API key is missing. Please enter your Gemini API key in App Settings -> AI Engine.")
                 )
             }
         }
 
         try {
             val systemPrompt = """
-                You are an expert master chef, archivist, and culinary linguist specializing in vintage recipe cards, printed recipes, and handwritten heirloom cookbooks.
+                You are an expert master chef, archivist, and formulation specialist specializing in recipe cards, craft formulas (such as soap making, balms, cosmetics, and household preparations), printed recipes, and handwritten compendiums.
 
                 TASK:
-                Analyze the provided recipe card photo(s) (which may span across multiple pages/images) and/or text.
-                Accurately transcribe and translate the entire recipe directly and completely into clear, structured JSON.
+                Analyze the provided recipe or formula card photo(s) and/or text. Accurately transcribe and translate the entire entry into clear, structured JSON.
 
                 CRITICAL INSTRUCTIONS:
-                1. STRICT FIDELITY & COMPLETE INGREDIENT EXTRACTION (MANDATORY):
-                   - Extract EVERY SINGLE INGREDIENT mentioned, listed, or implied in the recipe card or text.
-                   - Do NOT skip any ingredient (extract all flours, sugars, eggs, butter, spices, extracts, fruits, nuts, leavening agents, liquids, etc.).
+                1. STRICT FIDELITY & COMPLETE INGREDIENT EXTRACTION:
+                   - Extract EVERY SINGLE INGREDIENT or component mentioned, listed, or implied.
+                   - Do NOT skip any ingredient (extract all flours, sugars, oils, lye, scents, eggs, butter, spices, extracts, fruits, nuts, leavening agents, liquids, etc.).
                    - For each ingredient, capture:
                      * "amount": exact quantity/fraction (e.g. "2 1/4", "1/2", "3/4", "3", "1", "6")
-                     * "unit": unit of measure (e.g. "cups", "tablespoons", "teaspoons", "oz", "package", "cloves", "pinch", or "" if none)
-                     * "nameEnglish": clear descriptive ingredient name (e.g. "All-purpose Flour", "Craisins Dried Cranberries", "Eggs", "Almond Extract")
-                     * "nameGerman": German name if source is German or German card
-                     * "group": section header if grouped (e.g. "Dough", "Filling", "Glaze", "Topping", "Dry Ingredients") or null
-                   - Transcribe all brand names, package sizes, and prep notes faithfully (e.g., '6-ounce package Craisins', '3/4 cup sliced almonds', '3 large eggs, beaten').
+                     * "unit": unit of measure (e.g. "cups", "tablespoons", "teaspoons", "oz", "g", "ml", "package", "cloves", "pinch", or "" if none)
+                     * "nameEnglish": clear descriptive ingredient name (e.g. "All-purpose Flour", "Olive Oil", "Lye / Sodium Hydroxide", "Lavender Essential Oil")
+                     * "group": sub-recipe group if present (e.g. "Dough", "Filling", "Oil Phase", "Lye Solution", "Crust", "Glaze", "Topping"), otherwise null
+                     * "isOptional": boolean indicating if ingredient is marked optional/variations
+                   - When ingredients include brand names or specific descriptors, keep them intact (e.g. "6-ounce package Ocean Spray Craisins").
+                   - DUAL MEASUREMENTS & CLEAN INGREDIENT NAMES:
+                     * When recipe cards list dual units (e.g. "600g / 1.3lbs Chicken Thighs", "50g / 1/3 cup Plain Flour", "120ml / 1/2 cup Veg Oil", "200g / 7oz Cashew Nuts", or "1 tbsp + 2 tsp Soy Sauce"), capture the primary measurement in "amount" and "unit" (e.g. amount: "600", unit: "g").
+                     * NEVER include secondary measurements, slashes, or plus signs in "nameEnglish" or "nameGerman" (e.g. write "boneless skinless Chicken Thighs, diced into bite-sized pieces", "Plain Flour", "Light Soy Sauce", NOT "/ 1.3lbs Chicken Thighs" or "+ 2 tsp Soy Sauce").
 
-                2. UNLIMITED MULTI-PAGE SYNTHESIS & TRANSLATION:
-                   - If source is in German or another language, translate titles, ingredients, and steps into natural English.
-                   - If multiple card photos or scrapbook/notebook pages are provided (Page 1, Page 2, Page 3, Page 4, etc.), synthesize all pages comprehensively into ONE single unified recipe.
-                   - Ingredients and directions distributed across multiple pages/sides must all be combined seamlessly in proper chronological order without dropping any items.
+                2. UNIVERSAL MULTI-LANGUAGE SUPPORT & GLOBAL TRANSLATION:
+                   - The recipe card or text may be in ANY language worldwide (e.g., German, French, Italian, Spanish, Portuguese, Polish, Russian, Ukrainian, Dutch, Swedish, Danish, Japanese, Chinese, Arabic, Hindi, Greek, etc., or English), including vintage cursive or handwritten notes (such as German Kurrent/Sütterlin).
+                   - Accurately preserve and transcribe the original language names into the original fields: "nameGerman" (stores original ingredient name), "titleGerman" (stores original title), "instructionGerman" (stores original instruction step), "notesGerman" (stores original notes).
+                   - Accurately translate everything into natural, idiomatic, clear culinary English in "nameEnglish", "titleEnglish", "instructionEnglish", "notesEnglish".
+                   - If the recipe is already in English:
+                     * Populate the English and original fields identically with the English text.
 
-                3. ACCURATE COOK TIME, PREP TIME, YIELD & DIFFICULTY:
-                   - Look for prep time and cook time. If multiple baking/cooking periods are specified (e.g. 'bake for 30 minutes', then 'bake for an additional 20 minutes'), sum them up (50 min total cook time).
-                   - Look for yield / portions (e.g., 'Makes about 2 1/2 dozen', '4 servings').
-                   - Determine difficulty ('Easy', 'Medium', 'Advanced').
+                3. STEP TRANSCRIPTION:
+                   - Provide clear, numbered steps in sequential order.
+                   - If steps contain baking or boiling times, extract the duration in minutes into "timerMinutes" (e.g. "bake for 30 minutes" -> 30).
+                   - If a step contains a chef tip or special note, include it in "tip".
 
-                4. NUMBERED STEPS & DIRECTIONS:
-                   - Transcribe all steps in clean sequence (Step 1, Step 2, Step 3...).
-                   - Set timerMinutes if a time is specified for that step.
+                4. METADATA:
+                   - Estimate "prepTimeMinutes" and "cookTimeMinutes" if not explicitly stated.
+                   - Categorize into one of: "Baking & Desserts", "Main Dishes", "Salads & Starters", "Soups & Stews", "Sauces & Condiments", "Beverages", "Snacks & Appetizers".
+                   - Set "difficulty" to "Easy", "Medium", or "Hard".
+                   - Set "detectedSourceLanguage" to the 2-letter ISO 639-1 language code (e.g. "en", "de", "fr", "it", "es", "pl", "ru", "uk", "sv", "nl", "ja", "zh", "el", etc.).
 
                 5. DISH PHOTOGRAPH DETECTION (CRITICAL):
                    - Check if any provided photo contains an actual picture/photo of the cooked food/dish (e.g. baked pie, cake, roasted meat, cookies, sauce jar).
                    - A recipe card containing only text, handwriting, paper texture, or drawings of spoons has NO food photo ("hasFoodPhoto": false).
                    - ONLY set "hasFoodPhoto": true if there is an actual photograph of the prepared food. If present, set "foodPhotoBox" with coordinates [ymin, xmin, ymax, xmax] in 0..1000 scale and "pageIndex" (0 for page 1, 1 for page 2).
+
+                6. ORIENTATION & UPRIGHT REALIGNMENT:
+                   - Check the natural reading orientation of the recipe text in the image.
+                   - If the card was photographed sideways or upside down (common when shooting top-down on a counter), determine how many degrees CLOCKWISE the image must be rotated to make the text upright: 0 (already upright), 90, 180, or 270.
+                   - Set "cardRotationNeededDegrees": 0 | 90 | 180 | 270.
 
                 OUTPUT FORMAT: Return ONLY valid JSON adhering strictly to this schema:
                 {
@@ -261,29 +416,23 @@ object GeminiClient {
                   "notesEnglish": "Recipe card transcription.",
                   "detectedSourceLanguage": "en",
                   "hasFoodPhoto": false,
-                  "foodPhotoBox": null
+                  "foodPhotoBox": null,
+                  "cardRotationNeededDegrees": 0
                 }
             """.trimIndent()
 
             val parts = mutableListOf<GeminiPart>()
-            parts.add(GeminiPart(text = systemPrompt))
-
-            if (!recipeText.isNullOrBlank()) {
-                parts.add(GeminiPart(text = "Recipe Text Content:\n$recipeText"))
+            val promptContent = if (!recipeText.isNullOrBlank()) {
+                "$systemPrompt\n\nRecipe Text:\n$recipeText"
+            } else {
+                systemPrompt
             }
+            parts.add(GeminiPart(text = promptContent))
 
-            imageBitmaps.forEachIndexed { index, bitmap ->
-                val base64Image = bitmapToBase64(bitmap)
-                if (base64Image.isNotBlank()) {
-                    parts.add(GeminiPart(text = "Page ${index + 1} Image:"))
-                    parts.add(
-                        GeminiPart(
-                            inlineData = GeminiInlineData(
-                                mimeType = "image/jpeg",
-                                data = base64Image
-                            )
-                        )
-                    )
+            for (bitmap in imageBitmaps) {
+                val b64 = bitmapToBase64(bitmap)
+                if (b64.isNotBlank()) {
+                    parts.add(GeminiPart(inlineData = GeminiInlineData(mimeType = "image/jpeg", data = b64)))
                 }
             }
 
@@ -297,17 +446,59 @@ object GeminiClient {
                 )
             )
 
-            val response = try {
-                api.generateContent(model = "gemini-2.5-flash", apiKey = apiKey, request = request)
-            } catch (firstErr: Throwable) {
-                Log.w("GeminiRecipeService", "Primary model gemini-2.5-flash failed, trying gemini-flash-latest: ${firstErr.message}")
+            // Fetch live active models dynamically if cache is empty
+            if (discoveredLiveModels.isEmpty()) {
                 try {
-                    api.generateContent(model = "gemini-flash-latest", apiKey = apiKey, request = request)
-                } catch (secondErr: Throwable) {
-                    Log.w("GeminiRecipeService", "Secondary model gemini-flash-latest failed, trying gemini-3.1-flash-lite-preview: ${secondErr.message}")
-                    api.generateContent(model = "gemini-3.1-flash-lite-preview", apiKey = apiKey, request = request)
+                    fetchLiveModels(apiKey, forceRefresh = false)
+                } catch (_: Throwable) {}
+            }
+
+            val modelsToTry = getEffectiveModels()
+            var lastException: Throwable? = null
+            var response: GeminiResponse? = null
+
+            for (modelName in modelsToTry) {
+                try {
+                    AppLogger.i("GeminiRecipeService", "Invoking Gemini model: $modelName (API Key length: ${apiKey.length})")
+                    response = api.generateContent(
+                        model = modelName,
+                        apiKeyHeader = apiKey,
+                        apiKey = apiKey,
+                        request = request
+                    )
+                    if (response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text != null) {
+                        AppLogger.i("GeminiRecipeService", "Successfully received recipe generation from $modelName")
+                        break
+                    }
+                } catch (err: Throwable) {
+                    lastException = err
+                    val errMsg = err.message ?: ""
+                    val isRetiredOr404 = (err is retrofit2.HttpException && err.code() == 404) ||
+                            errMsg.contains("no longer available", ignoreCase = true) ||
+                            errMsg.contains("404", ignoreCase = true)
+
+                    if (isRetiredOr404) {
+                        markModelRetired(modelName)
+                        AppLogger.w("GeminiRecipeService", "Model $modelName is retired or 404 on Google API. Auto-evicted and trying next live model.")
+                    } else {
+                        AppLogger.w("GeminiRecipeService", "Model $modelName failed: ${err.message}", err)
+                    }
                 }
             }
+
+            if (response == null) {
+                if (!recipeText.isNullOrBlank()) {
+                    AppLogger.i("GeminiRecipeService", "Gemini API unavailable (${lastException?.message}), falling back to OfflineRecipeParser for recipe text.")
+                    return@withContext Result.success(OfflineRecipeParser.parse(recipeText))
+                }
+                val errorMsg = lastException?.message ?: "AI scanning service unavailable."
+                AppLogger.e("GeminiRecipeService", "All Gemini models failed: $errorMsg", lastException)
+                if (errorMsg.contains("503") || errorMsg.contains("high demand", ignoreCase = true)) {
+                    return@withContext Result.failure(Exception("Google AI is currently under high load. Please tap 'Retry Scan'."))
+                }
+                return@withContext Result.failure(Exception(errorMsg))
+            }
+            
             val jsonText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
 
             if (jsonText.isNullOrBlank()) {
@@ -328,7 +519,7 @@ object GeminiClient {
             val parsedFromMoshi = try {
                 adapter.fromJson(cleanedJson)
             } catch (t: Throwable) {
-                Log.w("GeminiRecipeService", "Moshi failed: ${t.message}, trying lenient parser")
+                AppLogger.w("GeminiRecipeService", "Moshi failed: ${t.message}, trying lenient parser")
                 null
             }
 
@@ -338,8 +529,21 @@ object GeminiClient {
                 parseLenientJson(cleanedJson) ?: parsedFromMoshi
             }
 
-            if (parsed != null) {
-                Result.success(parsed)
+            val sanitized = parsed?.copy(
+                ingredients = parsed.ingredients?.map { ing ->
+                    val cleanEn = ing.nameEnglish?.let { com.example.data.model.RecipeIngredient.cleanIngredientName(it) }
+                    val cleanDe = ing.nameGerman?.let { com.example.data.model.RecipeIngredient.cleanIngredientName(it) }
+                    val cleanName = ing.name?.let { com.example.data.model.RecipeIngredient.cleanIngredientName(it) }
+                    ing.copy(
+                        nameEnglish = cleanEn ?: cleanName,
+                        nameGerman = cleanDe ?: cleanName,
+                        name = cleanName ?: cleanEn ?: ""
+                    )
+                }
+            )
+
+            if (sanitized != null) {
+                Result.success(sanitized)
             } else if (!recipeText.isNullOrBlank()) {
                 Result.success(OfflineRecipeParser.parse(recipeText))
             } else {
@@ -348,10 +552,10 @@ object GeminiClient {
         } catch (e: Throwable) {
             val errorMsg = if (e is retrofit2.HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
-                Log.e("GeminiRecipeService", "Gemini HTTP error ${e.code()}: $errorBody", e)
+                AppLogger.e("GeminiRecipeService", "Gemini HTTP error ${e.code()}: $errorBody", e)
                 "Gemini AI error (${e.code()}): ${errorBody ?: e.message()}"
             } else {
-                Log.e("GeminiRecipeService", "Error parsing with Gemini API: ${e.message}", e)
+                AppLogger.e("GeminiRecipeService", "Error parsing with Gemini API: ${e.message}", e)
                 e.localizedMessage ?: "Failed to process recipe image with AI"
             }
             if (!recipeText.isNullOrBlank()) {
@@ -362,7 +566,7 @@ object GeminiClient {
         }
     }
 
-    private fun parseLenientJson(jsonStr: String): ParsedRecipeDto? {
+    fun parseLenientJson(jsonStr: String): ParsedRecipeDto? {
         return try {
             val root = org.json.JSONObject(jsonStr)
             val titleEnglish = root.optString("titleEnglish", "").ifBlank {
@@ -502,7 +706,7 @@ object GeminiClient {
                 foodPhotoBox = foodPhotoBox
             )
         } catch (t: Throwable) {
-            Log.w("GeminiRecipeService", "Lenient JSON parse failed: ${t.message}")
+            AppLogger.w("GeminiRecipeService", "Lenient JSON parse failed: ${t.message}")
             null
         }
     }
@@ -528,7 +732,7 @@ object GeminiClient {
             val byteArray = stream.toByteArray()
             Base64.encodeToString(byteArray, Base64.NO_WRAP)
         } catch (t: Throwable) {
-            Log.e("GeminiRecipeService", "Error encoding bitmap to Base64", t)
+            AppLogger.e("GeminiRecipeService", "Error encoding bitmap to Base64", t)
             ""
         }
     }
@@ -540,10 +744,11 @@ object GeminiClient {
         ingredients: List<String> = emptyList(),
         steps: List<String> = emptyList(),
         notes: String? = null,
-        referenceBitmap: Bitmap? = null
+        referenceBitmap: Bitmap? = null,
+        customPrompt: String? = null
     ): Result<Bitmap> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
+        val apiKey = getEffectiveApiKey()
+        if (apiKey.isBlank()) {
             return@withContext Result.failure(Exception("Gemini API key is required to generate AI dish photos. Please configure GEMINI_API_KEY in the Secrets panel."))
         }
 
@@ -569,13 +774,19 @@ object GeminiClient {
                 if (stepsSummary.isNotBlank()) append("$stepsSummary ")
                 if (!notes.isNullOrBlank()) append("Culinary style: $notes. ")
                 if (referenceBitmap != null) {
-                    append("Inspect the attached reference image carefully. Accurately capture the dish's visual characteristics, colors, textures, crust, garnishes, and plating style, elevating it into a clean, professionally lit heirloom cookbook cover photograph.")
+                    append("Inspect the attached reference image carefully. Accurately capture the subject's visual characteristics, colors, textures, crust, garnishes, and style, elevating it into a clean, professionally lit compendium cover photograph.")
                 } else {
                     append("Render the dish served fresh and beautifully plated in a warm, rustic kitchen setting with soft natural window lighting, gentle steam, appetizing texture, shallow depth of field, 4k culinary studio detail. No watermarks or overlaid text.")
                 }
             }
 
-            // First try Imagen 3 endpoint via raw OkHttpClient
+            // Try Google Imagen 3 models in sequence
+            val imagenModels = listOf(
+                "imagen-3.0-generate-002",
+                "imagen-3.0-fast-generate-001",
+                "imagen-3.0-generate-001"
+            )
+
             val imagenPayload = JSONObject().apply {
                 put("instances", JSONArray().apply {
                     put(JSONObject().put("prompt", promptText))
@@ -583,100 +794,180 @@ object GeminiClient {
                 put("parameters", JSONObject().apply {
                     put("sampleCount", 1)
                     put("aspectRatio", "1:1")
+                    put("outputMimeType", "image/jpeg")
                 })
             }
 
-            val imagenRequest = okhttp3.Request.Builder()
-                .url("${BASE_URL}v1beta/models/imagen-3.0-generate-002:predict?key=$apiKey")
-                .post(imagenPayload.toString().toRequestBody("application/json".toMediaTypeOrNull()))
-                .build()
-
             var generatedBitmap: Bitmap? = null
+            var lastImagenError = ""
 
-            try {
-                okHttpClient.newCall(imagenRequest).execute().use { resp ->
-                    if (resp.isSuccessful) {
+            for (modelName in imagenModels) {
+                try {
+                    val imagenRequest = okhttp3.Request.Builder()
+                        .url("${BASE_URL}v1beta/models/$modelName:predict?key=$apiKey")
+                        .post(imagenPayload.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                        .build()
+
+                    okHttpClient.newCall(imagenRequest).execute().use { resp ->
                         val bodyStr = resp.body?.string() ?: ""
-                        val json = JSONObject(bodyStr)
-                        val preds = json.optJSONArray("predictions")
-                        if (preds != null && preds.length() > 0) {
-                            val pred = preds.getJSONObject(0)
-                            val b64 = pred.optString("bytesBase64Encoded")
-                            if (b64.isNotBlank()) {
-                                val bytes = Base64.decode(b64, Base64.DEFAULT)
-                                generatedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (resp.isSuccessful) {
+                            val json = JSONObject(bodyStr)
+                            val preds = json.optJSONArray("predictions")
+                            if (preds != null && preds.length() > 0) {
+                                val pred = preds.getJSONObject(0)
+                                val b64 = pred.optString("bytesBase64Encoded")
+                                if (b64.isNotBlank()) {
+                                    val bytes = Base64.decode(b64, Base64.DEFAULT)
+                                    generatedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    if (generatedBitmap != null) {
+                                        AppLogger.i("GeminiRecipeService", "Successfully generated image with $modelName")
+                                        return@withContext Result.success(generatedBitmap!!)
+                                    }
+                                }
                             }
+                        } else {
+                            AppLogger.w("GeminiRecipeService", "$modelName returned HTTP ${resp.code}: $bodyStr")
+                            lastImagenError = "Google Imagen ($modelName) error (${resp.code}): ${bodyStr.ifBlank { resp.message }}"
                         }
                     }
+                } catch (e: Exception) {
+                    AppLogger.w("GeminiRecipeService", "Failed request to $modelName: ${e.message}")
+                    if (lastImagenError.isBlank()) {
+                        lastImagenError = e.localizedMessage ?: "Failed to connect to Google Imagen endpoint"
+                    }
                 }
-            } catch (e: Exception) {
-                Log.w("GeminiRecipeService", "Imagen 3 generation call failed: ${e.message}")
             }
 
             if (generatedBitmap != null) {
-                return@withContext Result.success(generatedBitmap!!)
-            }
-
-            // Fallback: Gemini multimodal generateContent with responseModalities
-            val parts = mutableListOf<GeminiPart>()
-            parts.add(GeminiPart(text = promptText))
-
-            if (referenceBitmap != null) {
-                val b64 = bitmapToBase64(referenceBitmap)
-                if (b64.isNotBlank()) {
-                    parts.add(GeminiPart(inlineData = GeminiInlineData(mimeType = "image/jpeg", data = b64)))
-                }
-            }
-
-            val request = GeminiRequest(
-                contents = listOf(GeminiContent(parts = parts)),
-                generationConfig = GeminiGenerationConfig(
-                    responseModalities = listOf("IMAGE", "TEXT"),
-                    imageConfig = GeminiImageConfig(aspectRatio = "1:1", imageSize = "1K")
-                )
-            )
-
-            // Try supported image generation models
-            val response = try {
-                api.generateContent(model = "gemini-2.0-flash-exp", apiKey = apiKey, request = request)
-            } catch (err1: Throwable) {
-                Log.w("GeminiRecipeService", "gemini-2.0-flash-exp failed: ${err1.message}, trying gemini-2.0-flash")
-                api.generateContent(model = "gemini-2.0-flash", apiKey = apiKey, request = request)
-            }
-
-            val candidates = response.candidates
-            val allParts = candidates?.flatMap { it.content?.parts ?: emptyList() } ?: emptyList()
-            val imagePart = allParts.firstOrNull { it.inlineData != null && it.inlineData.data.isNotBlank() }
-
-            val base64Data = imagePart?.inlineData?.data
-
-            if (!base64Data.isNullOrBlank()) {
-                val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
-                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                if (bitmap != null) {
-                    Result.success(bitmap)
-                } else {
-                    Result.failure(Exception("Failed to decode generated image."))
-                }
+                Result.success(generatedBitmap!!)
             } else {
-                val returnedText = allParts.mapNotNull { it.text }.joinToString(" ")
-                val err = if (returnedText.isNotBlank()) {
-                    "Model response: $returnedText"
-                } else {
-                    "No image data returned by AI model."
-                }
-                Result.failure(Exception(err))
+                val finalErr = if (lastImagenError.isNotBlank()) lastImagenError else "Google Imagen 3 did not return image data."
+                Result.failure(Exception(finalErr))
             }
         } catch (t: Throwable) {
-            val errorMsg = if (t is retrofit2.HttpException) {
-                val errorBody = t.response()?.errorBody()?.string()
-                Log.e("GeminiRecipeService", "Gemini HTTP error ${t.code()}: $errorBody", t)
-                "Gemini AI error (${t.code()}): ${errorBody ?: t.message()}"
-            } else {
-                Log.e("GeminiRecipeService", "Error generating recipe cover image: ${t.message}", t)
-                t.localizedMessage ?: "Failed to generate recipe cover image"
+            AppLogger.e("GeminiRecipeService", "Error in generateRecipeCoverImage: ${t.message}", t)
+            Result.failure(Exception(t.localizedMessage ?: "Failed to generate recipe cover image"))
+        }
+    }
+    suspend fun askSousChefAssistant(question: String): String = withContext(Dispatchers.IO) {
+        val apiKey = getEffectiveApiKey()
+        if (apiKey.isBlank()) {
+            AppLogger.w("GeminiClient", "No effective Gemini API key available for Sous-Chef.")
+            return@withContext ""
+        }
+        try {
+            val systemPrompt = """
+                You are the warm, highly skilled, and friendly culinary & crafting assistant in the Cosmo Compendium app.
+                Give a concise, helpful, and clear answer (2 to 4 sentences maximum) to the user's cooking, baking, crafting (such as soap making or balms), substitution, or project question.
+                Be practical, encouraging, and accurate with weights, measurements, ratios, and temperatures.
+            """.trimIndent()
+
+            val request = GeminiRequest(
+                contents = listOf(
+                    GeminiContent(
+                        parts = listOf(
+                            GeminiPart(text = "$systemPrompt\n\nUser Question: $question")
+                        )
+                    )
+                ),
+                generationConfig = GeminiGenerationConfig(temperature = 0.5f)
+            )
+
+            for (modelName in getEffectiveModels()) {
+                try {
+                    val response = api.generateContent(
+                        model = modelName,
+                        apiKeyHeader = apiKey,
+                        apiKey = apiKey,
+                        request = request
+                    )
+                    val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                    if (!text.isNullOrBlank()) {
+                        return@withContext text.trim()
+                    }
+                } catch (err: Throwable) {
+                    AppLogger.w("GeminiRecipeService", "SousChef model $modelName failed: ${err.message}, trying next fallback...")
+                }
             }
-            Result.failure(Exception(errorMsg))
+            return@withContext ""
+        } catch (e: Exception) {
+            AppLogger.e("GeminiClient", "Error asking SousChef assistant: ${e.message}", e)
+            return@withContext ""
+        }
+    }
+
+    suspend fun testApiKeyDetailed(apiKeyToTest: String? = null): Result<String> = withContext(Dispatchers.IO) {
+        val rawKey = apiKeyToTest ?: getEffectiveApiKey()
+        val key = sanitizeApiKey(rawKey)
+        if (key.isBlank()) {
+            return@withContext Result.failure(Exception("Gemini API key is blank. Please paste your Google AI Studio API key."))
+        }
+        try {
+            // Force refresh live models on manual test connection
+            try {
+                fetchLiveModels(key, forceRefresh = true)
+            } catch (_: Throwable) {}
+
+            val request = GeminiRequest(
+                contents = listOf(
+                    GeminiContent(
+                        parts = listOf(
+                            GeminiPart(text = "Hello! Please reply with 'OK' to verify API connection.")
+                        )
+                    )
+                ),
+                generationConfig = GeminiGenerationConfig(temperature = 0.1f)
+            )
+
+            var lastError: Throwable? = null
+            var successModel: String? = null
+            var successText: String? = null
+
+            for (modelName in getEffectiveModels()) {
+                try {
+                    val response = api.generateContent(
+                        model = modelName,
+                        apiKeyHeader = key,
+                        apiKey = key,
+                        request = request
+                    )
+                    val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                    if (!text.isNullOrBlank()) {
+                        successModel = modelName
+                        successText = text.trim()
+                        break
+                    }
+                } catch (err: Throwable) {
+                    lastError = err
+                    val errMsg = err.message ?: ""
+                    val isRetiredOr404 = (err is retrofit2.HttpException && err.code() == 404) ||
+                            errMsg.contains("no longer available", ignoreCase = true) ||
+                            errMsg.contains("404", ignoreCase = true)
+
+                    if (isRetiredOr404) {
+                        markModelRetired(modelName)
+                    }
+                    AppLogger.w("GeminiRecipeService", "Test probe with $modelName failed: ${err.message}")
+                }
+            }
+
+            if (successModel != null) {
+                Result.success("✓ Connected ($successModel)")
+            } else {
+                val errorMsg = if (lastError is retrofit2.HttpException) {
+                    val errorBody = lastError.response()?.errorBody()?.string()
+                    AppLogger.e("GeminiRecipeService", "Gemini HTTP error ${lastError.code()}: $errorBody", lastError)
+                    "HTTP ${lastError.code()}: ${errorBody ?: lastError.message()}"
+                } else {
+                    AppLogger.e("GeminiRecipeService", "Gemini connection error: ${lastError?.message}", lastError)
+                    lastError?.localizedMessage ?: "Failed to connect to Google Gemini"
+                }
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Throwable) {
+            Result.failure(Exception(e.localizedMessage ?: "Failed to connect to Google Gemini"))
         }
     }
 }
+
+typealias GeminiRecipeService = GeminiClient

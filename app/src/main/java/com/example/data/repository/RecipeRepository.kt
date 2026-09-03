@@ -28,6 +28,7 @@ class RecipeRepository(
     private val shoppingDao: ShoppingDao
 ) {
 
+    val tombstoneManager: com.example.data.local.TombstoneManager? = context?.let { com.example.data.local.TombstoneManager(it) }
     val syncConfig: SyncConfig? = context?.let { SyncConfig(it) }
     val syncManager: SyncManager? = if (context != null && syncConfig != null) {
         SyncManager(context, recipeDao, syncConfig)
@@ -197,7 +198,22 @@ class RecipeRepository(
         }
     }
 
+    suspend fun purgeDemoRecipes() {
+        val all = recipeDao.getAllRecipesDirect()
+        val demoTitles = com.example.data.local.DefaultRecipes.DEMO_TITLES
+        all.filter { recipe ->
+            demoTitles.any { dt ->
+                recipe.title.equals(dt, ignoreCase = true) ||
+                recipe.titleEnglish.equals(dt, ignoreCase = true) ||
+                recipe.titleGerman.equals(dt, ignoreCase = true)
+            }
+        }.forEach { demoRecipe ->
+            recipeDao.hardDeleteRecipe(demoRecipe.id)
+        }
+    }
+
     suspend fun insertRecipe(recipe: RecipeEntity): Long {
+        tombstoneManager?.removeTombstone(recipe.title, recipe.titleEnglish, recipe.titleGerman)
         val now = System.currentTimeMillis()
         val prepared = recipe.copy(
             updatedAt = now,
@@ -225,6 +241,18 @@ class RecipeRepository(
     }
 
     suspend fun getAllRecipesDirect(): List<RecipeEntity> = recipeDao.getAllRecipesDirect()
+
+    suspend fun bulkMoveRecipesProfile(sourceProfile: String, targetProfile: String): Int {
+        val count = recipeDao.bulkMoveRecipesProfile(sourceProfile, targetProfile)
+        syncManager?.triggerImmediateSync()
+        return count
+    }
+
+    suspend fun moveRecipesByIds(ids: List<Long>, targetProfile: String): Int {
+        val count = recipeDao.moveRecipesByIds(ids, targetProfile)
+        syncManager?.triggerImmediateSync()
+        return count
+    }
 
     suspend fun deleteAllRecipes() = recipeDao.deleteAll()
 
@@ -268,7 +296,14 @@ class RecipeRepository(
 
     suspend fun updateCategoryName(oldCategory: String, newCategory: String) = recipeDao.updateCategoryName(oldCategory, newCategory)
 
+    suspend fun updateRecipeProfile(id: Long, profileName: String) {
+        recipeDao.updateRecipeProfile(id, profileName)
+        syncManager?.triggerImmediateSync()
+    }
+
     suspend fun deleteRecipe(recipe: RecipeEntity) {
+        // Record persistent tombstone so old server entries can NEVER resurrect this deleted recipe
+        tombstoneManager?.recordTombstone(recipe.title, recipe.titleEnglish, recipe.titleGerman)
         if (syncConfig?.isSyncEnabled == true) {
             // Soft delete (isDeleted = true) so it propagates cleanly during delta sync to VPS
             recipeDao.softDeleteRecipe(recipe.id)
@@ -299,11 +334,22 @@ class RecipeRepository(
 
     suspend fun scanAndProcessRecipe(
         imageBitmaps: List<Bitmap>,
-        recipeText: String?,
+        recipeText: String? = null,
         imageUri: String? = null
     ): RecipeEntity {
-        val result = GeminiClient.parseRecipeWithAi(imageBitmaps, recipeText)
-        val dto = result.getOrNull() ?: ParsedRecipeDto()
+        // 1. Preserve the captured reference photo so the card is never lost
+        val initialCoverPath = imageUri ?: if (imageBitmaps.isNotEmpty() && context != null) {
+            ImageUtils.saveLowResReferenceImage(context, imageBitmaps.first())
+        } else null
+
+        // 2. Call Universal AI parsing (supports Gemini, OpenAI, Grok, Claude, OpenRouter, Ollama)
+        val result = com.example.ai.UniversalAiRecipeService.parseRecipe(imageBitmaps, recipeText)
+        if (result.isFailure) {
+            val err = result.exceptionOrNull() ?: Exception("AI scanning failed to read recipe from photo.")
+            throw err
+        }
+
+        val dto = result.getOrThrow()
 
         val enTitle = dto.titleEnglish?.takeIf { it.isNotBlank() }
             ?: dto.title?.takeIf { it.isNotBlank() }
@@ -323,6 +369,14 @@ class RecipeRepository(
             val xmax = dto.foodPhotoBox.xmax ?: 1000
             finalFoodImageUri = ImageUtils.cropAndSaveFoodPhoto(context, sourceBitmap, ymin, xmin, ymax, xmax)
         }
+
+        // Realign card image upright if AI detected sideways orientation
+        if (!initialCoverPath.isNullOrBlank() && (dto.cardRotationNeededDegrees ?: 0) != 0) {
+            ImageUtils.rotateImageFile(initialCoverPath, (dto.cardRotationNeededDegrees ?: 0).toFloat())
+        }
+
+        // If no cropped food photo exists, preserve the captured card image as the recipe cover photo!
+        val effectiveImageUri = finalFoodImageUri ?: initialCoverPath
 
         val ingredientsList = dto.ingredients?.mapNotNull { ing ->
             val name = ing.nameEnglish?.takeIf { it.isNotBlank() }
@@ -345,13 +399,16 @@ class RecipeRepository(
             if (name.isNullOrBlank() && amt.isBlank() && unitStr.isBlank()) {
                 null
             } else {
-                val finalName = name ?: "Ingredient"
+                val rawName = name ?: "Ingredient"
+                val finalName = RecipeIngredient.cleanIngredientName(rawName).ifBlank { rawName }
+                val finalNameDe = ing.nameGerman?.let { RecipeIngredient.cleanIngredientName(it) } ?: finalName
+                val finalNameEn = ing.nameEnglish?.let { RecipeIngredient.cleanIngredientName(it) } ?: finalName
                 RecipeIngredient(
                     name = finalName,
                     amount = amt,
                     unit = unitStr,
-                    nameGerman = ing.nameGerman ?: finalName,
-                    nameEnglish = ing.nameEnglish ?: finalName,
+                    nameGerman = finalNameDe,
+                    nameEnglish = finalNameEn,
                     isOptional = ing.isOptional ?: false,
                     group = ing.group
                 )
@@ -397,7 +454,8 @@ class RecipeRepository(
             isFavorite = false,
             rating = 5,
             originStory = "Scanned recipe.",
-            imageUri = finalFoodImageUri ?: imageUri,
+            imageUri = effectiveImageUri,
+            originalCardPhotoUri = effectiveImageUri,
             createdAt = System.currentTimeMillis()
         )
     }
@@ -421,6 +479,7 @@ class RecipeRepository(
                     titleGerman = if (duplicate.titleGerman.isNotBlank()) duplicate.titleGerman else recipe.titleGerman,
                     imageUri = duplicate.imageUri ?: recipe.imageUri,
                     coverPhotoName = duplicate.coverPhotoName ?: recipe.coverPhotoName,
+                    originalCardPhotoUri = duplicate.originalCardPhotoUri ?: recipe.originalCardPhotoUri,
                     notes = if (duplicate.notes.isNotBlank()) duplicate.notes else recipe.notes,
                     notesGerman = if (duplicate.notesGerman.isNotBlank()) duplicate.notesGerman else recipe.notesGerman,
                     originStory = if (duplicate.originStory.isNotBlank()) duplicate.originStory else recipe.originStory,

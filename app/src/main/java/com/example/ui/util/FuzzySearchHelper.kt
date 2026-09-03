@@ -5,89 +5,103 @@ import com.example.data.local.RecipeEntity
 object FuzzySearchHelper {
 
     /**
-     * Checks if the recipe matches the search query using fuzzy matching.
+     * Checks if the recipe matches the search query.
      */
     fun matches(recipe: RecipeEntity, rawQuery: String): Boolean {
-        if (rawQuery.isBlank()) return true
+        return score(recipe, rawQuery) > 0
+    }
+
+    /**
+     * Calculates relevance score for ranking recipes against the search query.
+     * Higher score = stronger match. 0 = no match.
+     */
+    fun score(recipe: RecipeEntity, rawQuery: String): Int {
+        if (rawQuery.isBlank()) return 1
         val query = rawQuery.trim().lowercase()
-
-        // Gather all searchable text tokens from the recipe
-        val fields = mutableListOf<String>()
-        fields.add(recipe.title)
-        if (recipe.titleEnglish.isNotBlank()) fields.add(recipe.titleEnglish)
-        if (recipe.titleGerman.isNotBlank()) fields.add(recipe.titleGerman)
-        if (recipe.category.isNotBlank()) fields.add(recipe.category)
-        if (recipe.notes.isNotBlank()) fields.add(recipe.notes)
-        if (recipe.notesGerman.isNotBlank()) fields.add(recipe.notesGerman)
-        if (recipe.originStory.isNotBlank()) fields.add(recipe.originStory)
-
-        for (ing in recipe.ingredients) {
-            if (ing.name.isNotBlank()) fields.add(ing.name)
-            if (!ing.nameEnglish.isNullOrBlank()) fields.add(ing.nameEnglish)
-            if (!ing.nameGerman.isNullOrBlank()) fields.add(ing.nameGerman)
-            if (!ing.group.isNullOrBlank()) fields.add(ing.group)
-        }
-
-        for (step in recipe.steps) {
-            if (step.instructionEnglish.isNotBlank()) fields.add(step.instructionEnglish)
-            if (step.instructionGerman.isNotBlank()) fields.add(step.instructionGerman)
-            if (!step.tip.isNullOrBlank()) fields.add(step.tip)
-        }
-
-        val allCombinedText = fields.joinToString(" ").lowercase()
-
-        // 1. Direct contains check
-        if (allCombinedText.contains(query)) return true
-
-        // 2. Tokenized multi-word search
         val queryTokens = query.split("\\s+".toRegex()).filter { it.isNotBlank() }
-        if (queryTokens.isEmpty()) return true
+        if (queryTokens.isEmpty()) return 1
 
-        val allTokensMatch = queryTokens.all { token ->
-            // Check substring in combined text
-            if (allCombinedText.contains(token)) return@all true
+        val titleCombined = listOfNotNull(
+            recipe.title,
+            recipe.titleEnglish.takeIf { it.isNotBlank() },
+            recipe.titleGerman.takeIf { it.isNotBlank() }
+        ).joinToString(" ").lowercase()
 
-            // Check fuzzy / subsequence match against individual recipe words
-            val recipeWords = allCombinedText.split("[^\\p{L}\\p{Nd}]+".toRegex()).filter { it.length >= 2 }
-            recipeWords.any { word ->
-                isFuzzyMatch(word, token)
-            }
+        val categoryCombined = recipe.category.lowercase()
+
+        val ingredientsCombined = recipe.ingredients.mapNotNull { ing ->
+            listOfNotNull(ing.name, ing.nameEnglish, ing.nameGerman).joinToString(" ").takeIf { it.isNotBlank() }
+        }.joinToString(" ").lowercase()
+
+        val notesAndStepsCombined = (listOf(recipe.notes, recipe.notesGerman, recipe.originStory) +
+                recipe.steps.flatMap { listOfNotNull(it.instructionEnglish, it.instructionGerman, it.tip) })
+            .joinToString(" ").lowercase()
+
+        // 1. Exact full query in title (e.g. "chocolate cake" in "grandma's chocolate cake") -> 10,000 pts
+        if (titleCombined.contains(query)) {
+            return 10000 + (100 - titleCombined.length).coerceAtLeast(0)
         }
 
-        return allTokensMatch
+        // 2. All query words in title (e.g. "chocolate" and "cake" both in title) -> 5,000 pts
+        val allTokensInTitle = queryTokens.all { token ->
+            titleCombined.contains(token) || isWordMatch(titleCombined, token)
+        }
+        if (allTokensInTitle) {
+            return 5000 + (100 - titleCombined.length).coerceAtLeast(0)
+        }
+
+        // 3. Exact full query in category (e.g. "Baking & Desserts") -> 3,000 pts
+        if (categoryCombined.contains(query)) {
+            return 3000
+        }
+
+        // 4. Exact full query in ingredient names (e.g. "cocoa powder") -> 2,000 pts
+        if (ingredientsCombined.contains(query)) {
+            return 2000
+        }
+
+        // 5. Query tokens distributed across Title + Category + Ingredients
+        // For a multi-word query (e.g. "chocolate cake"), ALL tokens MUST match meaningful recipe core fields!
+        val allTokensInCore = queryTokens.all { token ->
+            titleCombined.contains(token) ||
+                    categoryCombined.contains(token) ||
+                    ingredientsCombined.contains(token) ||
+                    isWordMatch(titleCombined, token) ||
+                    isWordMatch(ingredientsCombined, token)
+        }
+
+        if (allTokensInCore) {
+            var tokenScore = 500
+            if (queryTokens.any { titleCombined.contains(it) }) tokenScore += 400
+            if (queryTokens.any { ingredientsCombined.contains(it) }) tokenScore += 200
+            return tokenScore
+        }
+
+        // 6. Single-token query fallback for notes / instructions
+        if (queryTokens.size == 1 && notesAndStepsCombined.contains(query)) {
+            return 100
+        }
+
+        return 0
     }
 
-    private fun isFuzzyMatch(target: String, pattern: String): Boolean {
-        if (target == pattern) return true
-        if (target.contains(pattern)) return true
+    /**
+     * Checks if any word in the text matches the pattern (exact prefix or single typo for words >= 5 chars).
+     * Strictly avoids subsequence letter-skipping like "package" matching "cake".
+     */
+    private fun isWordMatch(text: String, pattern: String): Boolean {
+        if (text.contains(pattern)) return true
+        val words = text.split("[^\\p{L}\\p{Nd}]+".toRegex()).filter { it.length >= 2 }
 
-        // Subsequence match (e.g. "choc" in "chocolate")
-        if (pattern.length >= 3 && isSubsequence(pattern, target)) return true
-
-        // Levenshtein distance for typos
-        val maxDist = when {
-            pattern.length <= 3 -> 0
-            pattern.length <= 5 -> 1
-            else -> 2
-        }
-
-        if (maxDist > 0 && Math.abs(target.length - pattern.length) <= maxDist) {
-            return levenshteinDistance(pattern, target) <= maxDist
-        }
-
-        return false
-    }
-
-    private fun isSubsequence(sub: String, full: String): Boolean {
-        var subIdx = 0
-        var fullIdx = 0
-        while (subIdx < sub.length && fullIdx < full.length) {
-            if (sub[subIdx] == full[fullIdx]) {
-                subIdx++
+        return words.any { word ->
+            if (word == pattern) return@any true
+            if (word.startsWith(pattern) && pattern.length >= 3) return@any true
+            // Levenshtein distance 1 only for typo resilience on words with length >= 5
+            if (pattern.length >= 5 && Math.abs(word.length - pattern.length) <= 1) {
+                return@any levenshteinDistance(pattern, word) <= 1
             }
-            fullIdx++
+            false
         }
-        return subIdx == sub.length
     }
 
     private fun levenshteinDistance(s1: String, s2: String): Int {
@@ -108,3 +122,4 @@ object FuzzySearchHelper {
         return dp[s1.length][s2.length]
     }
 }
+

@@ -259,7 +259,7 @@ fun BatchCoverGenerationDialog(
                                 )
                             }
                             Text(
-                                text = "Successfully generated $successCount heirloom food photos." + if (failCount > 0) " ($failCount failed)" else "",
+                                text = "Successfully generated $successCount cover photos." + if (failCount > 0) " ($failCount failed)" else "",
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF14532D))
                             )
                         }

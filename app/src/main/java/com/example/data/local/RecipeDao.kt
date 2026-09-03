@@ -76,8 +76,23 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE title = :title LIMIT 1")
     suspend fun getRecipeByTitle(title: String): RecipeEntity?
 
+    @Query("UPDATE recipes SET profileName = :profileName, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE id = :id")
+    suspend fun updateRecipeProfile(id: Long, profileName: String, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM recipes WHERE isDeleted = 0 AND (:profileName = 'All' OR profileName = :profileName) ORDER BY createdAt DESC")
+    fun getRecipesByProfile(profileName: String): Flow<List<RecipeEntity>>
+
+    @Query("SELECT DISTINCT profileName FROM recipes WHERE isDeleted = 0 AND profileName != ''")
+    fun getDistinctProfiles(): Flow<List<String>>
+
     @Query("UPDATE recipes SET syncStatus = 'SYNCED' WHERE id IN (:ids)")
     suspend fun markRecipesSynced(ids: List<Long>)
+
+    @Query("UPDATE recipes SET profileName = :targetProfile, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE isDeleted = 0 AND (:sourceProfile = 'All' OR :sourceProfile = 'All Family' OR profileName = :sourceProfile)")
+    suspend fun bulkMoveRecipesProfile(sourceProfile: String, targetProfile: String, updatedAt: Long = System.currentTimeMillis()): Int
+
+    @Query("UPDATE recipes SET profileName = :targetProfile, updatedAt = :updatedAt, syncStatus = 'PENDING' WHERE id IN (:ids) AND isDeleted = 0")
+    suspend fun moveRecipesByIds(ids: List<Long>, targetProfile: String, updatedAt: Long = System.currentTimeMillis()): Int
 
     @Query("DELETE FROM recipes")
     suspend fun deleteAll()

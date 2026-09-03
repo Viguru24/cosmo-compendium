@@ -221,7 +221,7 @@ fun KitchenCookModeScreen(
                         ) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Exit Cook Mode",
+                                contentDescription = if (languageMode == LanguageMode.GERMAN) "Kochmodus beenden" else "Exit Cook Mode",
                                 tint = Color(0xFF451A03)
                             )
                         }
@@ -441,7 +441,7 @@ fun KitchenCookModeScreen(
                                                     color = SageGreen.copy(alpha = 0.15f)
                                                 ) {
                                                     Text(
-                                                        text = "Completed ✓",
+                                                        text = if (languageMode == LanguageMode.GERMAN) "Erledigt ✓" else "Completed ✓",
                                                         color = SageGreen,
                                                         fontWeight = FontWeight.Bold,
                                                         fontSize = 11.sp,
@@ -696,7 +696,8 @@ fun KitchenCookModeScreen(
                                         }
 
                                         // Step Kitchen Timer Widget
-                                        val showTimerWidget = step.timerMinutes > 0 || (timerSecondsRemaining > 0 && isTimerRunning)
+                                        val effectiveTimerMinutes = step.getEffectiveTimerMinutes()
+val showTimerWidget = effectiveTimerMinutes > 0 || (timerSecondsRemaining > 0 && isTimerRunning)
                                         if (showTimerWidget) {
                                             Surface(
                                                 color = Color(0xFFFFFBEB),
@@ -725,7 +726,7 @@ fun KitchenCookModeScreen(
                                                             text = if (timerSecondsRemaining > 0) {
                                                                 String.format("%02d:%02d", mins, secs)
                                                             } else {
-                                                                "${step.timerMinutes} min timer"
+                                                                "$effectiveTimerMinutes min timer"
                                                             },
                                                             style = MaterialTheme.typography.titleMedium.copy(
                                                                 fontWeight = FontWeight.ExtraBold,
@@ -762,9 +763,9 @@ fun KitchenCookModeScreen(
                                                                     modifier = Modifier.size(20.dp)
                                                                 )
                                                             }
-                                                        } else if (step.timerMinutes > 0) {
+                                                        } else if (effectiveTimerMinutes > 0) {
                                                             Button(
-                                                                onClick = { onStartTimer(step.timerMinutes) },
+                                                                onClick = { onStartTimer(effectiveTimerMinutes) },
                                                                 colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
                                                                 shape = RoundedCornerShape(8.dp),
                                                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
@@ -1330,14 +1331,15 @@ fun TabletKitchenCookModeLayout(
                         }
 
                         // Chef's Tip or Step Timer Trigger
-                        if (currentStep.timerMinutes > 0) {
+                        val effectiveLandscapeTimer = currentStep.getEffectiveTimerMinutes()
+                        if (effectiveLandscapeTimer > 0) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
                                 color = Color(0xFFFAF2E6),
                                 border = BorderStroke(1.dp, Color(0xFFE2D2BC)),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onStartTimer(currentStep.timerMinutes) }
+                                    .clickable { onStartTimer(effectiveLandscapeTimer) }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(12.dp),
@@ -1352,17 +1354,17 @@ fun TabletKitchenCookModeLayout(
                                             style = MaterialTheme.typography.labelMedium.copy(color = Color(0xFF451A03))
                                         )
                                         Text(
-                                            text = "Tap to set timer for ${currentStep.timerMinutes} minutes",
+                                            text = "Tap to set timer for $effectiveLandscapeTimer minutes",
                                             style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF6B5B4E))
                                         )
                                     }
                                     Button(
-                                        onClick = { onStartTimer(currentStep.timerMinutes) },
+                                        onClick = { onStartTimer(effectiveLandscapeTimer) },
                                         colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
                                         shape = RoundedCornerShape(6.dp),
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                     ) {
-                                        Text("Start ${currentStep.timerMinutes}m", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text("Start ${effectiveLandscapeTimer}m", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -1386,7 +1388,7 @@ fun TabletKitchenCookModeLayout(
                     ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Previous Step", fontWeight = FontWeight.Bold)
+                        Text(if (languageMode == LanguageMode.GERMAN) "Vorheriger Schritt" else "Previous Step", fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -1403,7 +1405,7 @@ fun TabletKitchenCookModeLayout(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (isStepDone) "Completed ✓" else "Mark Step Done", fontWeight = FontWeight.Bold)
+                        Text(if (isStepDone) if (languageMode == LanguageMode.GERMAN) "Erledigt ✓" else "Completed ✓" else "Mark Step Done", fontWeight = FontWeight.Bold)
                     }
 
                     Button(

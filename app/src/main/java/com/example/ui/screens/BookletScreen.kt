@@ -1,5 +1,13 @@
 package com.example.ui.screens
 
+import com.example.ui.components.EditAiPhotoPromptDialog
+
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -49,6 +57,8 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -122,6 +132,8 @@ import com.example.ui.theme.GermanFlagGold
 import com.example.ui.theme.SageGreen
 import com.example.ui.theme.TerracottaPrimary
 import com.example.ui.util.AppLocalization
+import com.example.ui.util.getDisplayCategory
+import com.example.ui.util.getDisplayTitle
 import com.example.ui.viewmodel.RecipeViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -135,6 +147,8 @@ fun BookletScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val selectedRecipeState by viewModel.selectedRecipe.collectAsStateWithLifecycle()
+    val activeRecipe = selectedRecipeState?.takeIf { it.id == recipe.id } ?: recipe
     val languageMode by viewModel.languageMode.collectAsStateWithLifecycle()
     val unitSystem by viewModel.unitSystem.collectAsStateWithLifecycle()
     val servingMultiplier by viewModel.servingMultiplier.collectAsStateWithLifecycle()
@@ -178,6 +192,7 @@ fun BookletScreen(
     val isTestingComfyConnection by viewModel.isTestingComfyConnection.collectAsStateWithLifecycle()
     val lastCoverGenerationLog by viewModel.lastCoverGenerationLog.collectAsStateWithLifecycle()
     val showCoverErrorDialog by viewModel.showCoverErrorDialog.collectAsStateWithLifecycle()
+    val customPromptDialogRecipe by viewModel.customPromptDialogRecipe.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
 
     LaunchedEffect(coverGenerationError) {
@@ -187,7 +202,7 @@ fun BookletScreen(
     }
 
     // Pages: 0: Cover, 1: Lore & TOC, 2: Ingredients & Scaler, 3..3+steps: Steps, last: Journal
-    val totalPages = 4 + recipe.steps.size
+    val totalPages = 4 + activeRecipe.steps.size
     val pagerState = rememberPagerState(pageCount = { totalPages })
     val coroutineScope = rememberCoroutineScope()
 
@@ -202,9 +217,26 @@ fun BookletScreen(
         }
     }
 
+    customPromptDialogRecipe?.let { promptRecipe ->
+        EditAiPhotoPromptDialog(
+            recipe = promptRecipe,
+            onDismiss = { viewModel.closeCustomPromptDialog() },
+            onGenerate = { customPrompt ->
+                viewModel.generateRecipeCoverArt(
+                    recipe = promptRecipe,
+                    context = context,
+                    customPrompt = customPrompt
+                )
+                viewModel.closeCustomPromptDialog()
+            },
+            isGenerating = isGeneratingCover,
+            languageMode = languageMode
+        )
+    }
+
     if (isCookMode) {
         KitchenCookModeScreen(
-            recipe = recipe,
+            recipe = activeRecipe,
             activeStepIndex = activeCookStep,
             onStepChange = { viewModel.activeCookStep.value = it },
             languageMode = languageMode,
@@ -227,7 +259,7 @@ fun BookletScreen(
         )
     } else if (isVintageCardMode) {
         VintageHandwrittenCardView(
-            recipe = recipe,
+            recipe = activeRecipe,
             languageMode = languageMode,
             unitSystem = unitSystem,
             onClose = { viewModel.isVintageCardMode.value = false }
@@ -241,7 +273,7 @@ fun BookletScreen(
                     title = {
                         Column {
                             Text(
-                                text = recipe.getDisplayTitle(),
+                                text = activeRecipe.getDisplayTitle(languageMode),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Serif,
@@ -251,7 +283,7 @@ fun BookletScreen(
                                 maxLines = 1
                             )
                             Text(
-                                text = recipe.category.ifBlank { "Recipe" },
+                                text = activeRecipe.getDisplayCategory(languageMode),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontSize = 10.sp
@@ -279,7 +311,7 @@ fun BookletScreen(
                                     totalPages - 1 -> 3 // Lore & Notes tab
                                     else -> 0 // Basics tab
                                 }
-                                viewModel.openRecipeEditor(recipe, initialTab = targetTab)
+                                viewModel.openRecipeEditor(activeRecipe, initialTab = targetTab)
                             },
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = Color(0xFFEDE4D6),
@@ -294,7 +326,7 @@ fun BookletScreen(
                         ) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit Recipe", modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(3.dp))
-                            Text("Edit", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text(AppLocalization.getEditButtonLabel(languageMode), fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
 
                         // Shopping List button with badge
@@ -338,15 +370,32 @@ fun BookletScreen(
                             )
                         }
 
-                        // Favorite Toggle
+                        // Quick Sound Toggle (Mute / Unmute)
                         IconButton(
-                            onClick = { viewModel.toggleFavorite(recipe) },
+                            onClick = {
+                                val next = !soundEffectsEnabled
+                                viewModel.setSoundEffectsEnabled(next)
+                                Toast.makeText(context, if (next) "🔊 Sound Effects Enabled" else "🔇 Sound Effects Muted", Toast.LENGTH_SHORT).show()
+                            },
                             modifier = Modifier.size(30.dp)
                         ) {
                             Icon(
-                                if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                if (soundEffectsEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                                contentDescription = if (soundEffectsEnabled) "Mute Sound" else "Unmute Sound",
+                                tint = if (soundEffectsEnabled) TerracottaPrimary else Color(0xFF9E8E81),
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+
+                        // Favorite Toggle
+                        IconButton(
+                            onClick = { viewModel.toggleFavorite(activeRecipe) },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(
+                                if (activeRecipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = "Favorite",
-                                tint = if (recipe.isFavorite) Color(0xFFB91C1C) else Color(0xFF8C7A6B),
+                                tint = if (activeRecipe.isFavorite) Color(0xFFB91C1C) else Color(0xFF8C7A6B),
                                 modifier = Modifier.size(17.dp)
                             )
                         }
@@ -385,7 +434,15 @@ fun BookletScreen(
                                     leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color(0xFFD97706)) },
                                     onClick = {
                                         showMoreMenu = false
-                                        viewModel.generateRecipeCoverArt(recipe, context)
+                                        viewModel.generateRecipeCoverArt(activeRecipe, context)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("✨ Edit AI Photo Prompt...") },
+                                    leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = TerracottaPrimary) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        viewModel.openCustomPromptDialog(activeRecipe)
                                     }
                                 )
                                 if (!recipe.imageUri.isNullOrBlank()) {
@@ -394,7 +451,7 @@ fun BookletScreen(
                                         leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = TerracottaPrimary) },
                                         onClick = {
                                             showMoreMenu = false
-                                            viewModel.removeRecipeCoverPhoto(recipe)
+                                            viewModel.removeRecipeCoverPhoto(activeRecipe)
                                         }
                                     )
                                 }
@@ -465,7 +522,7 @@ fun BookletScreen(
                 if (isTablet) {
                     // Two-Page Open Book Spread for Tablets
                     TabletBookletSpreadView(
-                        recipe = recipe,
+                        recipe = activeRecipe,
                         languageMode = languageMode,
                         unitSystem = unitSystem,
                         onUnitSystemChange = { viewModel.setUnitSystem(it) },
@@ -479,24 +536,25 @@ fun BookletScreen(
                         onToggleStep = { viewModel.toggleStepChecked(it) },
                         onStartTimer = { minutes -> viewModel.startTimerForStep(minutes) },
                         onSpeak = { text, isGerman -> viewModel.speakStep(text, isGerman) },
-                        onEditRecipe = { tab -> viewModel.openRecipeEditor(recipe, tab) },
-                        onGenerateAiCover = { viewModel.generateRecipeCoverArt(recipe, context) },
-                        onRemoveCoverPhoto = { viewModel.removeRecipeCoverPhoto(recipe) },
+                        onEditRecipe = { tab -> viewModel.openRecipeEditor(activeRecipe, tab) },
+                        onGenerateAiCover = { viewModel.generateRecipeCoverArt(activeRecipe, context) },
+                        onRemoveCoverPhoto = { viewModel.removeRecipeCoverPhoto(activeRecipe) },
                         isGeneratingCover = isGeneratingCover,
                         onAddToShoppingList = {
                             viewModel.addRecipeToShoppingList(
-                                recipe = recipe,
+                                recipe = activeRecipe,
                                 multiplier = servingMultiplier,
                                 unitSystem = unitSystem
                             )
-                            Toast.makeText(context, "Added ${recipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Added ${activeRecipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
                         },
                         onSaveJournal = { notes, rating ->
-                            viewModel.saveRecipeJournal(recipe.id, notes, rating)
+                            viewModel.saveRecipeJournal(activeRecipe.id, notes, rating)
                             Toast.makeText(context, "Cook's journal entry saved!", Toast.LENGTH_SHORT).show()
                         },
                         onIncrementCooked = {
-                            viewModel.markRecipeCooked()
+                            viewModel.markRecipeCooked()},
+                        onPlayTurnSound = { viewModel.playPageTurnSound() 
                             Toast.makeText(context, "Times cooked updated: ${recipe.timesCooked + 1}", Toast.LENGTH_SHORT).show()
                         }
                     )
@@ -552,11 +610,11 @@ fun BookletScreen(
                             0 -> {
                                 // Cover Page
                                 RecipeCoverPage(
-                                    recipe = recipe,
+                                    recipe = activeRecipe,
                                     languageMode = languageMode,
                                     onOpenBook = {
                                         coroutineScope.launch {
-                                            pagerState.animateScrollToPage(2)
+                                            pagerState.animateScrollToPage(1)
                                         }
                                     },
                                     onOpenStory = {
@@ -565,13 +623,13 @@ fun BookletScreen(
                                         }
                                     },
                                     onEditRecipe = {
-                                        viewModel.openRecipeEditor(recipe, initialTab = 0)
+                                        viewModel.openRecipeEditor(activeRecipe, initialTab = 0)
                                     },
                                     onGenerateAiCover = {
-                                        viewModel.generateRecipeCoverArt(recipe, context)
+                                        viewModel.generateRecipeCoverArt(activeRecipe, context)
                                     },
                                     onRemoveCoverPhoto = {
-                                        viewModel.removeRecipeCoverPhoto(recipe)
+                                        viewModel.removeRecipeCoverPhoto(activeRecipe)
                                     },
                                     isGeneratingCover = isGeneratingCover
                                 )
@@ -579,7 +637,7 @@ fun BookletScreen(
                             1 -> {
                                 // Lore & Table of Contents Page
                                 RecipeLoreTableOfContentsPage(
-                                    recipe = recipe,
+                                    recipe = activeRecipe,
                                     languageMode = languageMode,
                                     onJumpToPage = { target ->
                                         coroutineScope.launch {
@@ -587,14 +645,17 @@ fun BookletScreen(
                                         }
                                     },
                                     onEditDetails = {
-                                        viewModel.openRecipeEditor(recipe, initialTab = 3)
+                                        viewModel.openRecipeEditor(activeRecipe, initialTab = 3)
+                                    },
+                                    onRotateOriginalPhoto = {
+                                        viewModel.rotateOriginalCardPhoto(activeRecipe)
                                     }
                                 )
                             }
                             2 -> {
                                 // Ingredients & Portion Scaler Page
                                 RecipeIngredientsPage(
-                                    recipe = recipe,
+                                    recipe = activeRecipe,
                                     languageMode = languageMode,
                                     unitSystem = unitSystem,
                                     onUnitSystemChange = { viewModel.setUnitSystem(it) },
@@ -612,24 +673,24 @@ fun BookletScreen(
                                         }
                                     },
                                     onEditIngredients = {
-                                        viewModel.openRecipeEditor(recipe, initialTab = 1)
+                                        viewModel.openRecipeEditor(activeRecipe, initialTab = 1)
                                     },
                                     onAddToShoppingList = {
                                         viewModel.addIngredientsToShoppingList(
-                                            recipe = recipe,
+                                            recipe = activeRecipe,
                                             multiplier = servingMultiplier,
                                             unitSystem = unitSystem
                                         )
-                                        Toast.makeText(context, "Added ${recipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Added ${activeRecipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
                                     }
                                 )
                             }
                             totalPages - 1 -> {
                                 // Cook's Journal & Memories (Final Page)
                                 RecipeCookJournalPage(
-                                    recipe = recipe,
+                                    recipe = activeRecipe,
                                     onSaveJournal = { notes, rating ->
-                                        viewModel.saveRecipeJournal(recipe.id, notes, rating)
+                                        viewModel.saveRecipeJournal(activeRecipe.id, notes, rating)
                                     },
                                     onIncrementCooked = { viewModel.markRecipeCooked() }
                                 )
@@ -637,12 +698,12 @@ fun BookletScreen(
                             else -> {
                                 // Step-by-Step Pages
                                 val stepIndex = page - 3
-                                val step = recipe.steps.getOrNull(stepIndex)
+                                val step = activeRecipe.steps.getOrNull(stepIndex)
                                 if (step != null) {
                                     RecipeStepPage(
                                         step = step,
-                                        totalSteps = recipe.steps.size,
-                                        recipe = recipe,
+                                        totalSteps = activeRecipe.steps.size,
+                                        recipe = activeRecipe,
                                         unitSystem = unitSystem,
                                         onUnitSystemChange = { viewModel.setUnitSystem(it) },
                                         onOpenConverter = { name, amt, u ->
@@ -655,7 +716,7 @@ fun BookletScreen(
                                         onStartTimer = { viewModel.startTimerForStep(it) },
                                         onSpeak = { text, isGerman -> viewModel.speakStep(text, isGerman) },
                                         onEditStep = {
-                                            viewModel.openRecipeEditor(recipe, initialTab = 2)
+                                            viewModel.openRecipeEditor(activeRecipe, initialTab = 2)
                                         }
                                     )
                                 }
@@ -828,16 +889,16 @@ fun BookletScreen(
         // Share Recipe Card Dialog
         if (isShareDialogOpen) {
             ShareRecipeCardDialog(
-                recipe = recipe,
+                recipe = activeRecipe,
                 servingMultiplier = servingMultiplier,
                 unitSystem = unitSystem,
                 onAddToShoppingList = {
                     viewModel.addIngredientsToShoppingList(
-                        recipe = recipe,
+                        recipe = activeRecipe,
                         multiplier = servingMultiplier,
                         unitSystem = unitSystem
                     )
-                    Toast.makeText(context, "Added ${recipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Added ${activeRecipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
                 },
                 onDismiss = { viewModel.isShareDialogOpen.value = false }
             )
@@ -941,8 +1002,9 @@ fun BookletScreen(
 
         // Edit Recipe Dialog
         if (isRecipeEditorOpen) {
+            val draft = editingRecipeDraft ?: activeRecipe
             EditRecipeDialog(
-                initialRecipe = editingRecipeDraft ?: recipe,
+                initialRecipe = draft,
                 initialTab = recipeEditorInitialTab,
                 categories = categories,
                 onSave = { updated ->
@@ -951,6 +1013,9 @@ fun BookletScreen(
                 onDelete = { toDelete ->
                     viewModel.deleteRecipe(toDelete)
                     onBack()
+                },
+                onOpenPromptStudio = {
+                    viewModel.openCustomPromptDialog(draft)
                 },
                 onDismiss = { viewModel.closeRecipeEditor() }
             )
@@ -967,7 +1032,7 @@ fun BookletScreen(
                         "Checkpoint Model: $comfyUiCheckpoint\n" +
                         "Custom Workflow JSON: ${if (comfyUiCustomWorkflow.isNotBlank()) "Provided (${comfyUiCustomWorkflow.length} chars)" else "Standard Built-in Default Graph"}\n"
                     } else "Google Cloud Imagen 3 / Gemini 2.0 Flash\n") +
-                    "Recipe: ${recipe.getDisplayTitle()} (${recipe.category})\n" +
+                    "Recipe: ${activeRecipe.getDisplayTitle()} (${activeRecipe.category})\n" +
                     "Status: FAILED\n\n" +
                     "--- ERROR MESSAGE ---\n$errorText\n\n" +
                     "--- LAST LOG TRAIL ---\n$logText"
@@ -1073,7 +1138,7 @@ fun BookletScreen(
                         Button(
                             onClick = {
                                 viewModel.closeCoverErrorDialog()
-                                viewModel.generateRecipeCoverArt(recipe, context)
+                                viewModel.generateRecipeCoverArt(activeRecipe, context)
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
                             shape = RoundedCornerShape(6.dp)
@@ -1112,7 +1177,7 @@ fun BookletScreen(
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to permanently delete '${recipe.getDisplayTitle()}' from your heirloom cookbook? This action cannot be undone."
+                        text = "Are you sure you want to permanently delete '${activeRecipe.getDisplayTitle()}' from your compendium? This action cannot be undone."
                     )
                 },
                 confirmButton = {
@@ -1169,10 +1234,23 @@ fun TabletBookletSpreadView(
     onSaveJournal: (String, Int) -> Unit,
     onIncrementCooked: () -> Unit,
     onStartCookingMode: (() -> Unit)? = null,
+    onRotateOriginalPhoto: (() -> Unit)? = null,
+    onPlayTurnSound: () -> Unit = {},
+    soundEffectsEnabled: Boolean = true,
+    onToggleSound: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var currentSpread by remember { mutableStateOf(1) } // 0: Cover & Lore, 1: Ingredients & Method, 2: Journal & Notes
     var activeStepIndex by remember { mutableStateOf(0) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    val changeSpread = { target: Int ->
+        if (target in 0..2 && target != currentSpread) {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onPlayTurnSound()
+            currentSpread = target
+        }
+    }
 
     Column(
         modifier = modifier
@@ -1180,7 +1258,7 @@ fun TabletBookletSpreadView(
             .background(Color(0xFFEDE5D8))
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        // Top Spread Navigation Bar
+        // Top Spread Navigation Bar with Stitched Paper Header
         Surface(
             color = Color(0xFFFFFDF9),
             shape = RoundedCornerShape(12.dp),
@@ -1194,9 +1272,20 @@ fun TabletBookletSpreadView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Previous Spread Button
+                TextButton(
+                    onClick = { changeSpread(currentSpread - 1) },
+                    enabled = currentSpread > 0,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = if (currentSpread > 0) TerracottaPrimary else Color(0xFFA89F91), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(AppLocalization.getTurnBackLabel(languageMode), fontSize = 12.sp, color = if (currentSpread > 0) TerracottaPrimary else Color(0xFFA89F91), fontWeight = FontWeight.SemiBold)
+                }
+
                 // Spread Tabs
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1214,7 +1303,7 @@ fun TabletBookletSpreadView(
                             shape = RoundedCornerShape(8.dp),
                             color = if (isSelected) TerracottaPrimary else Color(0xFFF3ECE1),
                             border = BorderStroke(1.dp, if (isSelected) TerracottaPrimary else Color(0xFFD6C7B2)),
-                            modifier = Modifier.clickable { currentSpread = idx }
+                            modifier = Modifier.clickable { changeSpread(idx) }
                         ) {
                             Text(
                                 text = label,
@@ -1228,14 +1317,38 @@ fun TabletBookletSpreadView(
                         }
                     }
                 }
+
+                // Next Spread Button & Quick Mute
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { changeSpread(currentSpread + 1) },
+                        enabled = currentSpread < 2,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(AppLocalization.getTurnPageLabel(languageMode), fontSize = 12.sp, color = if (currentSpread < 2) TerracottaPrimary else Color(0xFFA89F91), fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = if (currentSpread < 2) TerracottaPrimary else Color(0xFFA89F91), modifier = Modifier.size(16.dp))
+                    }
+                    IconButton(
+                        onClick = onToggleSound,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            if (soundEffectsEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            contentDescription = if (soundEffectsEnabled) "Mute" else "Unmute",
+                            tint = if (soundEffectsEnabled) TerracottaPrimary else Color(0xFF9E8E81),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
 
-        // Two-Page Open Book Container
+        // Two-Page Open Book Container with 3D Animated Turn
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = Color(0xFFFAF7F2),
-            shadowElevation = 6.dp,
+            shadowElevation = 8.dp,
             border = BorderStroke(2.dp, Color(0xFFD1C3B0)),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1249,29 +1362,31 @@ fun TabletBookletSpreadView(
                             totalDragX += dragAmount
                         },
                         onDragEnd = {
-                            val swipeThreshold = 60.dp.toPx()
+                            val swipeThreshold = 50.dp.toPx()
                             if (totalDragX < -swipeThreshold) {
-                                // Swiped Left -> Move Forward (Next step or next spread)
+                                // Swiped Left -> Move Forward
                                 if (currentSpread == 0) {
-                                    currentSpread = 1
+                                    changeSpread(1)
                                     activeStepIndex = 0
                                 } else if (currentSpread == 1) {
                                     if (activeStepIndex < recipe.steps.size - 1) {
                                         activeStepIndex++
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                     } else {
-                                        currentSpread = 2
+                                        changeSpread(2)
                                     }
                                 }
                             } else if (totalDragX > swipeThreshold) {
-                                // Swiped Right -> Move Backward (Previous step or previous spread)
+                                // Swiped Right -> Move Backward
                                 if (currentSpread == 2) {
-                                    currentSpread = 1
+                                    changeSpread(1)
                                     activeStepIndex = (recipe.steps.size - 1).coerceAtLeast(0)
                                 } else if (currentSpread == 1) {
                                     if (activeStepIndex > 0) {
                                         activeStepIndex--
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                     } else {
-                                        currentSpread = 0
+                                        changeSpread(0)
                                     }
                                 }
                             }
@@ -1279,188 +1394,211 @@ fun TabletBookletSpreadView(
                     )
                 }
         ) {
-            Row(
+            AnimatedContent(
+                targetState = currentSpread,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (fadeIn(animationSpec = tween(380)) + slideInHorizontally(animationSpec = tween(380)) { width -> width / 3 })
+                            .togetherWith(fadeOut(animationSpec = tween(320)) + slideOutHorizontally(animationSpec = tween(320)) { width -> -width / 3 })
+                    } else {
+                        (fadeIn(animationSpec = tween(380)) + slideInHorizontally(animationSpec = tween(380)) { width -> -width / 3 })
+                            .togetherWith(fadeOut(animationSpec = tween(320)) + slideOutHorizontally(animationSpec = tween(320)) { width -> width / 3 })
+                    }
+                },
+                label = "TabletSpreadTurnAnimation",
                 modifier = Modifier.fillMaxSize()
-            ) {
-                // Left Page
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(Color(0xFFFFFDF9))
+            ) { spreadIndex ->
+                Row(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    when (currentSpread) {
-                        0 -> {
-                            RecipeCoverPage(
-                                recipe = recipe,
-                                languageMode = languageMode,
-                                onOpenBook = { currentSpread = 1 },
-                                onOpenStory = { currentSpread = 0 },
-                                onEditRecipe = { onEditRecipe(0) },
-                                onGenerateAiCover = onGenerateAiCover,
-                                onRemoveCoverPhoto = onRemoveCoverPhoto,
-                                isGeneratingCover = isGeneratingCover
-                            )
-                        }
-                        1 -> {
-                            RecipeIngredientsPage(
-                                recipe = recipe,
-                                languageMode = languageMode,
-                                unitSystem = unitSystem,
-                                onUnitSystemChange = onUnitSystemChange,
-                                onOpenConverter = onOpenConverter,
-                                servingMultiplier = servingMultiplier,
-                                onSetMultiplier = onSetMultiplier,
-                                onOpenGlossary = onOpenGlossary,
-                                checkedIngredients = checkedIngredients,
-                                onToggleCheck = onToggleIngredient,
-                                onNextPage = { currentSpread = 2 },
-                                onEditIngredients = { onEditRecipe(1) },
-                                onAddToShoppingList = onAddToShoppingList
-                            )
-                        }
-                        2 -> {
-                            RecipeLoreTableOfContentsPage(
-                                recipe = recipe,
-                                languageMode = languageMode,
-                                onJumpToPage = { target ->
-                                    if (target == 0) currentSpread = 0
-                                    else if (target == 2) currentSpread = 1
-                                    else currentSpread = 2
-                                },
-                                onEditDetails = { onEditRecipe(3) }
-                            )
+                    // Left Page
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(Color(0xFFFFFDF9))
+                    ) {
+                        when (spreadIndex) {
+                            0 -> {
+                                RecipeCoverPage(
+                                    recipe = recipe,
+                                    languageMode = languageMode,
+                                    onOpenBook = { changeSpread(1) },
+                                    onOpenStory = { changeSpread(0) },
+                                    onEditRecipe = { onEditRecipe(0) },
+                                    onGenerateAiCover = onGenerateAiCover,
+                                    onRemoveCoverPhoto = onRemoveCoverPhoto,
+                                    isGeneratingCover = isGeneratingCover
+                                )
+                            }
+                            1 -> {
+                                RecipeIngredientsPage(
+                                    recipe = recipe,
+                                    languageMode = languageMode,
+                                    unitSystem = unitSystem,
+                                    onUnitSystemChange = onUnitSystemChange,
+                                    onOpenConverter = onOpenConverter,
+                                    servingMultiplier = servingMultiplier,
+                                    onSetMultiplier = onSetMultiplier,
+                                    onOpenGlossary = onOpenGlossary,
+                                    checkedIngredients = checkedIngredients,
+                                    onToggleCheck = onToggleIngredient,
+                                    onNextPage = { changeSpread(2) },
+                                    onEditIngredients = { onEditRecipe(1) },
+                                    onAddToShoppingList = onAddToShoppingList
+                                )
+                            }
+                            2 -> {
+                                RecipeLoreTableOfContentsPage(
+                                    recipe = recipe,
+                                    languageMode = languageMode,
+                                    onJumpToPage = { target ->
+                                        if (target == 0) changeSpread(0)
+                                        else if (target == 2) changeSpread(1)
+                                        else changeSpread(2)
+                                    },
+                                    onEditDetails = { onEditRecipe(3) },
+                                    onRotateOriginalPhoto = onRotateOriginalPhoto
+                                )
+                            }
                         }
                     }
-                }
 
-                // Center Book Spine Seam & Depth Shadow
-                Box(
-                    modifier = Modifier
-                        .width(14.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0x35000000),
-                                    Color(0x10000000),
-                                    Color(0x35000000)
+                    // Center Stitched Book Spine & Deep Leather Shadow
+                    Box(
+                        modifier = Modifier
+                            .width(22.dp)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color(0x3D000000),
+                                        Color(0x15000000),
+                                        Color(0x05000000),
+                                        Color(0x15000000),
+                                        Color(0x3D000000)
+                                    )
                                 )
                             )
-                        )
-                )
+                    )
 
-                // Right Page
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(Color(0xFFFFFDF9))
-                ) {
-                    when (currentSpread) {
-                        0 -> {
-                            RecipeLoreTableOfContentsPage(
-                                recipe = recipe,
-                                languageMode = languageMode,
-                                onJumpToPage = { target ->
-                                    if (target == 2) currentSpread = 1
-                                    else if (target >= 3) {
-                                        currentSpread = 1
-                                        activeStepIndex = (target - 3).coerceIn(0, (recipe.steps.size - 1).coerceAtLeast(0))
-                                    } else currentSpread = 0
-                                },
-                                onEditDetails = { onEditRecipe(3) }
-                            )
-                        }
-                        1 -> {
-                            if (recipe.steps.isNotEmpty()) {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    // Step Selector Pill Bar
-                                    if (recipe.steps.size > 1) {
-                                        Surface(
-                                            color = Color(0xFFF7F2E8),
-                                            border = BorderStroke(1.dp, Color(0xFFE2D6C5)),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            LazyRow(
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    // Right Page
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(Color(0xFFFFFDF9))
+                    ) {
+                        when (spreadIndex) {
+                            0 -> {
+                                RecipeLoreTableOfContentsPage(
+                                    recipe = recipe,
+                                    languageMode = languageMode,
+                                    onJumpToPage = { target ->
+                                        if (target == 2) changeSpread(1)
+                                        else if (target >= 3) {
+                                            changeSpread(1)
+                                            activeStepIndex = (target - 3).coerceIn(0, (recipe.steps.size - 1).coerceAtLeast(0))
+                                        } else changeSpread(0)
+                                    },
+                                    onEditDetails = { onEditRecipe(3) },
+                                    onRotateOriginalPhoto = onRotateOriginalPhoto
+                                )
+                            }
+                            1 -> {
+                                if (recipe.steps.isNotEmpty()) {
+                                    Column(modifier = Modifier.fillMaxSize()) {
+                                        // Step Selector Pill Bar
+                                        if (recipe.steps.size > 1) {
+                                            Surface(
+                                                color = Color(0xFFF7F2E8),
+                                                border = BorderStroke(1.dp, Color(0xFFE2D6C5)),
+                                                modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                itemsIndexed(recipe.steps) { idx, _ ->
-                                                    val isSelected = activeStepIndex == idx
-                                                    val isDone = checkedSteps.contains(idx)
-                                                    Surface(
-                                                        shape = RoundedCornerShape(6.dp),
-                                                        color = when {
-                                                            isSelected -> TerracottaPrimary
-                                                            isDone -> SageGreen
-                                                            else -> Color(0xFFEAE0D2)
-                                                        },
-                                                        modifier = Modifier.clickable { activeStepIndex = idx }
-                                                    ) {
-                                                        Text(
-                                                            text = "Step ${idx + 1}${if (isDone) " ✓" else ""}",
-                                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                                color = if (isSelected || isDone) Color.White else Color(0xFF451A03),
-                                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                                fontSize = 11.sp
-                                                            ),
-                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                                        )
+                                                LazyRow(
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    itemsIndexed(recipe.steps) { idx, _ ->
+                                                        val isSelected = activeStepIndex == idx
+                                                        val isDone = checkedSteps.contains(idx)
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = when {
+                                                                isSelected -> TerracottaPrimary
+                                                                isDone -> SageGreen
+                                                                else -> Color(0xFFEAE0D2)
+                                                            },
+                                                            modifier = Modifier.clickable {
+                                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                                activeStepIndex = idx
+                                                            }
+                                                        ) {
+                                                            Text(
+                                                                text = "Step ${idx + 1}${if (isDone) " ✓" else ""}",
+                                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                                    color = if (isSelected || isDone) Color.White else Color(0xFF451A03),
+                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                                    fontSize = 11.sp
+                                                                ),
+                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    // Active Step View
-                                    val safeStep = recipe.steps.getOrNull(activeStepIndex.coerceIn(0, recipe.steps.size - 1))
-                                    if (safeStep != null) {
-                                        RecipeStepPage(
-                                            step = safeStep,
-                                            totalSteps = recipe.steps.size,
-                                            recipe = recipe,
-                                            unitSystem = unitSystem,
-                                            onUnitSystemChange = onUnitSystemChange,
-                                            onOpenConverter = onOpenConverter,
-                                            servingMultiplier = servingMultiplier,
-                                            languageMode = languageMode,
-                                            isCompleted = checkedSteps.contains(activeStepIndex),
-                                            onToggleCompleted = { onToggleStep(activeStepIndex) },
-                                            onStartTimer = onStartTimer,
-                                            onSpeak = onSpeak,
-                                            onNextPage = {
-                                                if (activeStepIndex < recipe.steps.size - 1) {
-                                                    activeStepIndex++
-                                                } else {
-                                                    currentSpread = 2
-                                                }
-                                            },
-                                            onEditStep = { onEditRecipe(2) }
+                                        // Active Step View
+                                        val safeStep = recipe.steps.getOrNull(activeStepIndex.coerceIn(0, recipe.steps.size - 1))
+                                        if (safeStep != null) {
+                                            RecipeStepPage(
+                                                step = safeStep,
+                                                totalSteps = recipe.steps.size,
+                                                recipe = recipe,
+                                                unitSystem = unitSystem,
+                                                onUnitSystemChange = onUnitSystemChange,
+                                                onOpenConverter = onOpenConverter,
+                                                servingMultiplier = servingMultiplier,
+                                                languageMode = languageMode,
+                                                isCompleted = checkedSteps.contains(activeStepIndex),
+                                                onToggleCompleted = { onToggleStep(activeStepIndex) },
+                                                onStartTimer = onStartTimer,
+                                                onSpeak = onSpeak,
+                                                onNextPage = {
+                                                    if (activeStepIndex < recipe.steps.size - 1) {
+                                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                        activeStepIndex++
+                                                    } else {
+                                                        changeSpread(2)
+                                                    }
+                                                },
+                                                onEditStep = { onEditRecipe(2) }
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(24.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "No preparation steps listed for this recipe.",
+                                            style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF8C7B6B))
                                         )
                                     }
                                 }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(24.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "No preparation steps listed for this recipe.",
-                                        style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF8C7B6B))
-                                    )
-                                }
                             }
-                        }
-                        2 -> {
-                            RecipeCookJournalPage(
-                                recipe = recipe,
-                                onSaveJournal = onSaveJournal,
-                                onIncrementCooked = onIncrementCooked,
-                                onStartCookingMode = onStartCookingMode
-                            )
+                            2 -> {
+                                RecipeCookJournalPage(
+                                    recipe = recipe,
+                                    onSaveJournal = onSaveJournal,
+                                    onIncrementCooked = onIncrementCooked,
+                                    onStartCookingMode = onStartCookingMode
+                                )
+                            }
                         }
                     }
                 }

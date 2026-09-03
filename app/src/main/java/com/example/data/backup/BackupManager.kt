@@ -153,12 +153,19 @@ object BackupManager {
             robj.put("notes", r.notes)
             robj.put("notesGerman", r.notesGerman)
             robj.put("sourceLanguage", r.sourceLanguage)
+            robj.put("profileName", r.profileName)
+            robj.put("coverPhotoName", r.coverPhotoName ?: "")
             robj.put("imageUri", r.imageUri ?: "")
+            robj.put("originalCardPhotoUri", r.originalCardPhotoUri ?: "")
 
             // Embed full photo data so images are 100% bundled in backups
             val b64 = encodeImageFileToBase64(r.imageUri, context)
             if (!b64.isNullOrBlank()) {
                 robj.put("imageBase64", b64)
+            }
+            val cardB64 = encodeImageFileToBase64(r.originalCardPhotoUri, context)
+            if (!cardB64.isNullOrBlank()) {
+                robj.put("originalCardPhotoBase64", cardB64)
             }
 
             robj.put("coverTheme", r.coverTheme)
@@ -446,6 +453,18 @@ object BackupManager {
                 imageUri = restoredPath
             }
         }
+
+        var originalCardPhotoUri = obj.optString("originalCardPhotoUri").takeIf { it.isNotBlank() }
+        val originalCardPhotoBase64 = obj.optString("originalCardPhotoBase64").takeIf { it.isNotBlank() }
+        if (!originalCardPhotoBase64.isNullOrBlank() && context != null) {
+            val restoredCardPath = decodeBase64ToImageFile(context, originalCardPhotoBase64, obj.optLong("id", 0L))
+            if (restoredCardPath != null) {
+                originalCardPhotoUri = restoredCardPath
+            }
+        }
+
+        val profileName = obj.optString("profileName", "Louis").ifBlank { "Louis" }
+        val coverPhotoName = obj.optString("coverPhotoName").takeIf { it.isNotBlank() }
         val createdAt = obj.optLong("createdAt", System.currentTimeMillis())
 
         val ingList = mutableListOf<RecipeIngredient>()
@@ -595,7 +614,10 @@ object BackupManager {
             rating = rating,
             timesCooked = timesCooked,
             originStory = originStory,
-            createdAt = createdAt
+            createdAt = createdAt,
+            profileName = profileName,
+            coverPhotoName = coverPhotoName,
+            originalCardPhotoUri = originalCardPhotoUri
         )
     }
 
@@ -756,7 +778,38 @@ object BackupManager {
         context.startActivity(chooser)
     }
 
-    fun createLocalBackup(context: Context, recipes: List<RecipeEntity>, tag: String = "Manual Backup"): SavedBackupFile? {
+    enum class GfsTier {
+        SON_DAILY,
+        FATHER_WEEKLY,
+        GRANDFATHER_MONTHLY,
+        SAFETY_PRE_DELETE,
+        MANUAL_EXPORT
+    }
+
+    fun pruneGfsBackups(backupsDir: File) {
+        if (!backupsDir.exists() || !backupsDir.isDirectory) return
+
+        val allFiles = backupsDir.listFiles { _, name -> name.endsWith(".json") } ?: return
+        val dailyFiles = allFiles.filter { it.name.startsWith("son_daily_") }.sortedByDescending { it.lastModified() }
+        val weeklyFiles = allFiles.filter { it.name.startsWith("father_weekly_") || it.name.startsWith("weekly_") }.sortedByDescending { it.lastModified() }
+        val monthlyFiles = allFiles.filter { it.name.startsWith("grandfather_monthly_") }.sortedByDescending { it.lastModified() }
+        val safetyFiles = allFiles.filter { it.name.startsWith("pre_delete_") }.sortedByDescending { it.lastModified() }
+        val manualFiles = allFiles.filter { it.name.startsWith("manual_") }.sortedByDescending { it.lastModified() }
+
+        // Retain policies: 7 daily (Son), 4 weekly (Father), 12 monthly (Grandfather), 5 safety, 10 manual
+        if (dailyFiles.size > 7) dailyFiles.drop(7).forEach { it.delete() }
+        if (weeklyFiles.size > 4) weeklyFiles.drop(4).forEach { it.delete() }
+        if (monthlyFiles.size > 12) monthlyFiles.drop(12).forEach { it.delete() }
+        if (safetyFiles.size > 5) safetyFiles.drop(5).forEach { it.delete() }
+        if (manualFiles.size > 10) manualFiles.drop(10).forEach { it.delete() }
+    }
+
+    fun createLocalBackup(
+        context: Context,
+        recipes: List<RecipeEntity>,
+        tag: String = "Manual Backup",
+        tier: GfsTier? = null
+    ): SavedBackupFile? {
         if (recipes.isEmpty()) return null
         return try {
             val backupsDir = File(context.filesDir, "saved_backups")
@@ -765,10 +818,21 @@ object BackupManager {
             val timestamp = System.currentTimeMillis()
             val fileFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
             val displayFormat = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())
-            val prefix = when {
-                tag.contains("pre_delete", ignoreCase = true) || tag.contains("safety", ignoreCase = true) -> "pre_delete_"
-                tag.contains("weekly", ignoreCase = true) -> "weekly_"
-                else -> "manual_"
+            
+            val selectedTier = tier ?: when {
+                tag.contains("pre_delete", ignoreCase = true) || tag.contains("safety", ignoreCase = true) -> GfsTier.SAFETY_PRE_DELETE
+                tag.contains("grandfather", ignoreCase = true) || tag.contains("monthly", ignoreCase = true) -> GfsTier.GRANDFATHER_MONTHLY
+                tag.contains("father", ignoreCase = true) || tag.contains("weekly", ignoreCase = true) -> GfsTier.FATHER_WEEKLY
+                tag.contains("son", ignoreCase = true) || tag.contains("daily", ignoreCase = true) -> GfsTier.SON_DAILY
+                else -> GfsTier.MANUAL_EXPORT
+            }
+
+            val prefix = when (selectedTier) {
+                GfsTier.SON_DAILY -> "son_daily_"
+                GfsTier.FATHER_WEEKLY -> "father_weekly_"
+                GfsTier.GRANDFATHER_MONTHLY -> "grandfather_monthly_"
+                GfsTier.SAFETY_PRE_DELETE -> "pre_delete_"
+                GfsTier.MANUAL_EXPORT -> "manual_"
             }
             val fileName = "${prefix}${fileFormat.format(Date(timestamp))}.json"
             val file = File(backupsDir, fileName)
@@ -779,12 +843,8 @@ object BackupManager {
             // Also keep working snapshot
             saveLocalSnapshot(context, recipes)
 
-            // Retain up to 10 latest backups
-            val all = backupsDir.listFiles { _, name -> name.endsWith(".json") }
-                ?.sortedByDescending { it.lastModified() } ?: emptyList()
-            if (all.size > 10) {
-                all.drop(10).forEach { it.delete() }
-            }
+            // Prune tiered GFS backups
+            pruneGfsBackups(backupsDir)
 
             SavedBackupFile(
                 file = file,
@@ -809,7 +869,7 @@ object BackupManager {
         val sevenDaysMillis = 7L * 24 * 60 * 60 * 1000
 
         if (now - lastWeeklyMillis >= sevenDaysMillis) {
-            val created = createLocalBackup(context, recipes, "Weekly Auto-Backup")
+            val created = createLocalBackup(context, recipes, "Weekly Auto-Backup (Father)", GfsTier.FATHER_WEEKLY)
             if (created != null) {
                 prefs.edit().putLong("pref_last_weekly_backup_timestamp", now).apply()
                 return true
@@ -832,7 +892,9 @@ object BackupManager {
                 val count = parseRes.getOrNull()?.recipeCount ?: 0
                 val tag = when {
                     file.name.startsWith("pre_delete_") -> "Pre-Deletion Safety Backup"
-                    file.name.startsWith("weekly_") -> "Weekly Auto-Backup"
+                    file.name.startsWith("grandfather_monthly_") -> "Monthly Archive (Grandfather)"
+                    file.name.startsWith("father_weekly_") || file.name.startsWith("weekly_") -> "Weekly Auto-Backup (Father)"
+                    file.name.startsWith("son_daily_") -> "Daily Snapshot (Son)"
                     else -> "Saved Backup"
                 }
 

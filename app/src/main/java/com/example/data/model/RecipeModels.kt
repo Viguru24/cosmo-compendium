@@ -13,18 +13,71 @@ data class RecipeIngredient(
     val group: String? = null // e.g. "For the Dough", "Für den Teig", "Filling"
 ) {
     fun getDisplayName(language: LanguageMode = LanguageMode.ENGLISH): String {
-        val en = nameEnglish?.takeIf { it.isNotBlank() } ?: name
-        val raw = if (en.contains("/")) {
-            en.split("/").firstOrNull()?.trim() ?: en
+        val nameStr = if (language == LanguageMode.GERMAN) {
+            nameGerman?.takeIf { it.isNotBlank() } ?: name
         } else {
-            en
+            nameEnglish?.takeIf { it.isNotBlank() } ?: name
         }
-        return cleanIngredientName(raw)
+        return cleanIngredientName(nameStr)
+    }
+
+    fun getDisplayUnit(language: LanguageMode = LanguageMode.ENGLISH): String {
+        val u = unit.trim()
+        if (u.isBlank()) return ""
+        if (language == LanguageMode.ENGLISH) {
+            return when (u.lowercase().replace(".", "")) {
+                "el", "esslöffel", "essloeffel", "essl" -> "tbsp"
+                "tl", "teelöffel", "teeloeffel", "teel" -> "tsp"
+                "vz", "vanillezucker", "pck", "päckchen", "paeckchen", "pkg", "pkt", "beutel", "packung" -> "pkg"
+                "prise", "prisen" -> "pinch"
+                "msp", "messerspitze" -> "dash"
+                "bd", "bund" -> "bunch"
+                "tasse", "tassen" -> "cup"
+                "schuss" -> "splash"
+                "tropfen" -> "drops"
+                "blatt" -> "sheet"
+                "stk", "stück", "stueck" -> ""
+                "dose", "dosen" -> "can"
+                "flasche", "flaschen" -> "bottle"
+                "glas", "gläser", "glaeser" -> "jar"
+                "zehe", "zehen" -> "cloves"
+                else -> u
+            }
+        } else {
+            return when (u.lowercase().replace(".", "")) {
+                "tbsp", "tablespoon", "tablespoons" -> "EL"
+                "tsp", "teaspoon", "teaspoons" -> "TL"
+                "pkg", "package", "packet", "packets" -> "Pck."
+                "pinch", "pinches" -> "Prise"
+                "dash", "dashes" -> "Msp."
+                "bunch", "bunches" -> "Bund"
+                "cup", "cups" -> "Tasse"
+                "clove", "cloves" -> "Zehen"
+                else -> u
+            }
+        }
     }
 
     companion object {
+        private val DUAL_UNIT_PREFIX_REGEX = Regex(
+            "^(?:[0-9]+(?:[/.,][0-9]+)?(?:\\s*[-/]\\s*[0-9]+(?:[/.,][0-9]+)?)?|one|two|three|half|quarter)\\s*(?:lbs?|pounds?|oz\\.?|ounces?|cups?|tassen?|tbsp|tablespoons?|tsp|teaspoons?|grams?|g|kg|ml|l|el\\.?|tl\\.?|prisen?|pinches?|cloves?|zehen?|cans?|dosen?|pkg\\.?|packages?|pck\\.?)\\s*(?:of\\s+|von\\s+)?",
+            RegexOption.IGNORE_CASE
+        )
+
         fun cleanIngredientName(name: String): String {
-            return name
+            var cleaned = name.trim()
+            // Strip leading slashes, plus signs, dashes, bullets
+            cleaned = cleaned.replace(Regex("^[\\s/+\\-•*]+"), "").trim()
+            // Strip residual secondary unit fragments (e.g. "1.3lbs ", "1/3 cup ", "2 tsp ", "7oz ")
+            cleaned = cleaned.replace(DUAL_UNIT_PREFIX_REGEX, "").trim()
+            // Re-strip any leading slash or plus if it followed
+            cleaned = cleaned.replace(Regex("^[\\s/+\\-•*]+"), "").trim()
+
+            return cleaned
+                .replace(Regex("(?i)^vz\\s+"), "")
+                .replace(Regex("(?i)^el\\s+"), "")
+                .replace(Regex("(?i)^tl\\s+"), "")
+                .replace(Regex("(?i)^pck\\.?\\s+"), "")
                 .replace(Regex("(?i)\\btipo,\\s*0,\\s*0\\b"), "Tipo 00")
                 .replace(Regex("(?i)\\btipo\\s+0\\s+0\\b"), "Tipo 00")
                 .replace(Regex("(?i)\\btype,\\s*0,\\s*0\\b"), "Type 00")
@@ -134,7 +187,8 @@ data class RecipeIngredient(
                         } else {
                             val cups = scaled / density
                             if (cups >= 0.2) {
-                                "${formatFraction(cups)} cups"
+                                val f = formatFraction(cups)
+                                if (f == "1") "1 cup" else "$f cups"
                             } else {
                                 val tbsp = scaled / (density / 16.0)
                                 if (tbsp >= 0.9) {
@@ -155,8 +209,10 @@ data class RecipeIngredient(
                     "l", "liter", "litre" -> "${formatScaledNumber(scaled * 4.22675)} cups"
                     "el", "esslöffel" -> "${formatScaledNumber(scaled)} tbsp"
                     "tl", "teelöffel" -> "${formatScaledNumber(scaled)} tsp"
-                    "tasse", "tassen" -> "${formatFraction(scaled)} cups"
-                    "cup", "cups" -> "${formatFraction(scaled)} cups"
+                    "tasse", "tassen", "cup", "cups" -> {
+                        val f = formatFraction(scaled)
+                        if (f == "1") "1 cup" else "$f cups"
+                    }
                     "stick", "sticks" -> "${formatFraction(scaled)} stick${if (scaled > 1) "s" else ""}"
                     "tbsp", "tablespoon", "tablespoons" -> "${formatFraction(scaled)} tbsp"
                     "tsp", "teaspoon", "teaspoons" -> "${formatFraction(scaled)} tsp"
@@ -173,23 +229,23 @@ data class RecipeIngredient(
                 when (u) {
                     "cup", "cups", "tasse" -> {
                         val grams = if (isLiquid(itemName)) scaled * 240.0 else scaled * density
-                        "${formatScaledNumber(grams)} g"
+                        String.format(java.util.Locale.US, "%.1f g", grams)
                     }
-                    "stick", "sticks" -> "${formatScaledNumber(scaled * 113.4)} g"
+                    "stick", "sticks" -> String.format(java.util.Locale.US, "%.1f g", scaled * 113.4)
                     "tbsp", "tablespoon", "el" -> {
                         val grams = if (isLiquid(itemName)) scaled * 15.0 else scaled * (density / 16.0)
-                        "${formatScaledNumber(grams)} g"
+                        String.format(java.util.Locale.US, "%.1f g", grams)
                     }
                     "tsp", "teaspoon", "tl" -> {
                         val grams = if (isLiquid(itemName)) scaled * 5.0 else scaled * (density / 48.0)
-                        "${formatScaledNumber(grams)} g"
+                        String.format(java.util.Locale.US, "%.1f g", grams)
                     }
-                    "oz", "ounce" -> "${formatScaledNumber(scaled * 28.3495)} g"
-                    "lb", "lbs" -> "${formatScaledNumber(scaled * 453.592)} g"
-                    "kg" -> "${formatScaledNumber(scaled * 1000.0)} g"
-                    "g", "gram", "gramm" -> "${formatScaledNumber(scaled)} g"
-                    "ml" -> "${formatScaledNumber(scaled)} ml"
-                    "l" -> "${formatScaledNumber(scaled * 1000.0)} ml"
+                    "oz", "ounce" -> String.format(java.util.Locale.US, "%.1f g", scaled * 28.3495)
+                    "lb", "lbs" -> String.format(java.util.Locale.US, "%.1f g", scaled * 453.592)
+                    "kg" -> String.format(java.util.Locale.US, "%.1f g", scaled * 1000.0)
+                    "g", "gram", "gramm" -> String.format(java.util.Locale.US, "%.1f g", scaled)
+                    "ml" -> String.format(java.util.Locale.US, "%.1f ml", scaled)
+                    "l" -> String.format(java.util.Locale.US, "%.1f ml", scaled * 1000.0)
                     else -> "${formatScaledNumber(scaled)} $unit".trim()
                 }
             }
@@ -197,28 +253,22 @@ data class RecipeIngredient(
     }
 
     /**
-     * UK Measurement Logic Blueprint implementation:
-     * - Checks if amount is small (< 15ml / < 15g) -> funnels into standardized UK Spoons (tsp, tbsp)
-     * - Solid/dry/sticky ingredients -> Grams (g) or Kilograms (kg) rounded to natural 5g/10g kitchen scale units
-     * - Liquid ingredients (> 15ml) -> Millilitres (ml) or Litres (L)
-     * - Butter sticks -> 115g UK standard block
-     * - 1 Cup liquid -> 250ml
-     * - 1 Cup dry -> grams by ingredient density (~125g flour, ~200g sugar)
+     * UK Imperial Measurement Logic:
+     * - Solid/dry ingredients -> Ounces (oz) & Pounds (lbs)
+     * - Liquid ingredients -> Fluid Ounces (fl oz) & Pints (pt)
+     * - Small amounts (< 15ml / < 15g) -> UK Spoons (tsp, tbsp, pinch)
+     * - Butter sticks -> 4 oz
      */
     private fun convertToUkFormat(scaled: Double, u: String, itemName: String, density: Double): String {
         val liquid = isLiquid(itemName)
 
-        // 1. Butter Stick translation: 1 stick = 115g standard UK block
+        // 1. Butter Stick translation: 1 stick = 4 oz (113.4g)
         if (u.contains("stick")) {
-            val butterGrams = scaled * 115.0
-            return if (butterGrams <= 15.0) {
-                formatUkSpoon(butterGrams, isLiquid = false)
-            } else {
-                "${roundTo5(butterGrams).toInt()} g"
-            }
+            val oz = scaled * 4.0
+            return "${formatFraction(oz)} oz"
         }
 
-        // 2. Direct Spoons handling
+        // 2. Direct Spoons handling for small items
         if (u in listOf("tsp", "teaspoon", "teaspoons", "tl", "teelöffel")) {
             return if (scaled >= 3.0) {
                 "${formatFraction(scaled / 3.0)} tbsp"
@@ -231,7 +281,7 @@ data class RecipeIngredient(
                 "${formatFraction(scaled)} tbsp"
             } else {
                 val metricEquivalent = if (liquid) scaled * 15.0 else scaled * (density / 16.0)
-                if (liquid) "${roundTo5(metricEquivalent).toInt()} ml" else "${roundTo5(metricEquivalent).toInt()} g"
+                if (liquid) formatImperialLiquid(metricEquivalent) else formatImperialWeight(metricEquivalent)
             }
         }
         if (u in listOf("dstsp", "dessertspoon", "dessertspoons")) {
@@ -251,9 +301,9 @@ data class RecipeIngredient(
         when (u) {
             "cup", "cups", "tasse", "tassen" -> {
                 if (liquid) {
-                    metricMl = scaled * 250.0 // UK Standard Metric Cup (250 ml)
+                    metricMl = scaled * 250.0 // UK Standard Cup (250 ml)
                 } else {
-                    metricGrams = scaled * density // e.g. 125g flour, 200g sugar, 227g butter
+                    metricGrams = scaled * density
                 }
             }
             "g", "gram", "grams", "gramm" -> {
@@ -270,7 +320,7 @@ data class RecipeIngredient(
             }
             "oz", "ounce", "ounces" -> {
                 if (liquid) {
-                    metricMl = scaled * 28.413 // UK fluid ounce
+                    metricMl = scaled * 28.413
                 } else {
                     metricGrams = scaled * 28.3495
                 }
@@ -279,40 +329,72 @@ data class RecipeIngredient(
                 metricMl = scaled * 28.413
             }
             "pt", "pint", "pints" -> {
-                metricMl = scaled * 568.261 // UK Imperial Pint (568ml)
+                metricMl = scaled * 568.261
             }
             "lb", "lbs", "pound", "pounds" -> {
                 metricGrams = scaled * 453.592
             }
             else -> {
-                // Non-convertible count units (eggs, cloves, slices, pieces)
                 return "${formatScaledNumber(scaled)} $u".trim()
             }
         }
 
-        // Apply Decision Flow:
-        // [ Is the Ingredient Amount Small? (< 15ml / < 15g) ]
         if (metricMl != null) {
             return if (metricMl <= 15.0) {
                 formatUkSpoon(metricMl, isLiquid = true)
-            } else if (metricMl >= 1000.0) {
-                "${formatScaledNumber(metricMl / 1000.0)} L"
             } else {
-                "${roundTo5(metricMl).toInt()} ml"
+                formatImperialLiquid(metricMl)
             }
         }
 
         if (metricGrams != null) {
             return if (metricGrams <= 15.0) {
                 formatUkSpoon(metricGrams, isLiquid = false)
-            } else if (metricGrams >= 1000.0) {
-                "${formatScaledNumber(metricGrams / 1000.0)} kg"
             } else {
-                "${roundTo5(metricGrams).toInt()} g"
+                formatImperialWeight(metricGrams)
             }
         }
 
         return "${formatScaledNumber(scaled)} $u".trim()
+    }
+
+    private fun formatImperialWeight(grams: Double): String {
+        val totalOz = grams / 28.349523
+        if (totalOz < 0.25) return "1 pinch"
+
+        val pounds = (totalOz / 16.0).toInt()
+        val remOz = totalOz % 16.0
+
+        return when {
+            pounds >= 1 && remOz >= 0.75 -> {
+                "$pounds lb ${formatFraction(remOz)} oz"
+            }
+            pounds >= 1 && remOz < 0.75 -> {
+                "$pounds lb${if (pounds > 1) "s" else ""}"
+            }
+            else -> {
+                "${formatFraction(totalOz)} oz"
+            }
+        }
+    }
+
+    private fun formatImperialLiquid(ml: Double): String {
+        val flOz = ml / 28.41306 // UK Imperial fluid ounce
+        if (flOz < 0.5) return "${formatFraction(ml / 5.0)} tsp"
+        if (flOz < 1.0) return "${formatFraction(ml / 15.0)} tbsp"
+
+        val pints = ml / 568.261 // UK Imperial pint (20 fl oz)
+        return when {
+            pints >= 1.0 -> {
+                if (Math.abs(pints - Math.round(pints)) < 0.1) {
+                    "${Math.round(pints)} pt"
+                } else {
+                    "${formatFraction(pints)} pt"
+                }
+            }
+            flOz >= 9.5 && flOz <= 10.5 -> "½ pt"
+            else -> "${formatFraction(flOz)} fl oz"
+        }
     }
 
     /**
@@ -353,13 +435,19 @@ data class RecipeIngredient(
                 n.contains("broth") || n.contains("brühe") || n.contains("stock") || n.contains("fond") ||
                 n.contains("vinegar") || n.contains("essig") ||
                 n.contains("rum") || n.contains("kirschwasser") || n.contains("liqueur") ||
-                n.contains("coffee") || n.contains("kaffee") || n.contains("tea") || n.contains("tee")
+                n.contains("coffee") || n.contains("kaffee") || n.contains("tea") || n.contains("tee") ||
+                n.contains("extract") || n.contains("extrakt") || n.contains("vanilla") || n.contains("vanille") ||
+                n.contains("syrup") || n.contains("sirup") || n.contains("honey") || n.contains("honig") ||
+                n.contains("sauce") || n.contains("soße") || n.contains("buttermilk") || n.contains("buttermilch")
     }
 
     private fun formatCupsFromMl(ml: Double): String {
         val cups = ml / 240.0
         return when {
-            cups >= 0.2 -> "${formatFraction(cups)} cups"
+            cups >= 0.2 -> {
+                val f = formatFraction(cups)
+                if (f == "1") "1 cup" else "$f cups"
+            }
             ml >= 15.0 -> "${formatScaledNumber(ml / 15.0)} tbsp"
             else -> "${formatScaledNumber(ml / 5.0)} tsp"
         }
@@ -407,16 +495,21 @@ data class RecipeIngredient(
         val whole = num.toInt()
         val frac = num - whole
         val fracStr = when {
-            frac in 0.15..0.29 -> "1/4"
+            frac in 0.08..0.18 -> "1/8"
+            frac in 0.19..0.29 -> "1/4"
             frac in 0.30..0.40 -> "1/3"
             frac in 0.41..0.59 -> "1/2"
             frac in 0.60..0.70 -> "2/3"
             frac in 0.71..0.85 -> "3/4"
+            frac in 0.86..0.93 -> "7/8"
+            frac > 0.93 -> return (whole + 1).toString()
             else -> ""
         }
         return when {
             whole > 0 && fracStr.isNotEmpty() -> "$whole $fracStr"
-            whole > 0 && fracStr.isEmpty() -> formatScaledNumber(num)
+            whole > 0 && fracStr.isEmpty() -> {
+                if (frac < 0.08) whole.toString() else formatScaledNumber(num)
+            }
             fracStr.isNotEmpty() -> fracStr
             else -> formatScaledNumber(num)
         }
@@ -513,8 +606,32 @@ data class RecipeStep(
     val timerMinutes: Int = 0,
     val tip: String? = null
 ) {
+    fun getEffectiveTimerMinutes(): Int {
+        if (timerMinutes > 0) return timerMinutes
+        val text = "$instructionEnglish $instructionGerman"
+        val hrMatch = Regex("(?i)(\\d+(?:[.,]\\d+)?|1/2|1\\s*1/2|2)\\s*(?:hours?|hrs?|std\\.?|stunden?|heures?|ore|horas|uur)").find(text)
+        if (hrMatch != null) {
+            val raw = hrMatch.groupValues[1].replace(",", ".").trim()
+            val hrs = when (raw) {
+                "1/2" -> 0.5
+                "1 1/2", "11/2" -> 1.5
+                else -> raw.toDoubleOrNull() ?: 1.0
+            }
+            return (hrs * 60).toInt()
+        }
+        val minMatch = Regex("(?i)(\\d+)(?:\\s*(?:to|-|bis|à|a)\\s*\\d+)?\\s*(?:minutes?|mins?|minuten|min\\.?|minuti|minutos)").find(text)
+        if (minMatch != null) {
+            return minMatch.groupValues[1].toIntOrNull() ?: 0
+        }
+        return 0
+    }
+
     fun getInstruction(language: LanguageMode = LanguageMode.ENGLISH, unitSystem: UnitSystem? = null): String {
-        val base = instructionEnglish.ifBlank { instructionGerman }
+        val base = if (language == LanguageMode.GERMAN) {
+            instructionGerman.ifBlank { instructionEnglish }
+        } else {
+            instructionEnglish.ifBlank { instructionGerman }
+        }
         return if (unitSystem != null) {
             CulinaryTemperatureConverter.formatTemperatures(base, unitSystem)
         } else base
@@ -591,8 +708,13 @@ object CulinaryTemperatureConverter {
     }
 }
 
-enum class LanguageMode(val label: String, val flag: String, val description: String) {
-    ENGLISH("English", "🇬🇧", "View all recipes, ingredients, instructions and menus in English")
+enum class LanguageMode(val code: String, val label: String, val flag: String, val description: String) {
+    ENGLISH("en", "English", "🇬🇧", "View all recipes, ingredients, instructions and menus in English"),
+    GERMAN("de", "Deutsch", "🇩🇪", "Rezepte, Zutaten, Zubereitungsschritte und Menüs auf Deutsch"),
+    FRENCH("fr", "Français", "🇫🇷", "Consulter toutes les recettes, ingrédients, étapes et menus en français"),
+    ITALIAN("it", "Italiano", "🇮🇹", "Visualizza tutte le ricette, ingredienti, passaggi e menu in italiano"),
+    SPANISH("es", "Español", "🇪🇸", "Ver todas las recetas, ingredientes, instrucciones y menús en español"),
+    DUTCH("nl", "Nederlands", "🇳🇱", "Bekijk alle recepten, ingrediënten, instructies en menu's in het Nederlands")
 }
 
 enum class UnitSystem(val label: String, val shortLabel: String, val icon: String, val description: String) {
@@ -608,4 +730,134 @@ enum class CoverTheme(val displayName: String, val primaryHex: Long, val seconda
     FOREST_SAGE("Bavarian Forest", 0xFF14532D, 0xFF166534),
     FLORAL_LINEN("Antique Linen", 0xFFB45309, 0xFFD97706),
     GOLDEN_PARCHMENT("Golden Heritage", 0xFF854D0E, 0xFFA16207)
+}
+
+
+fun com.example.data.local.RecipeEntity.getCharacteristicBadge(language: LanguageMode = LanguageMode.ENGLISH): String? {
+    val fullText = (title + " " + titleGerman + " " + titleEnglish + " " + notes + " " + notesGerman + " " + originStory).lowercase()
+    val allIngredientNames = ingredients.joinToString(" ") { 
+        it.name.lowercase() + " " + (it.nameGerman ?: "").lowercase() + " " + (it.nameEnglish ?: "").lowercase() 
+    }
+    val allStepsText = steps.joinToString(" ") { 
+        it.instructionEnglish.lowercase() + " " + it.instructionGerman.lowercase() 
+    }
+
+    // 1. Flourless / Mehlfrei
+    val hasFlour = allIngredientNames.contains("flour") || allIngredientNames.contains("mehl") || 
+                   allIngredientNames.contains("farine") || allIngredientNames.contains("farina") || 
+                   allIngredientNames.contains("harina")
+    if ((category.contains("Baking", ignoreCase = true) || category.contains("Dessert", ignoreCase = true) || 
+         fullText.contains("cake") || fullText.contains("kuchen") || fullText.contains("torte")) && 
+        !hasFlour && ingredients.isNotEmpty()) {
+        return when (language) {
+            LanguageMode.GERMAN -> "Mehlfrei"
+            LanguageMode.FRENCH -> "Sans Farine"
+            LanguageMode.ITALIAN -> "Senza Farina"
+            LanguageMode.SPANISH -> "Sin Harina"
+            LanguageMode.DUTCH -> "Meelvrij"
+            else -> "Flourless"
+        }
+    }
+
+    // 2. Bundt / Gugelhupf
+    if (fullText.contains("bundt") || fullText.contains("gugelhupf") || fullText.contains("napfkuchen") || 
+        allStepsText.contains("bundt") || allStepsText.contains("gugelhupf")) {
+        return when (language) {
+            LanguageMode.GERMAN -> "Gugelhupf"
+            LanguageMode.FRENCH -> "Moule Bundt"
+            LanguageMode.ITALIAN -> "Ciambella"
+            LanguageMode.SPANISH -> "Bundt"
+            LanguageMode.DUTCH -> "Tulband"
+            else -> "Bundt"
+        }
+    }
+
+    // 3. Molten Lava / Fondant
+    if (fullText.contains("lava") || fullText.contains("molten") || fullText.contains("fondant") || fullText.contains("flüssiger kern")) {
+        return when (language) {
+            LanguageMode.GERMAN -> "Lava-Kern"
+            LanguageMode.FRENCH -> "Cœur Coulant"
+            LanguageMode.ITALIAN -> "Cuore Caldo"
+            LanguageMode.SPANISH -> "Lava"
+            LanguageMode.DUTCH -> "Vloeibaar"
+            else -> "Molten Lava"
+        }
+    }
+
+    // 4. Sourdough / Sauerteig
+    if (fullText.contains("sourdough") || fullText.contains("sauerteig") || 
+        allIngredientNames.contains("sourdough") || allIngredientNames.contains("sauerteig") || allIngredientNames.contains("levain")) {
+        return when (language) {
+            LanguageMode.GERMAN -> "Sauerteig"
+            LanguageMode.FRENCH -> "Au Levain"
+            LanguageMode.ITALIAN -> "Lievito Madre"
+            LanguageMode.SPANISH -> "Masa Madre"
+            LanguageMode.DUTCH -> "Zuurdesem"
+            else -> "Sourdough"
+        }
+    }
+
+    // 5. Quick 30-Min Express
+    if (totalTimeMinutes in 1..35 && (cookTimeMinutes in 1..25 || prepTimeMinutes in 1..15)) {
+        return when (language) {
+            LanguageMode.GERMAN -> "30-Min Express"
+            LanguageMode.FRENCH -> "Rapide 30-Min"
+            LanguageMode.ITALIAN -> "30-Min Rapido"
+            LanguageMode.SPANISH -> "30-Min Rápido"
+            LanguageMode.DUTCH -> "30-Min Snel"
+            else -> "Quick 30-Min"
+        }
+    }
+
+    // 6. Slow-Cooked / Braised
+    if (totalTimeMinutes >= 180 || fullText.contains("slow cook") || fullText.contains("schmoren") || fullText.contains("overnight")) {
+        return when (language) {
+            LanguageMode.GERMAN -> "Slow-Cooked"
+            LanguageMode.FRENCH -> "Mijoté Lent"
+            LanguageMode.ITALIAN -> "Lenta Cottura"
+            LanguageMode.SPANISH -> "Cocción Lenta"
+            LanguageMode.DUTCH -> "Slow-Cooked"
+            else -> "Slow-Cooked"
+        }
+    }
+
+    // 7. Heirloom / Vintage Year
+    val yearMatch = Regex("\\b(18\\d{2}|19\\d{2})\\b").find(originStory + " " + notes)
+    if (yearMatch != null) {
+        val yr = yearMatch.value
+        return when (language) {
+            LanguageMode.GERMAN -> "Orig. $yr"
+            LanguageMode.FRENCH -> "Époque $yr"
+            LanguageMode.ITALIAN -> "Epoca $yr"
+            LanguageMode.SPANISH -> "Época $yr"
+            LanguageMode.DUTCH -> "Orig. $yr"
+            else -> "Vintage $yr"
+        }
+    }
+
+    // 8. One-Bowl / Single Pot
+    if (fullText.contains("one bowl") || fullText.contains("one-bowl") || fullText.contains("one pot") || fullText.contains("one-pot") || fullText.contains("eintopf")) {
+        return when (language) {
+            LanguageMode.GERMAN -> "1-Schüssel"
+            LanguageMode.FRENCH -> "1-Bol"
+            LanguageMode.ITALIAN -> "1-Ciotola"
+            LanguageMode.SPANISH -> "1-Tazón"
+            LanguageMode.DUTCH -> "1-Kom"
+            else -> "One-Bowl"
+        }
+    }
+
+    // 9. Gluten-Free
+    if (fullText.contains("gluten-free") || fullText.contains("glutenfrei") || fullText.contains("sans gluten")) {
+        return when (language) {
+            LanguageMode.GERMAN -> "Glutenfrei"
+            LanguageMode.FRENCH -> "Sans Gluten"
+            LanguageMode.ITALIAN -> "Senza Glutine"
+            LanguageMode.SPANISH -> "Sin Gluten"
+            LanguageMode.DUTCH -> "Glutenvrij"
+            else -> "Gluten-Free"
+        }
+    }
+
+    return null
 }

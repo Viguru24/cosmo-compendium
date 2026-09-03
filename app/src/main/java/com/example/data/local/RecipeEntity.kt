@@ -34,7 +34,9 @@ data class RecipeEntity(
     val updatedAt: Long = System.currentTimeMillis(),
     val isDeleted: Boolean = false,
     val syncStatus: String = "PENDING", // "SYNCED" or "PENDING"
-    val coverPhotoName: String? = null
+    val coverPhotoName: String? = null,
+    val profileName: String = "Louis",
+    val originalCardPhotoUri: String? = null
 ) {
     val totalTimeMinutes: Int get() = prepTimeMinutes + cookTimeMinutes
 }

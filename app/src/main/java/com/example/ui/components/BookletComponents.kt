@@ -1,9 +1,15 @@
 package com.example.ui.components
 
+import com.example.ui.util.AppLocalization
+import com.example.ui.util.getDisplayCategory
+import com.example.ui.util.getDisplayTitle
+
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -64,6 +70,8 @@ import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import java.io.File
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowForward
@@ -80,6 +88,11 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ShoppingCart
 import com.example.util.pdf.RecipePdfGenerator
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
@@ -125,6 +138,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
@@ -174,6 +188,7 @@ fun RecipeCoverPage(
     }
 
     val hasPhoto = !recipe.imageUri.isNullOrBlank()
+    var showFullCoverPhotoDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -188,14 +203,31 @@ fun RecipeCoverPage(
                 .fillMaxSize(0.96f)
                 .shadow(24.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
-                .clickable { onOpenBook() }
                 .testTag("book_cover_surface"),
             color = Color(0xFF231F1D)
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { onOpenBook() }
+            ) {
                 if (hasPhoto) {
+                    val context = LocalContext.current
+                    val imgData = if (recipe.imageUri!!.startsWith("/") || recipe.imageUri!!.startsWith("file://")) {
+                        java.io.File(recipe.imageUri!!.removePrefix("file://"))
+                    } else {
+                        recipe.imageUri!!
+                    }
+                    val imageRequest = remember(recipe.imageUri, recipe.updatedAt, recipe.coverPhotoName) {
+                        ImageRequest.Builder(context)
+                            .data(imgData)
+                            .memoryCacheKey("${recipe.imageUri}_${recipe.coverPhotoName}_${recipe.updatedAt}")
+                            .diskCacheKey("${recipe.imageUri}_${recipe.coverPhotoName}_${recipe.updatedAt}")
+                            .crossfade(true)
+                            .build()
+                    }
                     AsyncImage(
-                        model = java.io.File(recipe.imageUri!!),
+                        model = imageRequest,
                         contentDescription = recipe.getDisplayTitle(),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -223,6 +255,26 @@ fun RecipeCoverPage(
                     )
                 }
 
+                // Top-Right Quick Action: View Full Photo (if photo exists)
+                if (hasPhoto) {
+                    IconButton(
+                        onClick = { showFullCoverPhotoDialog = true },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(14.dp)
+                            .size(38.dp)
+                            .background(Color(0x77000000), CircleShape)
+                            .border(1.dp, Color(0x66FFFFFF), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.ZoomIn,
+                            contentDescription = "View Full Picture",
+                            tint = Color(0xFFFFD54F),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -233,7 +285,7 @@ fun RecipeCoverPage(
                     // Top Inscription
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "RECIPE COLLECTION",
+                            text = AppLocalization.getCoverHeader(languageMode),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 letterSpacing = 3.sp,
                                 fontWeight = FontWeight.Bold,
@@ -242,7 +294,7 @@ fun RecipeCoverPage(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Preserved Family Heritage & Kitchen Secrets",
+                            text = AppLocalization.getCoverLore(languageMode),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontStyle = FontStyle.Italic,
                                 color = Color(0xFFD4C3B2),
@@ -276,7 +328,7 @@ fun RecipeCoverPage(
                             border = BorderStroke(1.dp, Color(0x55E5D4B8))
                         ) {
                             Text(
-                                text = "${recipe.category} • ${recipe.difficulty}",
+                                text = "${recipe.getDisplayCategory(languageMode)} • ${AppLocalization.getDifficultyLabel(recipe.difficulty, languageMode)}",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFFEADBCE),
@@ -287,7 +339,7 @@ fun RecipeCoverPage(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // AI Cover Art Generator Action Button
+                        // AI Cover Art Generator Action Button (Full line, spacious)
                         if (isGeneratingCover) {
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
@@ -295,7 +347,7 @@ fun RecipeCoverPage(
                                 border = BorderStroke(1.dp, Color(0xFFE5D4B8))
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     androidx.compose.material3.CircularProgressIndicator(
@@ -305,7 +357,7 @@ fun RecipeCoverPage(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Creating AI Food Photo...",
+                                        text = AppLocalization.getCreatingAiCoverStatus(languageMode),
                                         color = Color(0xFFFFFDF9),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium
@@ -320,7 +372,7 @@ fun RecipeCoverPage(
                                 modifier = Modifier.clickable { onGenerateAiCover() }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
@@ -329,11 +381,11 @@ fun RecipeCoverPage(
                                         tint = Color(0xFFFFD54F),
                                         modifier = Modifier.size(14.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (hasPhoto) "✨ Regenerate AI Photo" else "✨ Generate AI Cover Photo",
+                                        text = AppLocalization.getGenerateAiCoverButton(hasPhoto, languageMode),
                                         color = Color(0xFFFFFDF9),
-                                        fontSize = 11.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -375,7 +427,7 @@ fun RecipeCoverPage(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = recipe.servings,
+                                    text = AppLocalization.getServingsLabel(recipe.servings, languageMode),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         color = Color(0xFFEADBCE),
                                         fontWeight = FontWeight.Medium
@@ -398,7 +450,7 @@ fun RecipeCoverPage(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Swipe or tap to open",
+                                    text = AppLocalization.getSwipeOrTapToOpen(languageMode),
                                     color = Color(0xFFFBF7F0),
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp
@@ -416,6 +468,57 @@ fun RecipeCoverPage(
                 }
             }
         }
+
+        // Full Screen Cover Photo Modal
+        if (showFullCoverPhotoDialog && hasPhoto) {
+            Dialog(onDismissRequest = { showFullCoverPhotoDialog = false }) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF1E1610),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.88f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = recipe.getDisplayTitle(),
+                                color = Color(0xFFEADBCE),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { showFullCoverPhotoDialog = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val imgData = if (recipe.imageUri!!.startsWith("/") || recipe.imageUri!!.startsWith("file://")) {
+                            File(recipe.imageUri!!.removePrefix("file://"))
+                        } else {
+                            recipe.imageUri!!
+                        }
+                        AsyncImage(
+                            model = imgData,
+                            contentDescription = recipe.getDisplayTitle(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+        }
     }
 }// ==========================================
 // ==========================================
@@ -427,10 +530,15 @@ fun RecipeLoreTableOfContentsPage(
     languageMode: LanguageMode,
     onJumpToPage: (Int) -> Unit,
     onEditDetails: (() -> Unit)? = null,
+    onRotateOriginalPhoto: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
     var showFullReferencePhotoDialog by remember { mutableStateOf(false) }
+    val originalCardPath = remember(recipe.originalCardPhotoUri, recipe.imageUri, recipe.updatedAt) {
+        recipe.originalCardPhotoUri?.takeIf { it.isNotBlank() && File(it).exists() }
+            ?: (if (recipe.imageUri != null && !recipe.imageUri.contains("recipe_cover_") && File(recipe.imageUri).exists()) recipe.imageUri else null)
+    }
 
     Surface(
         modifier = modifier
@@ -528,7 +636,7 @@ fun RecipeLoreTableOfContentsPage(
                         // PREP TIME
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "PREP",
+                                text = if (languageMode == LanguageMode.GERMAN) "VORBEREITUNG" else if (languageMode == LanguageMode.FRENCH) "PRÉP" else "PREP",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontWeight = FontWeight.Bold,
@@ -544,7 +652,7 @@ fun RecipeLoreTableOfContentsPage(
                                 )
                             )
                             Text(
-                                text = "Prep Time",
+                                text = if (languageMode == LanguageMode.GERMAN) "Vorbereitung" else if (languageMode == LanguageMode.FRENCH) "Préparation" else "Prep Time",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF78716C),
                                     fontSize = 9.sp
@@ -555,7 +663,7 @@ fun RecipeLoreTableOfContentsPage(
                         // COOK TIME
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "COOK",
+                                text = if (languageMode == LanguageMode.GERMAN) "KOCHZEIT" else if (languageMode == LanguageMode.FRENCH) "CUISSON" else "COOK",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontWeight = FontWeight.Bold,
@@ -571,7 +679,7 @@ fun RecipeLoreTableOfContentsPage(
                                 )
                             )
                             Text(
-                                text = "Cook Time",
+                                text = if (languageMode == LanguageMode.GERMAN) "Koch-/Backzeit" else if (languageMode == LanguageMode.FRENCH) "Cuisson" else "Cook Time",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF78716C),
                                     fontSize = 9.sp
@@ -582,7 +690,7 @@ fun RecipeLoreTableOfContentsPage(
                         // TOTAL TIME
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "TOTAL",
+                                text = if (languageMode == LanguageMode.GERMAN) "GESAMT" else if (languageMode == LanguageMode.FRENCH) "TOTAL" else "TOTAL",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontWeight = FontWeight.Bold,
@@ -598,7 +706,7 @@ fun RecipeLoreTableOfContentsPage(
                                 )
                             )
                             Text(
-                                text = "Total Time",
+                                text = if (languageMode == LanguageMode.GERMAN) "Gesamtzeit" else if (languageMode == LanguageMode.FRENCH) "Temps Total" else "Total Time",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF78716C),
                                     fontSize = 9.sp
@@ -609,7 +717,7 @@ fun RecipeLoreTableOfContentsPage(
                         // PORTIONS / SERVINGS
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "PORTIONS",
+                                text = if (languageMode == LanguageMode.GERMAN) "PORTIONEN" else if (languageMode == LanguageMode.FRENCH) "PORTIONS" else "PORTIONS",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontWeight = FontWeight.Bold,
@@ -618,7 +726,7 @@ fun RecipeLoreTableOfContentsPage(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = recipe.servings,
+                                text = AppLocalization.getServingsLabel(recipe.servings, languageMode),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1C1917)
@@ -659,7 +767,7 @@ fun RecipeLoreTableOfContentsPage(
             }
 
             // Reference Scanned Card Photo (if available)
-            if (!recipe.imageUri.isNullOrBlank()) {
+            if (!originalCardPath.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Card(
                     modifier = Modifier
@@ -674,7 +782,7 @@ fun RecipeLoreTableOfContentsPage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = File(recipe.imageUri),
+                            model = File(originalCardPath),
                             contentDescription = "Original recipe photo reference",
                             modifier = Modifier
                                 .size(54.dp)
@@ -686,7 +794,7 @@ fun RecipeLoreTableOfContentsPage(
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Original Recipe Photo",
+                                    text = "Original Recipe Card Photo",
                                     style = MaterialTheme.typography.titleSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF5A4535)
@@ -701,7 +809,7 @@ fun RecipeLoreTableOfContentsPage(
                                 )
                             }
                             Text(
-                                text = "Tap to inspect scanned photo.",
+                                text = "Tap to inspect & rotate scanned photo.",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = Color(0xFF6B5B4E),
                                     fontSize = 11.sp
@@ -826,7 +934,7 @@ fun RecipeLoreTableOfContentsPage(
         }
     }
 
-    if (showFullReferencePhotoDialog && !recipe.imageUri.isNullOrBlank()) {
+    if (showFullReferencePhotoDialog && !originalCardPath.isNullOrBlank()) {
         Dialog(onDismissRequest = { showFullReferencePhotoDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -845,18 +953,30 @@ fun RecipeLoreTableOfContentsPage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Original Recipe Photo",
+                            text = "Original Recipe Card Photo",
                             color = Color(0xFFEADBCE),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
-                        IconButton(onClick = { showFullReferencePhotoDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (onRotateOriginalPhoto != null) {
+                                IconButton(onClick = { onRotateOriginalPhoto() }) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = "Rotate 90°",
+                                        tint = Color(0xFFEADBCE),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { showFullReferencePhotoDialog = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     AsyncImage(
-                        model = File(recipe.imageUri),
+                        model = File(originalCardPath),
                         contentDescription = "Original recipe photo reference",
                         modifier = Modifier
                             .fillMaxSize()
@@ -897,6 +1017,8 @@ fun InteractiveMeasurementDropdownPill(
             ) {
                 Text(
                     text = amountText,
+                    maxLines = 1,
+                    softWrap = false,
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = if (isChecked) Color(0xFF78716C) else Color(0xFF451A03)
@@ -2021,7 +2143,7 @@ fun VintageHandwrittenCardView(
                         )
                     )
                     Text(
-                        text = "Heirloom Recipe Collection",
+                        text = "Compendium Collection",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontStyle = FontStyle.Italic,
                             color = Color(0xFF6B5B4E)
@@ -2036,7 +2158,7 @@ fun VintageHandwrittenCardView(
                     modifier = Modifier.padding(4.dp)
                 ) {
                     Text(
-                        text = "HEIRLOOM",
+                        text = "COMPENDIUM",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF5A4535),
@@ -2314,7 +2436,7 @@ fun ShareRecipeCardDialog(
             if (includeNotes && recipe.notes.isNotBlank()) {
                 appendLine("\nFAMILY NOTES:\n${recipe.notes}")
             }
-            appendLine("\nShared from Vintage Heirloom Cookbook")
+            appendLine("\nShared from Cosmo Compendium")
         }
     }
 
@@ -2638,19 +2760,24 @@ fun EditRecipeDialog(
     categories: List<String> = emptyList(),
     onSave: (RecipeEntity) -> Unit,
     onDelete: ((RecipeEntity) -> Unit)? = null,
+    onOpenPromptStudio: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val isCompact = screenWidth < 380
+
     // Basic Details
     var title by remember { mutableStateOf(initialRecipe.title) }
     var titleEnglish by remember { mutableStateOf(initialRecipe.titleEnglish.ifBlank { initialRecipe.title }) }
     var titleGerman by remember { mutableStateOf(initialRecipe.titleGerman) }
-    var category by remember { mutableStateOf(initialRecipe.category) }
+    var category by remember { mutableStateOf(initialRecipe.category.ifBlank { "Family Classics" }) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var servings by remember { mutableStateOf(initialRecipe.servings) }
     var prepTime by remember { mutableStateOf(initialRecipe.prepTimeMinutes.toString()) }
     var cookTime by remember { mutableStateOf(initialRecipe.cookTimeMinutes.toString()) }
-    var difficulty by remember { mutableStateOf(initialRecipe.difficulty) }
-    var coverTheme by remember { mutableStateOf(initialRecipe.coverTheme) }
+    var difficulty by remember { mutableStateOf(initialRecipe.difficulty.ifBlank { "Medium" }) }
     var rating by remember { mutableStateOf(initialRecipe.rating) }
     var isFavorite by remember { mutableStateOf(initialRecipe.isFavorite) }
     var originStory by remember { mutableStateOf(initialRecipe.originStory) }
@@ -2658,40 +2785,128 @@ fun EditRecipeDialog(
     var notesGerman by remember { mutableStateOf(initialRecipe.notesGerman) }
     var sourceLanguage by remember { mutableStateOf(initialRecipe.sourceLanguage) }
 
+    // Cover Photo State & Launchers
+    var imageUri by remember { mutableStateOf(initialRecipe.imageUri) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val savedPath = com.example.ui.util.ImageUtils.saveImageFromUri(context, uri)
+            if (savedPath != null) {
+                imageUri = savedPath
+            }
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        val uri = tempCameraUri
+        if (success && uri != null) {
+            val savedPath = com.example.ui.util.ImageUtils.saveImageFromUri(context, uri)
+            if (savedPath != null) {
+                imageUri = savedPath
+            }
+        }
+    }
+
     // Ingredients & Steps
     val ingredients = remember { mutableStateListOf(*initialRecipe.ingredients.toTypedArray()) }
     val steps = remember { mutableStateListOf(*initialRecipe.steps.toTypedArray()) }
 
-    // Active Editor Tab (0 = Basics & Theme, 1 = Ingredients, 2 = Steps, 3 = Lore & Notes)
+    // Active Editor Tab (0 = Basics & Photo, 1 = Ingredients, 2 = Steps, 3 = Lore & Notes)
     var selectedTab by remember { mutableStateOf(initialTab) }
+
+    // Drag and drop reorder state
+    var draggedIngIndex by remember { mutableStateOf<Int?>(null) }
+    var dragIngOffsetY by remember { mutableStateOf(0f) }
+
+    var draggedStepIndex by remember { mutableStateOf<Int?>(null) }
+    var dragStepOffsetY by remember { mutableStateOf(0f) }
 
     // Index of ingredient being edited inline (-1 = none)
     var editingIngIndex by remember { mutableStateOf<Int?>(null) }
+    var editIngAmount by remember { mutableStateOf("") }
+    var editIngUnit by remember { mutableStateOf("") }
+    var editIngName by remember { mutableStateOf("") }
+    var editIngGroup by remember { mutableStateOf("") }
+    var editIngOptional by remember { mutableStateOf(false) }
+
     // New Ingredient form fields
     var newIngAmount by remember { mutableStateOf("") }
     var newIngUnit by remember { mutableStateOf("g") }
     var newIngName by remember { mutableStateOf("") }
-    var newIngNameDe by remember { mutableStateOf("") }
     var newIngGroup by remember { mutableStateOf("") }
     var newIngOptional by remember { mutableStateOf(false) }
 
     // Index of step being edited inline (-1 = none)
     var editingStepIndex by remember { mutableStateOf<Int?>(null) }
+    var editStepEn by remember { mutableStateOf("") }
+    var editStepTimer by remember { mutableStateOf("0") }
+    var editStepTip by remember { mutableStateOf("") }
+
     // New Step form fields
     var newStepEn by remember { mutableStateOf("") }
-    var newStepDe by remember { mutableStateOf("") }
     var newStepTimer by remember { mutableStateOf("0") }
     var newStepTip by remember { mutableStateOf("") }
+
+    fun commitActiveIngEdit() {
+        val idx = editingIngIndex ?: return
+        if (idx in ingredients.indices) {
+            val rawName = editIngName.ifBlank { "Ingredient" }
+            val cleanName = RecipeIngredient.cleanIngredientName(rawName).ifBlank { rawName }
+            ingredients[idx] = RecipeIngredient(
+                name = cleanName,
+                amount = editIngAmount.trim(),
+                unit = editIngUnit.trim(),
+                nameEnglish = cleanName,
+                nameGerman = ingredients[idx].nameGerman?.let { RecipeIngredient.cleanIngredientName(it) } ?: cleanName,
+                isOptional = editIngOptional,
+                group = editIngGroup.trim().ifBlank { null }
+            )
+        }
+        editingIngIndex = null
+    }
+
+    fun commitActiveStepEdit() {
+        val idx = editingStepIndex ?: return
+        if (idx in steps.indices) {
+            steps[idx] = steps[idx].copy(
+                instructionEnglish = editStepEn.trim().ifBlank { steps[idx].instructionEnglish },
+                instructionGerman = steps[idx].instructionGerman.ifBlank { editStepEn.trim() },
+                timerMinutes = editStepTimer.toIntOrNull() ?: 0,
+                tip = editStepTip.trim().ifBlank { null }
+            )
+        }
+        editingStepIndex = null
+    }
 
     var showDeleteConfirmInEditor by remember { mutableStateOf(false) }
 
     val presetCategories = listOf("Baking & Cakes", "Main Dishes", "Soups & Stews", "Desserts", "Breakfast & Brunch", "Family Classics")
     val allAvailableCategories = (categories + presetCategories).filter { it.isNotBlank() }.distinct()
-    val quickUnits = listOf("g", "ml", "cup", "tbsp", "tsp", "EL", "TL", "pinch", "oz", "kg", "l")
+    val quickUnits = listOf("g", "ml", "cup", "tbsp", "tsp", "oz", "pkg", "pinch", "kg", "l")
     val quickGroups = listOf("Dough", "Filling", "Topping", "Sauce", "Garnish")
+
+    // Theme color palette for editor
+    val editorTextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color(0xFF2C1E14),
+        unfocusedTextColor = Color(0xFF2C1E14),
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color(0xFFFFFDF9),
+        focusedBorderColor = TerracottaPrimary,
+        unfocusedBorderColor = Color(0xFFD6C7B2),
+        focusedLabelColor = TerracottaPrimary,
+        unfocusedLabelColor = Color(0xFF786555),
+        cursorColor = TerracottaPrimary
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        containerColor = Color(0xFFFFFDF9),
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2699,30 +2914,50 @@ fun EditRecipeDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (initialRecipe.id == 0L) Icons.Default.Add else Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = TerracottaPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFFFEDD5),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                if (initialRecipe.id == 0L) Icons.Default.Add else Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = TerracottaPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = if (initialRecipe.id == 0L) "Add Recipe" else "Edit Recipe",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary)
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF431407),
+                            fontFamily = FontFamily.Serif,
+                            fontSize = if (isCompact) 17.sp else 19.sp
+                        )
                     )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { isFavorite = !isFavorite }) {
+                    IconButton(
+                        onClick = { isFavorite = !isFavorite },
+                        modifier = Modifier.size(32.dp)
+                    ) {
                         Icon(
                             if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favorite",
-                            tint = if (isFavorite) TerracottaPrimary else Color.Gray
+                            tint = if (isFavorite) TerracottaPrimary else Color(0xFF9CA3AF),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     if (initialRecipe.id != 0L && onDelete != null) {
-                        IconButton(onClick = { showDeleteConfirmInEditor = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFDC2626))
+                        IconButton(
+                            onClick = { showDeleteConfirmInEditor = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFDC2626), modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -2732,49 +2967,208 @@ fun EditRecipeDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(460.dp)
+                    .height(490.dp)
             ) {
-                // Section Tabs
+                // Modern Section Tabs
                 PrimaryTabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = Color.Transparent,
-                    contentColor = TerracottaPrimary
+                    containerColor = Color(0xFFF7F2E8),
+                    contentColor = TerracottaPrimary,
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).border(1.dp, Color(0xFFE5DDD3), RoundedCornerShape(10.dp))
                 ) {
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Basics", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        text = {
+                            Text(
+                                "Basics",
+                                fontSize = if (isCompact) 11.sp else 12.sp,
+                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selectedTab == 0) TerracottaPrimary else Color(0xFF786555)
+                            )
+                        }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Ingredients (${ingredients.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        text = {
+                            Text(
+                                "Ingredients (${ingredients.size})",
+                                fontSize = if (isCompact) 11.sp else 12.sp,
+                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selectedTab == 1) TerracottaPrimary else Color(0xFF786555)
+                            )
+                        }
                     )
                     Tab(
                         selected = selectedTab == 2,
                         onClick = { selectedTab = 2 },
-                        text = { Text("Steps (${steps.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        text = {
+                            Text(
+                                "Steps (${steps.size})",
+                                fontSize = if (isCompact) 11.sp else 12.sp,
+                                fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selectedTab == 2) TerracottaPrimary else Color(0xFF786555)
+                            )
+                        }
                     )
                     Tab(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
-                        text = { Text("Notes", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        text = {
+                            Text(
+                                "Notes",
+                                fontSize = if (isCompact) 11.sp else 12.sp,
+                                fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selectedTab == 3) TerracottaPrimary else Color(0xFF786555)
+                            )
+                        }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Tab Content
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 2.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     when (selectedTab) {
-                        // ================= TAB 0: BASICS & THEME =================
+                        // ================= TAB 0: BASICS & COVER PHOTO =================
                         0 -> {
+                            // Cover Photo Management Card
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFFBF8F2),
+                                border = BorderStroke(1.dp, Color(0xFFE8DED1)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = "Dish Cover Photo",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF431407)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Photo Thumbnail or Placeholder
+                                        if (!imageUri.isNullOrBlank() && (imageUri!!.startsWith("http") || File(imageUri!!).exists() || imageUri!!.startsWith("content://"))) {
+                                            val modelData = if (imageUri!!.startsWith("/") || imageUri!!.startsWith("file://")) {
+                                                File(imageUri!!.removePrefix("file://"))
+                                            } else {
+                                                imageUri!!
+                                            }
+                                            AsyncImage(
+                                                model = modelData,
+                                                contentDescription = "Cover Photo",
+                                                modifier = Modifier
+                                                    .size(72.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .border(1.dp, Color(0xFFD6C7B2), RoundedCornerShape(8.dp)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = Color(0xFFEDE4D6),
+                                                border = BorderStroke(1.dp, Color(0xFFD6C7B2)),
+                                                modifier = Modifier.size(72.dp)
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    Icon(Icons.Default.Restaurant, contentDescription = null, tint = Color(0xFF8C7A6B), modifier = Modifier.size(24.dp))
+                                                    Text("No Photo", fontSize = 9.sp, color = Color(0xFF8C7A6B), fontWeight = FontWeight.Medium)
+                                                }
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(10.dp))
+
+                                        // Photo Action Buttons
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                OutlinedButton(
+                                                    onClick = { galleryLauncher.launch("image/*") },
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    border = BorderStroke(1.dp, TerracottaPrimary),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TerracottaPrimary),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                    modifier = Modifier.weight(1f).height(34.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Upload", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        val uri = com.example.ui.util.ImageUtils.createTempCameraUri(context)
+                                                        tempCameraUri = uri
+                                                        cameraLauncher.launch(uri)
+                                                    },
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    border = BorderStroke(1.dp, Color(0xFFD97706)),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD97706)),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                    modifier = Modifier.weight(1f).height(34.dp)
+                                                ) {
+                                                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Camera", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                if (onOpenPromptStudio != null) {
+                                                    OutlinedButton(
+                                                        onClick = onOpenPromptStudio,
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        border = BorderStroke(1.dp, SageGreen),
+                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SageGreen),
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                        modifier = Modifier.weight(1f).height(32.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("AI Photo", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+
+                                                if (!imageUri.isNullOrBlank()) {
+                                                    OutlinedButton(
+                                                        onClick = { imageUri = null },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        border = BorderStroke(1.dp, Color(0xFFDC2626)),
+                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                        modifier = Modifier.height(32.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("Remove", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Recipe Title Field
                             OutlinedTextField(
                                 value = title,
                                 onValueChange = {
@@ -2783,16 +3177,16 @@ fun EditRecipeDialog(
                                 },
                                 label = { Text("Recipe Title *") },
                                 placeholder = { Text("e.g. Traditional Apple Pie") },
+                                colors = editorTextFieldColors,
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            // Category selector with Pull-Down Dropdown Menu & Quick Chips
-                            Text("Category:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary))
+                            // Category Selector with Pull-Down Menu ONLY (No redundant chips!)
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
                                     value = category,
                                     onValueChange = { category = it },
-                                    label = { Text("Category (Pull-down or type)") },
+                                    label = { Text("Category") },
                                     trailingIcon = {
                                         IconButton(onClick = { categoryDropdownExpanded = !categoryDropdownExpanded }) {
                                             Icon(
@@ -2802,15 +3196,27 @@ fun EditRecipeDialog(
                                             )
                                         }
                                     },
+                                    colors = editorTextFieldColors,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 DropdownMenu(
                                     expanded = categoryDropdownExpanded,
-                                    onDismissRequest = { categoryDropdownExpanded = false }
+                                    onDismissRequest = { categoryDropdownExpanded = false },
+                                    modifier = Modifier.background(Color(0xFFFFFDF9)).border(1.dp, Color(0xFFE5DDD3), RoundedCornerShape(10.dp))
                                 ) {
                                     allAvailableCategories.forEach { cat ->
+                                        val isSelected = category.equals(cat, ignoreCase = true)
                                         DropdownMenuItem(
-                                            text = { Text(cat) },
+                                            text = {
+                                                Text(
+                                                    text = cat,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isSelected) TerracottaPrimary else Color(0xFF2C1E14)
+                                                )
+                                            },
+                                            trailingIcon = if (isSelected) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, tint = TerracottaPrimary, modifier = Modifier.size(16.dp)) }
+                                            } else null,
                                             onClick = {
                                                 category = cat
                                                 categoryDropdownExpanded = false
@@ -2820,29 +3226,28 @@ fun EditRecipeDialog(
                                 }
                             }
 
-                            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(allAvailableCategories.size) { idx ->
-                                    val cat = allAvailableCategories[idx]
-                                    FilterChip(
-                                        selected = category.equals(cat, ignoreCase = true),
-                                        onClick = { category = cat },
-                                        label = { Text(cat, fontSize = 11.sp) }
-                                    )
-                                }
-                            }
-
                             // Servings, Prep Time, Cook Time
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = servings,
+                                    onValueChange = { servings = it },
+                                    label = { Text("Servings") },
+                                    placeholder = { Text("e.g. 4") },
+                                    colors = editorTextFieldColors,
+                                    modifier = Modifier.weight(1.2f)
+                                )
                                 OutlinedTextField(
                                     value = prepTime,
                                     onValueChange = { prepTime = it },
                                     label = { Text("Prep (min)") },
+                                    colors = editorTextFieldColors,
                                     modifier = Modifier.weight(1f)
                                 )
                                 OutlinedTextField(
                                     value = cookTime,
                                     onValueChange = { cookTime = it },
                                     label = { Text("Cook (min)") },
+                                    colors = editorTextFieldColors,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -2859,7 +3264,7 @@ fun EditRecipeDialog(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -2875,76 +3280,53 @@ fun EditRecipeDialog(
                                 }
                             }
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = servings,
-                                    onValueChange = { servings = it },
-                                    label = { Text("Servings (e.g. 4-6 servings)") },
-                                    modifier = Modifier.weight(1.3f)
-                                )
-                                OutlinedTextField(
-                                    value = difficulty,
-                                    onValueChange = { difficulty = it },
-                                    label = { Text("Difficulty") },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
                             // Difficulty Chips
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf("Easy", "Medium", "Advanced").forEach { diff ->
-                                    FilterChip(
-                                        selected = difficulty.equals(diff, ignoreCase = true),
-                                        onClick = { difficulty = diff },
-                                        label = { Text(diff, fontSize = 11.sp) }
-                                    )
-                                }
-                            }
-
-                            // Cover Theme Color Swatches
-                            Text("Cookbook Cover Theme:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary))
-                            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(CoverTheme.values().size) { idx ->
-                                    val theme = CoverTheme.values()[idx]
-                                    val isSelected = coverTheme == theme.name
-                                    Surface(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { coverTheme = theme.name }
-                                            .border(if (isSelected) 2.5.dp else 1.dp, if (isSelected) TerracottaPrimary else Color.LightGray, RoundedCornerShape(8.dp)),
-                                        color = Color(theme.primaryHex)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Difficulty:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF5A4535))
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf("Easy", "Medium", "Advanced").forEach { diff ->
+                                        val isSel = difficulty.equals(diff, ignoreCase = true)
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = if (isSel) Color(0xFFFFEDD5) else Color(0xFFF3ECE0),
+                                            border = BorderStroke(1.dp, if (isSel) TerracottaPrimary else Color(0xFFD6C7B2)),
+                                            modifier = Modifier.clickable { difficulty = diff }
                                         ) {
                                             Text(
-                                                text = theme.displayName,
-                                                color = Color.White,
+                                                text = diff,
                                                 fontSize = 11.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSel) TerracottaPrimary else Color(0xFF6B5B4E),
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                             )
-                                            if (isSelected) {
-                                                Text("✓ Selected", color = Color(0xFFF5EFE6), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                            }
                                         }
                                     }
                                 }
                             }
 
                             // Star Rating
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Rating: ", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF5A4535))
-                                (1..5).forEach { star ->
-                                    IconButton(
-                                        onClick = { rating = star },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Text(
-                                            text = if (star <= rating) "★" else "☆",
-                                            color = if (star <= rating) TerracottaPrimary else Color(0xFFD1C7B7),
-                                            fontSize = 22.sp
-                                        )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Rating:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF5A4535))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    (1..5).forEach { star ->
+                                        IconButton(
+                                            onClick = { rating = star },
+                                            modifier = Modifier.size(30.dp)
+                                        ) {
+                                            Text(
+                                                text = if (star <= rating) "★" else "☆",
+                                                color = if (star <= rating) Color(0xFFD97706) else Color(0xFFD1C7B7),
+                                                fontSize = 20.sp
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -2953,93 +3335,63 @@ fun EditRecipeDialog(
                         // ================= TAB 1: INGREDIENTS =================
                         1 -> {
                             Text(
-                                text = "Manage recipe ingredients, quantities, units, and categories:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF6B5B4E))
+                                text = "Recipe Ingredients (${ingredients.size}):",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF431407))
                             )
 
                             // List of existing ingredients
                             ingredients.forEachIndexed { index, ing ->
                                 if (editingIngIndex == index) {
                                     // Inline editor card for this ingredient
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F2E8)),
+                                    Surface(
+                                        color = Color(0xFFFFF8EE),
                                         border = BorderStroke(1.5.dp, TerracottaPrimary),
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        var editAmt by remember { mutableStateOf(ing.amount) }
-                                        var editUnit by remember { mutableStateOf(ing.unit) }
-                                        var editName by remember { mutableStateOf(ing.nameEnglish ?: ing.name) }
-                                        var editGroup by remember { mutableStateOf(ing.group ?: "") }
-                                        var editOpt by remember { mutableStateOf(ing.isOptional) }
-
                                         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                             Text("Edit Ingredient #${index + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
                                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                                 OutlinedTextField(
-                                                    value = editAmt,
-                                                    onValueChange = { editAmt = it },
+                                                    value = editIngAmount,
+                                                    onValueChange = { editIngAmount = it },
                                                     label = { Text("Amount") },
-                                                    modifier = Modifier.weight(1f),
-                                                    colors = OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = Color(0xFF18120C),
-                                                        unfocusedTextColor = Color(0xFF18120C),
-                                                        focusedContainerColor = Color.White,
-                                                        unfocusedContainerColor = Color.White,
-                                                        focusedBorderColor = TerracottaPrimary,
-                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                    )
+                                                    colors = editorTextFieldColors,
+                                                    modifier = Modifier.weight(1f)
                                                 )
                                                 OutlinedTextField(
-                                                    value = editUnit,
-                                                    onValueChange = { editUnit = it },
+                                                    value = editIngUnit,
+                                                    onValueChange = { editIngUnit = it },
                                                     label = { Text("Unit") },
-                                                    modifier = Modifier.weight(1f),
-                                                    colors = OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = Color(0xFF18120C),
-                                                        unfocusedTextColor = Color(0xFF18120C),
-                                                        focusedContainerColor = Color.White,
-                                                        unfocusedContainerColor = Color.White,
-                                                        focusedBorderColor = TerracottaPrimary,
-                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                    )
+                                                    colors = editorTextFieldColors,
+                                                    modifier = Modifier.weight(1f)
                                                 )
                                             }
                                             OutlinedTextField(
-                                                value = editName,
-                                                onValueChange = { editName = it },
+                                                value = editIngName,
+                                                onValueChange = { editIngName = it },
                                                 label = { Text("Ingredient Name") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedTextColor = Color(0xFF18120C),
-                                                    unfocusedTextColor = Color(0xFF18120C),
-                                                    focusedContainerColor = Color.White,
-                                                    unfocusedContainerColor = Color.White,
-                                                    focusedBorderColor = TerracottaPrimary,
-                                                    unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                )
+                                                colors = editorTextFieldColors,
+                                                modifier = Modifier.fillMaxWidth()
                                             )
                                             OutlinedTextField(
-                                                value = editGroup,
-                                                onValueChange = { editGroup = it },
-                                                label = { Text("Section/Group (e.g. Dough, Filling, Sauce)") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedTextColor = Color(0xFF18120C),
-                                                    unfocusedTextColor = Color(0xFF18120C),
-                                                    focusedContainerColor = Color.White,
-                                                    unfocusedContainerColor = Color.White,
-                                                    focusedBorderColor = TerracottaPrimary,
-                                                    unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                )
+                                                value = editIngGroup,
+                                                onValueChange = { editIngGroup = it },
+                                                label = { Text("Group (e.g. Dough, Filling)") },
+                                                colors = editorTextFieldColors,
+                                                modifier = Modifier.fillMaxWidth()
                                             )
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Text("Optional ingredient?", fontSize = 12.sp)
-                                                Switch(checked = editOpt, onCheckedChange = { editOpt = it })
+                                                Text("Optional ingredient?", fontSize = 12.sp, color = Color(0xFF6B5B4E))
+                                                Switch(
+                                                    checked = editIngOptional,
+                                                    onCheckedChange = { editIngOptional = it },
+                                                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = SageGreen)
+                                                )
                                             }
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
@@ -3047,33 +3399,30 @@ fun EditRecipeDialog(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 TextButton(onClick = { editingIngIndex = null }) {
-                                                    Text("Cancel")
+                                                    Text("Cancel", color = Color(0xFF786555))
                                                 }
                                                 Button(
-                                                    onClick = {
-                                                        ingredients[index] = RecipeIngredient(
-                                                            name = editName.ifBlank { "Ingredient" },
-                                                            amount = editAmt,
-                                                            unit = editUnit,
-                                                            nameEnglish = editName.ifBlank { null },
-                                                            isOptional = editOpt,
-                                                            group = editGroup.ifBlank { null }
-                                                        )
-                                                        editingIngIndex = null
-                                                    },
+                                                    onClick = { commitActiveIngEdit() },
                                                     colors = ButtonDefaults.buttonColors(containerColor = SageGreen)
                                                 ) {
-                                                    Text("Apply Edit")
+                                                    Text("Apply Edit", fontWeight = FontWeight.Bold)
                                                 }
                                             }
                                         }
                                     }
                                 } else {
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F2E8)),
-                                        border = BorderStroke(1.dp, Color(0xFFE2D5C3)),
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                    val isDragged = draggedIngIndex == index
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isDragged) Color(0xFFFFF3E0) else Color(0xFFFBF8F2),
+                                        border = BorderStroke(if (isDragged) 1.5.dp else 1.dp, if (isDragged) TerracottaPrimary else Color(0xFFE8DED1)),
+                                        shadowElevation = if (isDragged) 6.dp else 0.dp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .zIndex(if (isDragged) 1f else 0f)
+                                            .graphicsLayer {
+                                                translationY = if (isDragged) dragIngOffsetY else 0f
+                                            }
                                     ) {
                                         Row(
                                             modifier = Modifier
@@ -3082,49 +3431,130 @@ fun EditRecipeDialog(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = "${ing.amount} ${ing.unit} ${ing.getDisplayName(LanguageMode.ENGLISH)}".trim(),
-                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF3B2E24))
-                                                )
-                                                if (!ing.group.isNullOrBlank()) {
-                                                    Text(ing.group, fontSize = 10.sp, color = Color(0xFF6B5B4E), fontWeight = FontWeight.Medium)
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                // Drag & Drop Handle
+                                                Box(
+                                                    modifier = Modifier
+                                                        .pointerInput(ingredients.size) {
+                                                            detectDragGestures(
+                                                                onDragStart = {
+                                                                    draggedIngIndex = index
+                                                                    dragIngOffsetY = 0f
+                                                                },
+                                                                onDrag = { change, dragAmount ->
+                                                                    change.consume()
+                                                                    dragIngOffsetY += dragAmount.y
+                                                                    val currentIdx = draggedIngIndex ?: return@detectDragGestures
+                                                                    val itemHeightPx = 48.dp.toPx()
+                                                                    if (dragIngOffsetY > itemHeightPx && currentIdx < ingredients.size - 1) {
+                                                                        val item = ingredients.removeAt(currentIdx)
+                                                                        ingredients.add(currentIdx + 1, item)
+                                                                        draggedIngIndex = currentIdx + 1
+                                                                        dragIngOffsetY -= itemHeightPx
+                                                                    } else if (dragIngOffsetY < -itemHeightPx && currentIdx > 0) {
+                                                                        val item = ingredients.removeAt(currentIdx)
+                                                                        ingredients.add(currentIdx - 1, item)
+                                                                        draggedIngIndex = currentIdx - 1
+                                                                        dragIngOffsetY += itemHeightPx
+                                                                    }
+                                                                },
+                                                                onDragEnd = {
+                                                                    draggedIngIndex = null
+                                                                    dragIngOffsetY = 0f
+                                                                },
+                                                                onDragCancel = {
+                                                                    draggedIngIndex = null
+                                                                    dragIngOffsetY = 0f
+                                                                }
+                                                            )
+                                                        }
+                                                        .padding(end = 6.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.DragHandle,
+                                                        contentDescription = "Drag to reorder",
+                                                        tint = if (isDragged) TerracottaPrimary else Color(0xFFB0A395),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+
+                                                // Non-wrapping Measurement Badge Pill
+                                                if (ing.amount.isNotBlank() || ing.unit.isNotBlank()) {
+                                                    Surface(
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = Color(0xFFFFEDD5),
+                                                        border = BorderStroke(1.dp, Color(0xFFFED7AA))
+                                                    ) {
+                                                        Text(
+                                                            text = "${ing.amount} ${ing.unit}".trim(),
+                                                            fontSize = 11.5.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color(0xFF9A3412),
+                                                            maxLines = 1,
+                                                            softWrap = false,
+                                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                }
+
+                                                val displayName = RecipeIngredient.cleanIngredientName(ing.nameEnglish ?: ing.name).ifBlank { ing.name }
+
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = displayName,
+                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = Color(0xFF2C1E14),
+                                                            fontSize = 13.sp
+                                                        )
+                                                    )
+                                                    if (!ing.group.isNullOrBlank()) {
+                                                        Text(
+                                                            text = ing.group,
+                                                            fontSize = 10.sp,
+                                                            color = SageGreen,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                    if (ing.isOptional) {
+                                                        Text(
+                                                            text = "(optional)",
+                                                            fontSize = 10.sp,
+                                                            fontStyle = FontStyle.Italic,
+                                                            color = Color(0xFF8C7A6B)
+                                                        )
+                                                    }
                                                 }
                                             }
+
+                                            // Action icons (Edit, Delete)
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                if (index > 0) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            val item = ingredients.removeAt(index)
-                                                            ingredients.add(index - 1, item)
-                                                        },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.ArrowUpward, contentDescription = "Move Up", modifier = Modifier.size(16.dp))
-                                                    }
-                                                }
-                                                if (index < ingredients.size - 1) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            val item = ingredients.removeAt(index)
-                                                            ingredients.add(index + 1, item)
-                                                        },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.ArrowDownward, contentDescription = "Move Down", modifier = Modifier.size(16.dp))
-                                                    }
-                                                }
                                                 IconButton(
-                                                    onClick = { editingIngIndex = index },
+                                                    onClick = {
+                                                        commitActiveIngEdit()
+                                                        editingIngIndex = index
+                                                        editIngAmount = ing.amount
+                                                        editIngUnit = ing.unit
+                                                        editIngName = ing.nameEnglish ?: ing.name
+                                                        editIngGroup = ing.group ?: ""
+                                                        editIngOptional = ing.isOptional
+                                                    },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
                                                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TerracottaPrimary, modifier = Modifier.size(16.dp))
                                                 }
                                                 IconButton(
-                                                    onClick = { ingredients.removeAt(index) },
+                                                    onClick = {
+                                                        if (editingIngIndex == index) editingIngIndex = null
+                                                        ingredients.removeAt(index)
+                                                    },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red, modifier = Modifier.size(16.dp))
+                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
                                                 }
                                             }
                                         }
@@ -3132,46 +3562,32 @@ fun EditRecipeDialog(
                                 }
                             }
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFE5DDD3))
 
                             // Add New Ingredient Section
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF7F0)),
-                                border = BorderStroke(1.dp, Color(0xFFE2D5C3)),
-                                shape = RoundedCornerShape(8.dp),
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFFBF8F2),
+                                border = BorderStroke(1.dp, Color(0xFFE8DED1)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Add New Ingredient", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TerracottaPrimary)
+                                    Text("Add New Ingredient", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
 
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         OutlinedTextField(
                                             value = newIngAmount,
                                             onValueChange = { newIngAmount = it },
-                                            placeholder = { Text("Qty (e.g. 250, 1/2)", color = Color(0xFF78716C)) },
-                                            modifier = Modifier.weight(1f),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedTextColor = Color(0xFF18120C),
-                                                unfocusedTextColor = Color(0xFF18120C),
-                                                focusedContainerColor = Color.White,
-                                                unfocusedContainerColor = Color.White,
-                                                focusedBorderColor = TerracottaPrimary,
-                                                unfocusedBorderColor = Color(0xFFD6C7B2)
-                                            )
+                                            placeholder = { Text("Qty (e.g. 250, 1/2)", fontSize = 12.sp) },
+                                            colors = editorTextFieldColors,
+                                            modifier = Modifier.weight(1f)
                                         )
                                         OutlinedTextField(
                                             value = newIngUnit,
                                             onValueChange = { newIngUnit = it },
-                                            placeholder = { Text("Unit (g, ml, cup)", color = Color(0xFF78716C)) },
-                                            modifier = Modifier.weight(1f),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedTextColor = Color(0xFF18120C),
-                                                unfocusedTextColor = Color(0xFF18120C),
-                                                focusedContainerColor = Color.White,
-                                                unfocusedContainerColor = Color.White,
-                                                focusedBorderColor = TerracottaPrimary,
-                                                unfocusedBorderColor = Color(0xFFD6C7B2)
-                                            )
+                                            placeholder = { Text("Unit", fontSize = 12.sp) },
+                                            colors = editorTextFieldColors,
+                                            modifier = Modifier.weight(1f)
                                         )
                                     }
 
@@ -3179,14 +3595,20 @@ fun EditRecipeDialog(
                                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         items(quickUnits.size) { idx ->
                                             val u = quickUnits[idx]
+                                            val isSel = newIngUnit == u
                                             Surface(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .clickable { newIngUnit = u }
-                                                    .border(1.dp, if (newIngUnit == u) TerracottaPrimary else Color.LightGray, RoundedCornerShape(4.dp)),
-                                                color = if (newIngUnit == u) Color(0xFFF3ECE0) else Color.White
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = if (isSel) Color(0xFFFFEDD5) else Color.White,
+                                                border = BorderStroke(1.dp, if (isSel) TerracottaPrimary else Color(0xFFD6C7B2)),
+                                                modifier = Modifier.clickable { newIngUnit = u }
                                             ) {
-                                                Text(u, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp), fontWeight = FontWeight.Medium)
+                                                Text(
+                                                    text = u,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isSel) TerracottaPrimary else Color(0xFF6B5B4E),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
                                             }
                                         }
                                     }
@@ -3194,45 +3616,37 @@ fun EditRecipeDialog(
                                     OutlinedTextField(
                                         value = newIngName,
                                         onValueChange = { newIngName = it },
-                                        placeholder = { Text("Ingredient name", color = Color(0xFF78716C)) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedTextColor = Color(0xFF18120C),
-                                            unfocusedTextColor = Color(0xFF18120C),
-                                            focusedContainerColor = Color.White,
-                                            unfocusedContainerColor = Color.White,
-                                            focusedBorderColor = TerracottaPrimary,
-                                            unfocusedBorderColor = Color(0xFFD6C7B2)
-                                        )
+                                        placeholder = { Text("Ingredient name (e.g. All-purpose flour)", fontSize = 12.sp) },
+                                        colors = editorTextFieldColors,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
 
                                     OutlinedTextField(
                                         value = newIngGroup,
                                         onValueChange = { newIngGroup = it },
-                                        placeholder = { Text("Group / Section (e.g. Dough, Filling)", color = Color(0xFF78716C)) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedTextColor = Color(0xFF18120C),
-                                            unfocusedTextColor = Color(0xFF18120C),
-                                            focusedContainerColor = Color.White,
-                                            unfocusedContainerColor = Color.White,
-                                            focusedBorderColor = TerracottaPrimary,
-                                            unfocusedBorderColor = Color(0xFFD6C7B2)
-                                        )
+                                        placeholder = { Text("Group (e.g. Dough, Filling, Sauce)", fontSize = 12.sp) },
+                                        colors = editorTextFieldColors,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
 
                                     // Quick Group Chips
                                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         items(quickGroups.size) { idx ->
                                             val g = quickGroups[idx]
+                                            val isSel = newIngGroup == g
                                             Surface(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .clickable { newIngGroup = g }
-                                                    .border(1.dp, if (newIngGroup == g) TerracottaPrimary else Color.LightGray, RoundedCornerShape(4.dp)),
-                                                color = if (newIngGroup == g) Color(0xFFF3ECE0) else Color.White
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = if (isSel) Color(0xFFFFEDD5) else Color.White,
+                                                border = BorderStroke(1.dp, if (isSel) TerracottaPrimary else Color(0xFFD6C7B2)),
+                                                modifier = Modifier.clickable { newIngGroup = g }
                                             ) {
-                                                Text(g, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
+                                                Text(
+                                                    text = g,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isSel) TerracottaPrimary else Color(0xFF6B5B4E),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
                                             }
                                         }
                                     }
@@ -3252,11 +3666,13 @@ fun EditRecipeDialog(
                                                 )
                                                 newIngName = ""
                                                 newIngAmount = ""
+                                                newIngUnit = "g"
                                                 newIngGroup = ""
                                             }
                                         },
                                         enabled = newIngName.isNotBlank(),
                                         colors = ButtonDefaults.buttonColors(containerColor = SageGreen),
+                                        shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -3270,67 +3686,42 @@ fun EditRecipeDialog(
                         // ================= TAB 2: INSTRUCTIONS / STEPS =================
                         2 -> {
                             Text(
-                                text = "Edit step instructions, timers, and cooking tips:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF6B5B4E))
+                                text = "Preparation Steps (${steps.size}):",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF431407))
                             )
 
                             // List of existing steps
                             steps.forEachIndexed { index, step ->
                                 if (editingStepIndex == index) {
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F2E8)),
+                                    Surface(
+                                        color = Color(0xFFFFF8EE),
                                         border = BorderStroke(1.5.dp, TerracottaPrimary),
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        var editStepEn by remember { mutableStateOf(step.getInstruction(LanguageMode.ENGLISH)) }
-                                        var editStepTimer by remember { mutableStateOf(step.timerMinutes.toString()) }
-                                        var editStepTip by remember { mutableStateOf(step.tip ?: "") }
-
                                         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                             Text("Edit Step #${index + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
                                             OutlinedTextField(
                                                 value = editStepEn,
                                                 onValueChange = { editStepEn = it },
                                                 label = { Text("Step Instruction") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedTextColor = Color(0xFF18120C),
-                                                    unfocusedTextColor = Color(0xFF18120C),
-                                                    focusedContainerColor = Color.White,
-                                                    unfocusedContainerColor = Color.White,
-                                                    focusedBorderColor = TerracottaPrimary,
-                                                    unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                )
+                                                colors = editorTextFieldColors,
+                                                modifier = Modifier.fillMaxWidth()
                                             )
                                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                                 OutlinedTextField(
                                                     value = editStepTimer,
                                                     onValueChange = { editStepTimer = it },
-                                                    label = { Text("Timer (minutes)") },
-                                                    modifier = Modifier.weight(1f),
-                                                    colors = OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = Color(0xFF18120C),
-                                                        unfocusedTextColor = Color(0xFF18120C),
-                                                        focusedContainerColor = Color.White,
-                                                        unfocusedContainerColor = Color.White,
-                                                        focusedBorderColor = TerracottaPrimary,
-                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                    )
+                                                    label = { Text("Timer (min)") },
+                                                    colors = editorTextFieldColors,
+                                                    modifier = Modifier.weight(1f)
                                                 )
                                                 OutlinedTextField(
                                                     value = editStepTip,
                                                     onValueChange = { editStepTip = it },
                                                     label = { Text("Chef's Tip") },
-                                                    modifier = Modifier.weight(2f),
-                                                    colors = OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = Color(0xFF18120C),
-                                                        unfocusedTextColor = Color(0xFF18120C),
-                                                        focusedContainerColor = Color.White,
-                                                        unfocusedContainerColor = Color.White,
-                                                        focusedBorderColor = TerracottaPrimary,
-                                                        unfocusedBorderColor = Color(0xFFD6C7B2)
-                                                    )
+                                                    colors = editorTextFieldColors,
+                                                    modifier = Modifier.weight(2f)
                                                 )
                                             }
                                             Row(
@@ -3339,88 +3730,154 @@ fun EditRecipeDialog(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 TextButton(onClick = { editingStepIndex = null }) {
-                                                    Text("Cancel")
+                                                    Text("Cancel", color = Color(0xFF786555))
                                                 }
                                                 Button(
-                                                    onClick = {
-                                                        steps[index] = step.copy(
-                                                            instructionEnglish = editStepEn,
-                                                            timerMinutes = editStepTimer.toIntOrNull() ?: 0,
-                                                            tip = editStepTip.ifBlank { null }
-                                                        )
-                                                        editingStepIndex = null
-                                                    },
+                                                    onClick = { commitActiveStepEdit() },
                                                     colors = ButtonDefaults.buttonColors(containerColor = SageGreen)
                                                 ) {
-                                                    Text("Apply Step Edit")
+                                                    Text("Apply Step Edit", fontWeight = FontWeight.Bold)
                                                 }
                                             }
                                         }
                                     }
                                 } else {
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F2E8)),
-                                        border = BorderStroke(1.dp, Color(0xFFE2D5C3)),
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                    val isDragged = draggedStepIndex == index
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isDragged) Color(0xFFFFF3E0) else Color(0xFFFBF8F2),
+                                        border = BorderStroke(if (isDragged) 1.5.dp else 1.dp, if (isDragged) TerracottaPrimary else Color(0xFFE8DED1)),
+                                        shadowElevation = if (isDragged) 6.dp else 0.dp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .zIndex(if (isDragged) 1f else 0f)
+                                            .graphicsLayer {
+                                                translationY = if (isDragged) dragStepOffsetY else 0f
+                                            }
                                     ) {
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                                                .padding(horizontal = 8.dp, vertical = 8.dp),
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.Top
                                         ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = "Step ${index + 1}",
-                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TerracottaPrimary)
-                                                )
-                                                Text(
-                                                    text = step.getInstruction(LanguageMode.ENGLISH),
-                                                    style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF3B2E24))
-                                                )
-                                                if (step.timerMinutes > 0) {
-                                                    Text("Timer: ${step.timerMinutes} min", fontSize = 10.sp, color = TerracottaPrimary, fontWeight = FontWeight.Bold)
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                verticalAlignment = Alignment.Top
+                                            ) {
+                                                // Drag & Drop Handle
+                                                Box(
+                                                    modifier = Modifier
+                                                        .pointerInput(steps.size) {
+                                                            detectDragGestures(
+                                                                onDragStart = {
+                                                                    draggedStepIndex = index
+                                                                    dragStepOffsetY = 0f
+                                                                },
+                                                                onDrag = { change, dragAmount ->
+                                                                    change.consume()
+                                                                    dragStepOffsetY += dragAmount.y
+                                                                    val currentIdx = draggedStepIndex ?: return@detectDragGestures
+                                                                    val itemHeightPx = 54.dp.toPx()
+                                                                    if (dragStepOffsetY > itemHeightPx && currentIdx < steps.size - 1) {
+                                                                        val item = steps.removeAt(currentIdx)
+                                                                        steps.add(currentIdx + 1, item)
+                                                                        draggedStepIndex = currentIdx + 1
+                                                                        dragStepOffsetY -= itemHeightPx
+                                                                    } else if (dragStepOffsetY < -itemHeightPx && currentIdx > 0) {
+                                                                        val item = steps.removeAt(currentIdx)
+                                                                        steps.add(currentIdx - 1, item)
+                                                                        draggedStepIndex = currentIdx - 1
+                                                                        dragStepOffsetY += itemHeightPx
+                                                                    }
+                                                                },
+                                                                onDragEnd = {
+                                                                    draggedStepIndex = null
+                                                                    dragStepOffsetY = 0f
+                                                                },
+                                                                onDragCancel = {
+                                                                    draggedStepIndex = null
+                                                                    dragStepOffsetY = 0f
+                                                                }
+                                                            )
+                                                        }
+                                                        .padding(end = 6.dp, top = 2.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.DragHandle,
+                                                        contentDescription = "Drag to reorder",
+                                                        tint = if (isDragged) TerracottaPrimary else Color(0xFFB0A395),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
                                                 }
-                                                if (!step.tip.isNullOrBlank()) {
-                                                    Text("Tip: ${step.tip}", fontSize = 10.sp, color = SageGreen, fontWeight = FontWeight.Medium)
+
+                                                // Step number badge
+                                                Surface(
+                                                    shape = CircleShape,
+                                                    color = TerracottaPrimary,
+                                                    modifier = Modifier.size(22.dp)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Text("${index + 1}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+
+                                                Spacer(modifier = Modifier.width(8.dp))
+
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = step.getInstruction(LanguageMode.ENGLISH),
+                                                        style = MaterialTheme.typography.bodySmall.copy(
+                                                            color = Color(0xFF2C1E14),
+                                                            fontSize = 12.5.sp,
+                                                            lineHeight = 17.sp
+                                                        )
+                                                    )
+                                                    if (step.timerMinutes > 0) {
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Surface(
+                                                            shape = RoundedCornerShape(4.dp),
+                                                            color = Color(0xFFFEF3C7)
+                                                        ) {
+                                                            Text(
+                                                                text = "⏱ ${step.timerMinutes} min",
+                                                                fontSize = 10.sp,
+                                                                color = Color(0xFF92400E),
+                                                                fontWeight = FontWeight.Bold,
+                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                    if (!step.tip.isNullOrBlank()) {
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Text("💡 ${step.tip}", fontSize = 10.5.sp, color = SageGreen, fontWeight = FontWeight.Medium)
+                                                    }
                                                 }
                                             }
+
+                                            // Step action buttons (Edit, Delete)
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                if (index > 0) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            val item = steps.removeAt(index)
-                                                            steps.add(index - 1, item)
-                                                        },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.ArrowUpward, contentDescription = "Move Up", modifier = Modifier.size(16.dp))
-                                                    }
-                                                }
-                                                if (index < steps.size - 1) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            val item = steps.removeAt(index)
-                                                            steps.add(index + 1, item)
-                                                        },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.ArrowDownward, contentDescription = "Move Down", modifier = Modifier.size(16.dp))
-                                                    }
-                                                }
                                                 IconButton(
-                                                    onClick = { editingStepIndex = index },
+                                                    onClick = {
+                                                        commitActiveStepEdit()
+                                                        editingStepIndex = index
+                                                        editStepEn = step.getInstruction(LanguageMode.ENGLISH)
+                                                        editStepTimer = step.timerMinutes.toString()
+                                                        editStepTip = step.tip ?: ""
+                                                    },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
                                                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TerracottaPrimary, modifier = Modifier.size(16.dp))
                                                 }
                                                 IconButton(
-                                                    onClick = { steps.removeAt(index) },
+                                                    onClick = {
+                                                        if (editingStepIndex == index) editingStepIndex = null
+                                                        steps.removeAt(index)
+                                                    },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red, modifier = Modifier.size(16.dp))
+                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
                                                 }
                                             }
                                         }
@@ -3428,61 +3885,40 @@ fun EditRecipeDialog(
                                 }
                             }
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFE5DDD3))
 
                             // Add New Step Section
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF7F0)),
-                                border = BorderStroke(1.dp, Color(0xFFE2D5C3)),
-                                shape = RoundedCornerShape(8.dp),
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFFBF8F2),
+                                border = BorderStroke(1.dp, Color(0xFFE8DED1)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Add Step #${steps.size + 1}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TerracottaPrimary)
+                                    Text("Add Step #${steps.size + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
 
                                     OutlinedTextField(
                                         value = newStepEn,
                                         onValueChange = { newStepEn = it },
-                                        placeholder = { Text("Step instruction", color = Color(0xFF78716C)) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedTextColor = Color(0xFF18120C),
-                                            unfocusedTextColor = Color(0xFF18120C),
-                                            focusedContainerColor = Color.White,
-                                            unfocusedContainerColor = Color.White,
-                                            focusedBorderColor = TerracottaPrimary,
-                                            unfocusedBorderColor = Color(0xFFD6C7B2)
-                                        )
+                                        placeholder = { Text("Step instruction (e.g. Whisk eggs and sugar until pale)", fontSize = 12.sp) },
+                                        colors = editorTextFieldColors,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
 
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         OutlinedTextField(
                                             value = newStepTimer,
                                             onValueChange = { newStepTimer = it },
-                                            placeholder = { Text("Timer (min)", color = Color(0xFF78716C)) },
-                                            modifier = Modifier.weight(1f),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedTextColor = Color(0xFF18120C),
-                                                unfocusedTextColor = Color(0xFF18120C),
-                                                focusedContainerColor = Color.White,
-                                                unfocusedContainerColor = Color.White,
-                                                focusedBorderColor = TerracottaPrimary,
-                                                unfocusedBorderColor = Color(0xFFD6C7B2)
-                                            )
+                                            placeholder = { Text("Timer (min)", fontSize = 12.sp) },
+                                            colors = editorTextFieldColors,
+                                            modifier = Modifier.weight(1f)
                                         )
                                         OutlinedTextField(
                                             value = newStepTip,
                                             onValueChange = { newStepTip = it },
-                                            placeholder = { Text("Chef's tip (optional)", color = Color(0xFF78716C)) },
-                                            modifier = Modifier.weight(2f),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedTextColor = Color(0xFF18120C),
-                                                unfocusedTextColor = Color(0xFF18120C),
-                                                focusedContainerColor = Color.White,
-                                                unfocusedContainerColor = Color.White,
-                                                focusedBorderColor = TerracottaPrimary,
-                                                unfocusedBorderColor = Color(0xFFD6C7B2)
-                                            )
+                                            placeholder = { Text("Chef's tip (optional)", fontSize = 12.sp) },
+                                            colors = editorTextFieldColors,
+                                            modifier = Modifier.weight(2f)
                                         )
                                     }
 
@@ -3504,6 +3940,7 @@ fun EditRecipeDialog(
                                         },
                                         enabled = newStepEn.isNotBlank(),
                                         colors = ButtonDefaults.buttonColors(containerColor = SageGreen),
+                                        shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -3520,20 +3957,22 @@ fun EditRecipeDialog(
                                 value = originStory,
                                 onValueChange = { originStory = it },
                                 label = { Text("Recipe Description / Story") },
-                                placeholder = { Text("e.g. Traditional recipe, ideal for family dinner or celebrations...") },
+                                placeholder = { Text("e.g. Traditional family recipe from Oma, perfect for Sunday dinners...") },
+                                colors = editorTextFieldColors,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(110.dp)
+                                    .height(115.dp)
                             )
 
                             OutlinedTextField(
                                 value = notes,
                                 onValueChange = { notes = it },
                                 label = { Text("Chef Notes & Cooking Tips") },
-                                placeholder = { Text("e.g. Bake on the middle rack at 180°C...") },
+                                placeholder = { Text("e.g. Bake on the middle rack at 180°C. Best served warm with vanilla custard...") },
+                                colors = editorTextFieldColors,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(100.dp)
+                                    .height(110.dp)
                             )
                         }
                     }
@@ -3543,28 +3982,44 @@ fun EditRecipeDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    commitActiveIngEdit()
+                    commitActiveStepEdit()
+
+                    val finalIngredients = ingredients.map { ing ->
+                        val rawName = ing.nameEnglish ?: ing.name
+                        val clean = RecipeIngredient.cleanIngredientName(rawName).ifBlank { rawName }
+                        ing.copy(
+                            name = clean,
+                            nameEnglish = clean,
+                            nameGerman = ing.nameGerman?.let { RecipeIngredient.cleanIngredientName(it) } ?: clean
+                        )
+                    }.toList()
+
+                    val finalSteps = steps.mapIndexed { idx, s -> s.copy(stepNumber = idx + 1) }.toList()
+
                     val finalRecipe = initialRecipe.copy(
                         title = title.ifBlank { titleEnglish.ifBlank { "Family Recipe" } },
-                        titleGerman = titleGerman,
+                        titleGerman = titleGerman.ifBlank { title },
                         titleEnglish = titleEnglish.ifBlank { title },
                         category = category.ifBlank { "Family Classics" },
                         servings = servings.ifBlank { "4 servings" },
                         prepTimeMinutes = prepTime.toIntOrNull() ?: 20,
                         cookTimeMinutes = cookTime.toIntOrNull() ?: 30,
                         difficulty = difficulty.ifBlank { "Medium" },
-                        coverTheme = coverTheme,
+                        imageUri = imageUri,
                         rating = rating,
                         isFavorite = isFavorite,
                         originStory = originStory,
                         notes = notes,
-                        notesGerman = notesGerman,
+                        notesGerman = notesGerman.ifBlank { notes },
                         sourceLanguage = sourceLanguage,
-                        ingredients = ingredients.mapIndexed { idx, ing -> ing }.toList(),
-                        steps = steps.mapIndexed { idx, s -> s.copy(stepNumber = idx + 1) }.toList()
+                        ingredients = finalIngredients,
+                        steps = finalSteps
                     )
                     onSave(finalRecipe)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary)
+                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -3573,7 +4028,7 @@ fun EditRecipeDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = Color(0xFF786555))
             }
         }
     )
@@ -3581,6 +4036,8 @@ fun EditRecipeDialog(
     if (showDeleteConfirmInEditor && onDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmInEditor = false },
+            containerColor = Color(0xFFFFFDF9),
+            shape = RoundedCornerShape(14.dp),
             icon = {
                 Icon(
                     Icons.Default.Delete,
@@ -3592,11 +4049,11 @@ fun EditRecipeDialog(
             title = {
                 Text(
                     text = "Delete Recipe?",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF431407))
                 )
             },
             text = {
-                Text("Are you sure you want to delete '${initialRecipe.title}'? This action cannot be undone.")
+                Text("Are you sure you want to delete '${initialRecipe.title}'? This action cannot be undone.", color = Color(0xFF5A4535))
             },
             confirmButton = {
                 Button(
@@ -3605,14 +4062,15 @@ fun EditRecipeDialog(
                         onDelete(initialRecipe)
                         onDismiss()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmInEditor = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = Color(0xFF786555))
                 }
             }
         )

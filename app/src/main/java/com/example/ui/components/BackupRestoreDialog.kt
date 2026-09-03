@@ -878,7 +878,7 @@ fun BackupRestoreDialog(
                     ) {
                         Icon(Icons.Default.Cookie, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Reload Starter Heirloom Classics & Cookies", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Reload Starter Classics & Formulas", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 

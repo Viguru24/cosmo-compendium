@@ -1,6 +1,6 @@
-# Cookbook AI & Recipe Extraction Guidelines
+# Cosmo Compendium AI & Formulation / Recipe Extraction Guidelines
 
-This document specifies the critical rules, architecture, and extraction contracts for the AI-assisted recipe scanning and parsing engine in the Cookbook application.
+This document specifies the critical rules, architecture, and extraction contracts for the AI-assisted recipe and craft formula scanning and parsing engine in the Cosmo Compendium application.
 
 ---
 
@@ -37,11 +37,11 @@ This document specifies the critical rules, architecture, and extraction contrac
 
 ---
 
-## 3. Bilingual Support & Translation
+## 3. Universal Multi-Language Support & Global Translation
 
-- Supports handwritten German recipe cards (Kurrentschrift / Sütterlin / modern cursive) and English cards.
-- Translates titles, ingredient names, and preparation steps into natural, clean English while preserving the original German text for heirloom authenticity.
-- Fractions and spoken units (e.g. "1/4 / 1/2 spoon", "ein Esslöffel", "eine Prise") are standardized to clean display formats.
+- Supports handwritten and printed recipe cards in **ANY language worldwide** (e.g., German, French, Italian, Spanish, Portuguese, Polish, Russian, Ukrainian, Dutch, Swedish, Danish, Japanese, Chinese, Arabic, Hindi, Greek, etc., including vintage cursive scripts like Kurrentschrift and Sütterlin).
+- Translates titles, ingredient names, preparation steps, and notes into natural, clean, culinary English while preserving the original source text in the original language fields for authentic heritage preservation.
+- International fractions, measurements, and spoken colloquial units (e.g. "1/4 / 1/2 spoon", "ein Esslöffel", "une pincée", "una presa") are standardized into clean display formats.
 
 ---
 
@@ -57,3 +57,20 @@ This document specifies the critical rules, architecture, and extraction contrac
 - **Direct Auto-Save**: Because AI scan transcription accuracy is high, completed recipe scans are automatically inserted directly into the database without interrupting the user with an intermediate inspection/review screen or navigating out to the recipe page.
 - **Continuous Camera Loop**: After a recipe is scanned and saved, the app immediately reopens the camera for the next recipe card (Page 1) so the user can scan stacks of recipe cards in rapid succession.
 - **Session Progress & Completion**: The scan interface maintains a session counter (e.g. "X recipes saved") and offers a "Done Scanning" action to cleanly return to the bookshelf when finished.
+
+---
+
+## 6. Strict Google Gemini Model Architecture & Self-Healing Discovery
+
+> **CRITICAL ARCHITECTURAL DIRECTIVE**: Never rely on a single static model identifier without dynamic fallback. Always follow `GEMINI_MODEL_ARCHITECTURE.md`.
+
+- **Single Source of Truth**: All model identifiers and fallback chains must reference `GeminiModelConfig` (`com.example.ai.GeminiModelConfig`).
+- **Dynamic Model Discovery & Self-Healing**:
+  - The app dynamically discovers live models from `v1beta/models?key=...` on device.
+  - If Google deprecates or changes a model (returning `404 Not Found` or `"is no longer available"`), the system **automatically blacklists and evicts** that model, hot-swapping to the next live model instantly without user intervention.
+- **Active Verified Fallback Chain**:
+  - `GeminiModelConfig.PRIMARY_MODEL`: `"gemini-2.5-flash"` (Ultra-fast multimodal vision & extraction).
+  - `GeminiModelConfig.FALLBACK_MODEL`: `"gemini-3.5-flash"` (High-speed resilient backup).
+  - Additional verified active models: `"gemini-3.7-flash"`, `"gemini-3.6-flash"`, `"gemini-flash-latest"`.
+- **Graceful Offline Fallback**: If Gemini API returns an error or is unavailable, the system must immediately and seamlessly fall back to `OfflineRecipeParser` without stalling, blocking, or hanging the UI.
+

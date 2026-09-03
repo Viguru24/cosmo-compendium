@@ -5,7 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.util.Log
+import com.example.util.AppLogger
 import com.example.data.local.RecipeDao
 import com.example.data.local.RecipeEntity
 import com.example.data.model.RecipeIngredient
@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import com.example.data.network.NetworkModule
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -42,8 +43,9 @@ class SyncManager(
     private val syncConfig: SyncConfig
 ) {
     private val tag = "SyncManager"
+    private val tombstoneManager = com.example.data.local.TombstoneManager(context)
 
-    private val httpClient = OkHttpClient.Builder()
+    private val httpClient = NetworkModule.okHttpClient.newBuilder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
@@ -61,7 +63,7 @@ class SyncManager(
     private var connectivityCallback: ConnectivityManager.NetworkCallback? = null
 
     init {
-        setupWifiAutoSyncListener()
+        setupWifiAutoSync()
     }
 
     /**
@@ -108,7 +110,7 @@ class SyncManager(
                 }
             }
         } catch (e: Exception) {
-            Log.e(tag, "Health check failed: ${e.message}", e)
+            AppLogger.e(tag, "Health check failed: ${e.message}", e)
             val cleanMsg = when {
                 e.message?.contains("Failed to connect") == true || e.message?.contains("Unable to resolve host") == true ->
                     "Cannot reach server at $serverUrl. Check your network or URL."
@@ -195,6 +197,7 @@ class SyncManager(
                     put("timesCooked", entity.timesCooked)
                     put("isDeleted", entity.isDeleted)
                     put("updatedAt", entity.updatedAt)
+                    put("profileName", entity.profileName)
 
                     // ingredientsJson string serialization
                     val ingArr = JSONArray()
@@ -274,6 +277,17 @@ class SyncManager(
                 if (remoteTitle.isBlank()) continue
 
                 val isDeleted = itemObj.optBoolean("isDeleted", false)
+                val updatedAt = itemObj.optLong("updatedAt", serverTimestamp)
+
+                // Reject zombie recipes that were deleted by the user on this device
+                if (tombstoneManager.isTombstoned(remoteTitle, updatedAt)) {
+                    AppLogger.d(tag, "Rejecting tombstoned deleted recipe '$remoteTitle' from server.")
+                    val local = recipeDao.getRecipeByTitle(remoteTitle)
+                    if (local != null) {
+                        recipeDao.hardDeleteRecipe(local.id)
+                    }
+                    continue
+                }
 
                 if (isDeleted) {
                     // Remote recipe was deleted
@@ -309,11 +323,18 @@ class SyncManager(
                     val isFavorite = itemObj.optBoolean("isFavorite", false)
                     val rating = itemObj.optInt("rating", 5)
                     val timesCooked = itemObj.optInt("timesCooked", 0)
-                    val updatedAt = itemObj.optLong("updatedAt", serverTimestamp)
+                    val profileName = itemObj.optString("profileName").ifBlank {
+                        itemObj.optString("profile_name").ifBlank { "Louis" }
+                    }
                     val createdAt = itemObj.optLong("createdAt", updatedAt)
 
                     val existing = recipeDao.getRecipeByTitle(remoteTitle)
                     if (existing != null) {
+                        // Strict Last-Write-Wins: Do NOT overwrite newer local edits with stale remote data
+                        if (existing.updatedAt > updatedAt) {
+                            AppLogger.d(tag, "Local recipe '$remoteTitle' is newer (${existing.updatedAt} > $updatedAt). Skipping stale remote update.")
+                            continue
+                        }
                         val merged = existing.copy(
                             titleGerman = titleGerman.ifBlank { existing.titleGerman },
                             titleEnglish = titleEnglish.ifBlank { existing.titleEnglish },
@@ -327,12 +348,13 @@ class SyncManager(
                             notes = notes.ifBlank { existing.notes },
                             notesGerman = notesGerman.ifBlank { existing.notesGerman },
                             coverTheme = coverTheme,
-                            imageUri = localImageUri ?: existing.imageUri,
+                            imageUri = localImageUri ?: (if (coverPhotoName != null && coverPhotoName.isNotBlank()) File(context.filesDir, coverPhotoName).absolutePath else existing.imageUri),
                             coverPhotoName = coverPhotoName ?: existing.coverPhotoName,
                             isFavorite = if (itemObj.has("isFavorite")) isFavorite else existing.isFavorite,
                             rating = if (itemObj.has("rating")) rating else existing.rating,
                             timesCooked = maxOf(timesCooked, existing.timesCooked),
                             originStory = originStory.ifBlank { existing.originStory },
+                            profileName = profileName,
                             updatedAt = updatedAt,
                             isDeleted = false,
                             syncStatus = "SYNCED"
@@ -361,6 +383,7 @@ class SyncManager(
                             rating = rating,
                             timesCooked = timesCooked,
                             originStory = originStory,
+                            profileName = profileName,
                             createdAt = createdAt,
                             updatedAt = updatedAt,
                             isDeleted = false,
@@ -386,10 +409,9 @@ class SyncManager(
             val successMsg = "Synced: $pushedCount uploaded, $pulledCount updated"
             _lastSyncStatus.value = successMsg
             syncConfig.lastSyncStatusMessage = successMsg
-
             SyncResult.Success(pushedCount, pulledCount, serverTimestamp)
         } catch (e: Exception) {
-            Log.e(tag, "Sync failed: ${e.message}", e)
+            AppLogger.e(tag, "Sync failed: ${e.message}", e)
             val friendlyMsg = "Offline - changes saved locally and will sync when reconnected"
             _lastSyncStatus.value = friendlyMsg
             syncConfig.lastSyncStatusMessage = friendlyMsg
@@ -446,7 +468,7 @@ class SyncManager(
             }
             response.close()
         } catch (e: Exception) {
-            Log.w(tag, "Failed to upload image for recipe ${entity.title}: ${e.message}")
+            AppLogger.w(tag, "Failed to upload image for recipe ${entity.title}: ${e.message}")
         }
         return null
     }
@@ -482,7 +504,7 @@ class SyncManager(
             }
             response.close()
         } catch (e: Exception) {
-            Log.w(tag, "Failed to download cover photo $coverPhotoName: ${e.message}")
+            AppLogger.w(tag, "Failed to download cover photo $coverPhotoName: ${e.message}")
         }
         return null
     }
@@ -495,35 +517,20 @@ class SyncManager(
         } else {
             itemObj.optJSONArray("ingredients")
         }
-
         if (jsonArr != null) {
             for (i in 0 until jsonArr.length()) {
-                val optObj = jsonArr.optJSONObject(i)
-                if (optObj != null) {
-                    list.add(
-                        RecipeIngredient(
-                            name = optObj.optString("name", "Ingredient"),
-                            amount = optObj.optString("amount", ""),
-                            unit = optObj.optString("unit", ""),
-                            nameGerman = optObj.optString("nameGerman").ifBlank { null },
-                            nameEnglish = optObj.optString("nameEnglish").ifBlank { null },
-                            isOptional = optObj.optBoolean("isOptional", false),
-                            group = optObj.optString("group").ifBlank { null }
-                        )
+                val ingObj = jsonArr.optJSONObject(i) ?: continue
+                list.add(
+                    RecipeIngredient(
+                        name = ingObj.optString("name", ""),
+                        amount = ingObj.optString("amount", ""),
+                        unit = ingObj.optString("unit", ""),
+                        nameGerman = ingObj.optString("nameGerman", "").ifBlank { null },
+                        nameEnglish = ingObj.optString("nameEnglish", "").ifBlank { null },
+                        isOptional = ingObj.optBoolean("isOptional", false),
+                        group = ingObj.optString("group", "").ifBlank { null }
                     )
-                } else {
-                    val str = jsonArr.optString(i, "").trim()
-                    if (str.isNotBlank()) {
-                        list.add(
-                            RecipeIngredient(
-                                name = str,
-                                amount = "",
-                                unit = "",
-                                nameEnglish = str
-                            )
-                        )
-                    }
-                }
+                )
             }
         }
         return list
@@ -531,25 +538,25 @@ class SyncManager(
 
     private fun parseStepsJson(itemObj: JSONObject): List<RecipeStep> {
         val list = mutableListOf<RecipeStep>()
-        val stepJsonStr = itemObj.optString("stepsJson", "")
-        val jsonArr = if (stepJsonStr.isNotBlank()) {
-            try { JSONArray(stepJsonStr) } catch (_: Exception) { null }
+        val stepsJsonStr = itemObj.optString("stepsJson", "")
+        val jsonArr = if (stepsJsonStr.isNotBlank()) {
+            try { JSONArray(stepsJsonStr) } catch (_: Exception) { null }
         } else {
             itemObj.optJSONArray("steps")
         }
-
         if (jsonArr != null) {
             for (i in 0 until jsonArr.length()) {
-                val optObj = jsonArr.optJSONObject(i)
-                if (optObj != null) {
-                    val instr = optObj.optString("instructionEnglish", optObj.optString("instructionGerman", optObj.optString("text", "")))
+                val stepObj = jsonArr.optJSONObject(i)
+                if (stepObj != null) {
+                    val instrEn = stepObj.optString("instructionEnglish", stepObj.optString("instruction", stepObj.optString("text", "")))
+                    val instrDe = stepObj.optString("instructionGerman", instrEn)
                     list.add(
                         RecipeStep(
-                            stepNumber = optObj.optInt("stepNumber", i + 1),
-                            instructionEnglish = instr,
-                            instructionGerman = optObj.optString("instructionGerman", instr),
-                            timerMinutes = optObj.optInt("timerMinutes", 0),
-                            tip = optObj.optString("tip").ifBlank { null }
+                            stepNumber = stepObj.optInt("stepNumber", i + 1),
+                            instructionEnglish = instrEn,
+                            instructionGerman = instrDe,
+                            timerMinutes = stepObj.optInt("timerMinutes", 0),
+                            tip = stepObj.optString("tip", "").ifBlank { null }
                         )
                     )
                 } else {
@@ -570,7 +577,10 @@ class SyncManager(
         return list
     }
 
-    private fun setupWifiAutoSyncListener() {
+    /**
+     * Initializes network connectivity listener to automatically sync when WiFi reconnects.
+     */
+    fun setupWifiAutoSync() {
         try {
             val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
             val request = NetworkRequest.Builder()
@@ -591,7 +601,7 @@ class SyncManager(
             }
             connectivityManager.registerNetworkCallback(request, connectivityCallback!!)
         } catch (e: Exception) {
-            Log.w(tag, "Could not register wifi sync listener: ${e.message}")
+            AppLogger.w(tag, "Could not register wifi sync listener: ${e.message}")
         }
     }
 
@@ -607,7 +617,7 @@ class SyncManager(
             try {
                 performSync()
             } catch (e: Exception) {
-                Log.w(tag, "Immediate auto-sync encountered non-fatal error: ${e.message}")
+                AppLogger.w(tag, "Immediate auto-sync encountered non-fatal error: ${e.message}")
             }
         }
     }

@@ -41,7 +41,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -115,12 +118,23 @@ fun ScanRecipeBottomSheet(
     onClearError: () -> Unit = {},
     onScan: (List<Bitmap>, String?, String?) -> Unit,
     onSaveDraft: (RecipeEntity) -> Unit,
+    onImportVideo: ((Uri) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scannedPages = remember { mutableStateListOf<ScannedPageThumbnail>() }
     var rawTextEntry by remember { mutableStateOf("") }
+
+    // Video Reel Picker
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            onImportVideo?.invoke(uri)
+            onDismiss()
+        }
+    }
 
     // Multi-Image Gallery Picker
     val multiGalleryLauncher = rememberLauncherForActivityResult(
@@ -612,6 +626,57 @@ fun ScanRecipeBottomSheet(
                     }
                 }
 
+                // Friendly How It Works Banner
+                var showHelpTips by remember { mutableStateOf(false) }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFBF4EB),
+                    border = BorderStroke(1.dp, Color(0xFFE8DAC8)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                        .clickable { showHelpTips = !showHelpTips }
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text("💡", fontSize = 14.sp)
+                                Text(
+                                    text = "How Scanning & Video Import Works",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF5D4037)
+                                    )
+                                )
+                            }
+                            Text(
+                                text = if (showHelpTips) "Hide ▲" else "Learn more ▼",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = TerracottaPrimary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        if (showHelpTips) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("• 📸 Rapid Snapping: Snap Page 1, then Page 2 (Back), Page 3... Press Back when done to auto-save the full recipe!", fontSize = 12.sp, color = Color(0xFF6B5E52))
+                                Text("• 📹 Cooking Videos: Select any Reel, TikTok, or 15-30s screen recording to extract the ingredients and recipe automatically.", fontSize = 12.sp, color = Color(0xFF6B5E52))
+                                Text("• 🌍 Any Language Worldwide: Transcribe cards in any language (German, French, Italian, Spanish, Polish, etc.) or cursive with instant English translation.", fontSize = 12.sp, color = Color(0xFF6B5E52))
+                                Text("• 🖼️ Food Photo Crop: Recipe card photos are auto-detected and saved as the cover picture.", fontSize = 12.sp, color = Color(0xFF6B5E52))
+                            }
+                        }
+                    }
+                }
+
                 if (scanBatchCount > 0) {
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
@@ -673,34 +738,82 @@ fun ScanRecipeBottomSheet(
                 if (!errorMessage.isNullOrBlank()) {
                     Surface(
                         color = Color(0xFFFEE2E2),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF87171)),
-                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFF87171)),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp)
+                            .padding(bottom = 14.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = "⚠️ $errorMessage",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color(0xFF991B1B),
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(
-                                onClick = onClearError,
-                                modifier = Modifier.size(24.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Dismiss",
-                                    tint = Color(0xFF991B1B),
-                                    modifier = Modifier.size(16.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        Icons.Default.ErrorOutline,
+                                        contentDescription = null,
+                                        tint = Color(0xFF991B1B),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Text(
+                                        text = "Scan Interrupted",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            color = Color(0xFF991B1B),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onClearError,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Dismiss",
+                                        tint = Color(0xFF991B1B),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = errorMessage,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF7F1D1D),
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp
                                 )
+                            )
+
+                            if (scannedPages.isNotEmpty() || rawTextEntry.isNotBlank()) {
+                                Button(
+                                    onClick = {
+                                        onClearError()
+                                        val allBitmaps = scannedPages.map { it.bitmap }
+                                        val primaryPath = scannedPages.firstOrNull()?.filePath ?: ""
+                                        onScan(allBitmaps, rawTextEntry.ifBlank { null }, primaryPath)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (scannedPages.isNotEmpty()) "🔄 Retry Scan (${scannedPages.size} Captured Page${if (scannedPages.size > 1) "s" else ""})" else "🔄 Retry AI Transcription",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -782,6 +895,34 @@ fun ScanRecipeBottomSheet(
                                                 )
                                             }
                                         }
+                                        // Rotate 90 degrees button
+                                        IconButton(
+                                            onClick = {
+                                                val currentItem = scannedPages[index]
+                                                val rotatedBmp = ImageUtils.rotateBitmap(currentItem.bitmap, 90f)
+                                                var newPath = currentItem.filePath
+                                                if (newPath.isNotBlank()) {
+                                                    ImageUtils.rotateImageFile(newPath, 90f)
+                                                } else {
+                                                    newPath = ImageUtils.saveLowResReferenceImage(context, rotatedBmp) ?: ""
+                                                }
+                                                scannedPages[index] = ScannedPageThumbnail(rotatedBmp, newPath)
+                                                Toast.makeText(context, "Rotated Page ${index + 1} 90°", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .size(26.dp)
+                                                .padding(2.dp)
+                                                .background(Color(0xCC000000), shape = RoundedCornerShape(12.dp))
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Refresh,
+                                                contentDescription = "Rotate 90°",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+
                                         // Delete badge button
                                         IconButton(
                                             onClick = { scannedPages.removeAt(index) },
@@ -937,6 +1078,47 @@ fun ScanRecipeBottomSheet(
                                 }
                             }
                         }
+
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    try {
+                                        videoPickerLauncher.launch("video/*")
+                                    } catch (e: Throwable) {
+                                        Toast.makeText(context, "Could not open video gallery: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    }
+                                },
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2FE)),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF0284C7)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Videocam,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0369A1),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "Cooking Video",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF0C4A6E)
+                                        )
+                                    )
+                                    Text(
+                                        text = "Reel / TikTok clip",
+                                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF075985), fontWeight = FontWeight.Medium)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -944,7 +1126,7 @@ fun ScanRecipeBottomSheet(
 
                 // Presets section
                 Text(
-                    text = "✨ OR TEST WITH SAMPLE HEIRLOOM RECIPE CARDS:",
+                    text = "✨ OR TEST WITH SAMPLE RECIPE & FORMULA CARDS:",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = Color(0xFF431407),
@@ -1009,7 +1191,7 @@ fun ScanRecipeBottomSheet(
                 OutlinedTextField(
                     value = rawTextEntry,
                     onValueChange = { rawTextEntry = it },
-                    placeholder = { Text("Paste German or English recipe text across multiple pages...", color = Color(0xFF5A4D41)) },
+                    placeholder = { Text("Paste recipe text in any language across multiple pages...", color = Color(0xFF5A4D41)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),

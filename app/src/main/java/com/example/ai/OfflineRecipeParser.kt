@@ -189,7 +189,7 @@ object OfflineRecipeParser {
             isGerman = true
         }
 
-        val firstLine = lines.firstOrNull() ?: "Heirloom Recipe"
+        val firstLine = lines.firstOrNull() ?: "Compendium Entry"
         if (isGerman) {
             titleDe = firstLine.replace(Regex("^[-*#]+\\s*"), "")
             titleEn = translateSimpleTitle(titleDe, toEnglish = true)
@@ -431,6 +431,8 @@ object OfflineRecipeParser {
             itemName = clean
             amount = ""
             unit = ""
+        } else {
+            itemName = com.example.data.model.RecipeIngredient.cleanIngredientName(itemName)
         }
 
         val nameDe: String

@@ -6,7 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
-import android.util.Log
+import com.example.util.AppLogger
 import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
@@ -69,7 +69,7 @@ object ImageUtils {
             val rawWidth = options.outWidth
             val rawHeight = options.outHeight
             if (rawWidth <= 0 || rawHeight <= 0) {
-                Log.e(TAG, "Invalid image dimensions: $rawWidth x $rawHeight")
+                AppLogger.e(TAG, "Invalid image dimensions: $rawWidth x $rawHeight")
                 return null
             }
 
@@ -93,7 +93,7 @@ object ImageUtils {
             }
 
             if (decodedBitmap == null) {
-                Log.e(TAG, "BitmapFactory failed to decode stream for uri: $uri")
+                AppLogger.e(TAG, "BitmapFactory failed to decode stream for uri: $uri")
                 return null
             }
 
@@ -104,11 +104,11 @@ object ImageUtils {
             // 5. Ensure exact downscaling and software ARGB_8888 configuration
             ensureSoftwareBitmap(orientedBitmap)
         } catch (e: OutOfMemoryError) {
-            Log.e(TAG, "OutOfMemoryError loading high-res bitmap from uri: $uri, attempting fallback", e)
+            AppLogger.e(TAG, "OutOfMemoryError loading high-res bitmap from uri: $uri, attempting fallback", e)
             System.gc()
             tryFallbackLowRes(context, uri)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load and downscale bitmap from uri: $uri", e)
+            AppLogger.e(TAG, "Failed to load and downscale bitmap from uri: $uri", e)
             null
         }
     }
@@ -120,7 +120,7 @@ object ImageUtils {
                 exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
             } ?: ExifInterface.ORIENTATION_NORMAL
         } catch (e: Exception) {
-            Log.w(TAG, "Could not read EXIF orientation: ${e.message}")
+            AppLogger.w(TAG, "Could not read EXIF orientation: ${e.message}")
             ExifInterface.ORIENTATION_NORMAL
         }
     }
@@ -143,7 +143,7 @@ object ImageUtils {
             }
             rotated
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to apply EXIF matrix rotation: ${e.message}")
+            AppLogger.w(TAG, "Failed to apply EXIF matrix rotation: ${e.message}")
             bitmap
         }
     }
@@ -158,7 +158,7 @@ object ImageUtils {
                 BitmapFactory.decodeStream(inputStream, null, options)
             }
         } catch (e: Throwable) {
-            Log.e(TAG, "Fallback low-res decoding also failed", e)
+            AppLogger.e(TAG, "Fallback low-res decoding also failed", e)
             null
         }
     }
@@ -181,7 +181,7 @@ object ImageUtils {
                 bitmap
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error ensuring software bitmap", e)
+            AppLogger.e(TAG, "Error ensuring software bitmap", e)
             bitmap
         }
     }
@@ -219,8 +219,75 @@ object ImageUtils {
 
             file.absolutePath
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save reference image", e)
+            AppLogger.e(TAG, "Failed to save reference image", e)
             null
+        }
+    }
+
+    /**
+     * Copies and safely processes an image from any content/gallery Uri into the persistent dish_photos folder.
+     */
+    fun saveImageFromUri(context: Context, uri: Uri): String? {
+        return try {
+            val bitmap = loadAndDownscaleBitmap(context, uri) ?: return null
+            val photosDir = File(context.filesDir, "dish_photos").apply {
+                if (!exists()) mkdirs()
+            }
+            val filename = "custom_dish_${System.currentTimeMillis()}.jpg"
+            val file = File(photosDir, filename)
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.flush()
+            }
+            if (!bitmap.isRecycled) {
+                bitmap.recycle()
+            }
+            file.absolutePath
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to save image from URI: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * Rotates a bitmap by a specified number of degrees (e.g. 90, 180, 270).
+     */
+    fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
+        if (degrees == 0f) return bitmap
+        return try {
+            val matrix = Matrix().apply { postRotate(degrees) }
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            rotated
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to rotate bitmap by $degrees degrees: ${e.message}")
+            bitmap
+        }
+    }
+
+    /**
+     * Rotates an on-disk image file in-place by a specified number of degrees (e.g. 90, 180, 270).
+     */
+    fun rotateImageFile(filePath: String, degrees: Float): Boolean {
+        if (degrees == 0f || filePath.isBlank()) return false
+        return try {
+            val file = File(filePath)
+            if (!file.exists()) return false
+            val bmp = BitmapFactory.decodeFile(filePath) ?: return false
+            val rotated = rotateBitmap(bmp, degrees)
+            FileOutputStream(file).use { out ->
+                rotated.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.flush()
+            }
+            if (rotated != bmp && !rotated.isRecycled) {
+                rotated.recycle()
+            }
+            if (!bmp.isRecycled) {
+                bmp.recycle()
+            }
+            true
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to rotate image file $filePath: ${e.message}")
+            false
         }
     }
 
@@ -249,7 +316,7 @@ object ImageUtils {
             val cropHeight = bottom - top
 
             if (cropWidth < 40 || cropHeight < 40) {
-                Log.w(TAG, "Cropped food bounding box too small: ${cropWidth}x${cropHeight}")
+                AppLogger.w(TAG, "Cropped food bounding box too small: ${cropWidth}x${cropHeight}")
                 return null
             }
 
@@ -271,8 +338,55 @@ object ImageUtils {
 
             file.absolutePath
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to crop food photo", e)
+            AppLogger.e(TAG, "Failed to crop food photo", e)
             null
         }
     }
+
+    /**
+     * Safely decodes a bitmap from a file with automatic memory subsampling to prevent OOM errors.
+     */
+    fun decodeSampledBitmapFromFile(filePath: String, reqWidth: Int = 1024, reqHeight: Int = 1024): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(filePath, options)
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+            options.inJustDecodeBounds = false
+            BitmapFactory.decodeFile(filePath, options)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Safely decodes a bitmap from byte array with automatic memory subsampling.
+     */
+    fun decodeSampledBitmapFromBytes(bytes: ByteArray, reqWidth: Int = 1024, reqHeight: Int = 1024): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+            options.inJustDecodeBounds = false
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+
+    fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val height = options.outHeight
+        val width = options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
+
 }

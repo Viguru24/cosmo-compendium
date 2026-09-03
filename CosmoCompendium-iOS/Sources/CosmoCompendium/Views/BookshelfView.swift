@@ -383,6 +383,17 @@ struct RecipeBookCard: View {
                         .shadow(color: Color.black.opacity(0.8), radius: 1, x: 0, y: 1)
                         .padding(.horizontal, 10)
 
+                    if let badge = recipe.characteristicBadge {
+                        Text(badge.uppercased())
+                            .font(.system(size: 8, weight: .black, design: .serif))
+                            .tracking(1.2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(recipe.coverTheme.goldFoilColor.opacity(0.18), in: Capsule())
+                            .overlay(Capsule().stroke(recipe.coverTheme.goldFoilColor.opacity(0.45), lineWidth: 0.8))
+                            .foregroundStyle(recipe.coverTheme.goldFoilColor)
+                    }
+
                     Spacer()
 
                     // Footer meta: Servings and Total Time

@@ -162,22 +162,43 @@ public final class GeminiRecipeService {
             ]
         ]
 
-        let urlString = "\(baseUrl)\(defaultModel):generateContent?key=\(key)"
-        guard let url = URL(string: urlString) else {
-            throw NSError(domain: "GeminiRecipeService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        let fallbackChain = [
+            "gemini-2.5-flash",
+            "gemini-3.5-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-flash-latest"
+        ]
+
+        var lastError: Error? = nil
+        var responseData: Data? = nil
+
+        for model in fallbackChain {
+            let urlString = "\(baseUrl)\(model):generateContent?key=\(key)"
+            guard let url = URL(string: urlString) else { continue }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
+
+            progressHandler?("Scanning with AI model (\(model))...")
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
+                    responseData = data
+                    break
+                } else {
+                    let errStr = String(data: data, encoding: .utf8) ?? "HTTP error"
+                    lastError = NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "\(model) failed: \(errStr)"])
+                }
+            } catch {
+                lastError = error
+            }
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        progressHandler?("Sending request to Gemini AI...")
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-            let errorText = String(data: data, encoding: .utf8) ?? "HTTP Error"
-            throw NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Gemini API error: \(errorText)"])
+        guard let data = responseData else {
+            throw lastError ?? NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "All Gemini AI models unavailable"])
         }
 
         // Parse candidate response

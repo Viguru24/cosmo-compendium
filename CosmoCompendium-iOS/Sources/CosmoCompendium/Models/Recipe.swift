@@ -144,4 +144,55 @@ public final class Recipe {
             return !notes.isEmpty ? notes : notesGerman
         }
     }
+
+    public var characteristicBadge: String? {
+        let textComponents: [String] = [title, titleGerman, titleEnglish, notes, notesGerman, originStory]
+        let fullText = textComponents.joined(separator: " ").lowercased()
+
+        var ingNames: [String] = []
+        for ing in ingredients {
+            ingNames.append(ing.name.lowercased())
+            if let en = ing.nameEnglish, !en.isEmpty { ingNames.append(en.lowercased()) }
+            if let de = ing.nameGerman, !de.isEmpty { ingNames.append(de.lowercased()) }
+        }
+        let allIngredients = ingNames.joined(separator: " ")
+
+        var stepTexts: [String] = []
+        for s in steps {
+            stepTexts.append(s.instructionEnglish.lowercased())
+            stepTexts.append(s.instructionGerman.lowercased())
+        }
+        let allSteps = stepTexts.joined(separator: " ")
+
+        let hasFlour = allIngredients.contains("flour") || allIngredients.contains("mehl") || allIngredients.contains("farine") || allIngredients.contains("farina") || allIngredients.contains("harina")
+        if (category.localizedCaseInsensitiveContains("Baking") || category.localizedCaseInsensitiveContains("Dessert") || fullText.contains("cake") || fullText.contains("kuchen") || fullText.contains("torte")) && !hasFlour && !ingredients.isEmpty {
+            return "Flourless"
+        }
+        if fullText.contains("bundt") || fullText.contains("gugelhupf") || fullText.contains("napfkuchen") || allSteps.contains("bundt") || allSteps.contains("gugelhupf") {
+            return "Bundt"
+        }
+        if fullText.contains("lava") || fullText.contains("molten") || fullText.contains("fondant") || fullText.contains("flüssiger kern") {
+            return "Molten Lava"
+        }
+        if fullText.contains("sourdough") || fullText.contains("sauerteig") || allIngredients.contains("sourdough") || allIngredients.contains("sauerteig") {
+            return "Sourdough"
+        }
+        if totalTimeMinutes > 0 && totalTimeMinutes <= 35 {
+            return "Quick 30-Min"
+        }
+        if totalTimeMinutes >= 180 || fullText.contains("slow cook") || fullText.contains("schmoren") || fullText.contains("overnight") {
+            return "Slow-Cooked"
+        }
+        if let yearMatch = try? NSRegularExpression(pattern: "\\b(18\\d{2}|19\\d{2})\\b").firstMatch(in: originStory + " " + notes, range: NSRange(location: 0, length: (originStory + " " + notes).utf16.count)),
+           let range = Range(yearMatch.range(at: 1), in: originStory + " " + notes) {
+            return "Vintage \(originStory + " " + notes)[range]"
+        }
+        if fullText.contains("one bowl") || fullText.contains("one-bowl") || fullText.contains("one pot") || fullText.contains("one-pot") || fullText.contains("eintopf") {
+            return "One-Bowl"
+        }
+        if fullText.contains("gluten-free") || fullText.contains("glutenfrei") || fullText.contains("sans gluten") {
+            return "Gluten-Free"
+        }
+        return nil
+    }
 }

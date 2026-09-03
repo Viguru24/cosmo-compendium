@@ -24,3 +24,24 @@ dist/
 *.xcscmblueprint
 DerivedData/
 .build/
+
+# APKs & packaged binaries (use CI/releases instead)
+*.apk
+*.ipa
+*.aab
+*.dmg
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+*.bin
+
+# Screenshots & debug images in root
+/phone_*.png
+/guide_*.png
+/screen_*.png
+
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log

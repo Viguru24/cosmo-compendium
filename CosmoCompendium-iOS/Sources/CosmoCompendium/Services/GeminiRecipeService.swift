@@ -90,6 +90,11 @@ public final class GeminiRecipeService {
     private var discoveredLiveModels: [String] = []
     private var retiredModels: Set<String> = []
 
+    private var lastSuccessfulModel: String? {
+        get { UserDefaults.standard.string(forKey: "gemini_last_working_model") }
+        set { UserDefaults.standard.set(newValue, forKey: "gemini_last_working_model") }
+    }
+
     public func fetchLiveModels(forceRefresh: Bool = false) async -> [String] {
         let key = apiKey
         guard !key.isEmpty else { return [] }
@@ -102,6 +107,7 @@ public final class GeminiRecipeService {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.timeoutInterval = 10.0
         request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -124,12 +130,19 @@ public final class GeminiRecipeService {
 
             let sorted = candidateNames.filter { !retiredModels.contains($0) }
                 .sorted { a, b in
+                    let stablePriority = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
+                    let aIdx = stablePriority.firstIndex(of: a) ?? 99
+                    let bIdx = stablePriority.firstIndex(of: b) ?? 99
+                    if aIdx != bIdx { return aIdx < bIdx }
+
+                    let aExp = a.contains("thinking") || a.contains("preview")
+                    let bExp = b.contains("thinking") || b.contains("preview")
+                    if aExp != bExp { return !aExp && bExp }
+
                     let aFlash = a.lowercased().contains("flash")
                     let bFlash = b.lowercased().contains("flash")
                     if aFlash != bFlash { return aFlash && !bFlash }
-                    let aLatest = a.lowercased().contains("latest")
-                    let bLatest = b.lowercased().contains("latest")
-                    if aLatest != bLatest { return aLatest && !bLatest }
+
                     return a > b
                 }
 
@@ -142,25 +155,14 @@ public final class GeminiRecipeService {
         }
     }
 
+    public static let primaryModel = "gemini-3.7-flash"
+
     public func getEffectiveModels() async -> [String] {
-        var models = await fetchLiveModels()
-        let verifiedFallbacks = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-flash-latest",
-            "gemini-1.5-flash-latest",
-            "gemini-2.5-flash",
-            "gemini-3.5-flash",
+        return [
             "gemini-3.7-flash",
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-exp"
+            "gemini-3.8-flash",
+            "gemini-flash-latest"
         ]
-        for f in verifiedFallbacks {
-            if !models.contains(f) && !retiredModels.contains(f) {
-                models.append(f)
-            }
-        }
-        return models.isEmpty ? ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"] : models
     }
 
     public func generateText(prompt: String, systemInstruction: String? = nil) async throws -> String {
@@ -192,6 +194,7 @@ public final class GeminiRecipeService {
 
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
+            request.timeoutInterval = 12.0
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
@@ -205,6 +208,7 @@ public final class GeminiRecipeService {
                        let content = first["content"] as? [String: Any],
                        let parts = content["parts"] as? [[String: Any]],
                        let text = parts.first?["text"] as? String {
+                        self.lastSuccessfulModel = model
                         return text.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                 } else if let http = response as? HTTPURLResponse {
@@ -382,14 +386,16 @@ public final class GeminiRecipeService {
 
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
+            request.timeoutInterval = 25.0
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
 
-            progressHandler?("Transcribing with Gemini (\(model))...")
+            progressHandler?("Synthesizing \(images.count) page(s) with Gemini (\(model))...")
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
+                    self.lastSuccessfulModel = model
                     responseData = data
                     break
                 } else {
@@ -507,7 +513,7 @@ public final class GeminiRecipeService {
     }
 
     private func prepareImageData(_ image: UIImage) -> Data? {
-        let maxDimension: CGFloat = 1600.0
+        let maxDimension: CGFloat = 1280.0
         var targetSize = image.size
 
         if max(targetSize.width, targetSize.height) > maxDimension {
@@ -515,12 +521,15 @@ public final class GeminiRecipeService {
             targetSize = CGSize(width: targetSize.width * scale, height: targetSize.height * scale)
         }
 
-        UIGraphicsBeginImageContextWithOptions(targetSize, false, 1.0)
-        image.draw(in: CGRect(origin: .zero, size: targetSize))
-        let resized = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1.0
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
 
-        return resized?.jpegData(compressionQuality: 0.85)
+        return resized.jpegData(compressionQuality: 0.72)
     }
 
     private func parseOffline(images: [UIImage]) -> (Recipe, UIImage?) {

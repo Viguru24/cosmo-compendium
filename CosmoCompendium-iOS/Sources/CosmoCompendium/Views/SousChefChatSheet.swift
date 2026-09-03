@@ -202,52 +202,11 @@ public struct SousChefChatSheet: View {
     }
 
     private func askGeminiSousChef(_ question: String) async -> String {
-        let key = GeminiRecipeService.shared.apiKey
-        guard !key.isEmpty else {
-            return "Please enter a free Gemini API Key in Settings to enable live AI Sous Chef intelligence!"
-        }
-
-        let systemInstruction = "You are an expert AI culinary sous chef for the Cosmo Compendium recipe keeper. Provide helpful, warm, practical culinary answers regarding ingredient substitutes, measurements, food safety, and kitchen techniques. Keep answers concise, clear, and well-structured."
-
-        let prompt = """
-        \(systemInstruction)
-        User culinary question: \(question)
-        """
-
-        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\(key)"
-        guard let url = URL(string: urlString) else {
-            return "Invalid API configuration."
-        }
-
-        let requestBody: [String: Any] = [
-            "contents": [
-                ["parts": [["text": prompt]]]
-            ]
-        ]
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
-
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                return "The Sous Chef could not connect right now. Please check your internet connection or API key."
-            }
-
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let candidates = json["candidates"] as? [[String: Any]],
-               let first = candidates.first,
-               let content = first["content"] as? [String: Any],
-               let parts = content["parts"] as? [[String: Any]],
-               let text = parts.first?["text"] as? String {
-                return text.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            return "I received your question but couldn't generate a clear response. Could you rephrase it?"
+            let systemInstruction = "You are an expert AI culinary sous chef for the Cosmo Compendium recipe keeper. Provide helpful, warm, practical culinary answers regarding ingredient substitutes, measurements, food safety, and kitchen techniques. Keep answers concise, clear, and well-structured."
+            return try await GeminiRecipeService.shared.generateText(prompt: question, systemInstruction: systemInstruction)
         } catch {
-            return "Connection error: \(error.localizedDescription)"
+            return "Sous Chef Notice: \(error.localizedDescription)"
         }
     }
 }

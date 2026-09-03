@@ -180,36 +180,7 @@ public struct UrlRecipeImportSheet: View {
             \(bodySnippet)
             """
 
-            let key = GeminiRecipeService.shared.apiKey
-            guard !key.isEmpty else {
-                throw NSError(domain: "UrlExtractor", code: -2, userInfo: [NSLocalizedDescriptionKey: "Please set a Gemini API key in Settings."])
-            }
-
-            let geminiUrl = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\(key)")!
-            var geminiRequest = URLRequest(url: geminiUrl)
-            geminiRequest.httpMethod = "POST"
-            geminiRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            geminiRequest.setValue(key, forHTTPHeaderField: "x-goog-api-key")
-
-            let bodyPayload: [String: Any] = [
-                "contents": [["parts": [["text": prompt]]]],
-                "generationConfig": ["responseMimeType": "application/json", "temperature": 0.2]
-            ]
-            geminiRequest.httpBody = try JSONSerialization.data(withJSONObject: bodyPayload)
-
-            let (gData, gResponse) = try await URLSession.shared.data(for: geminiRequest)
-            guard let http = gResponse as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                throw NSError(domain: "UrlExtractor", code: -3, userInfo: [NSLocalizedDescriptionKey: "Gemini AI was unable to parse this URL."])
-            }
-
-            guard let json = try? JSONSerialization.jsonObject(with: gData) as? [String: Any],
-                  let candidates = json["candidates"] as? [[String: Any]],
-                  let first = candidates.first,
-                  let content = first["content"] as? [String: Any],
-                  let parts = content["parts"] as? [[String: Any]],
-                  let text = parts.first?["text"] as? String else {
-                throw NSError(domain: "UrlExtractor", code: -4, userInfo: [NSLocalizedDescriptionKey: "Could not decode AI recipe response."])
-            }
+            let text = try await GeminiRecipeService.shared.generateText(prompt: prompt)
 
             var cleanJson = text.trimmingCharacters(in: .whitespacesAndNewlines)
             if let firstBrace = cleanJson.firstIndex(of: "{"),

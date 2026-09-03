@@ -87,6 +87,141 @@ public final class GeminiRecipeService {
         return key.trimmingCharacters(in: CharacterSet(charactersIn: "\"' \t\n\r"))
     }
 
+    private var discoveredLiveModels: [String] = []
+    private var retiredModels: Set<String> = []
+
+    public func fetchLiveModels(forceRefresh: Bool = false) async -> [String] {
+        let key = apiKey
+        guard !key.isEmpty else { return [] }
+        if !forceRefresh && !discoveredLiveModels.isEmpty {
+            return discoveredLiveModels.filter { !retiredModels.contains($0) }
+        }
+
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(key)"
+        guard let url = URL(string: urlString) else { return [] }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                return []
+            }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let modelsArray = json["models"] as? [[String: Any]] else {
+                return []
+            }
+
+            let candidateNames = modelsArray.compactMap { item -> String? in
+                guard let name = item["name"] as? String else { return nil }
+                let supported = item["supportedGenerationMethods"] as? [String] ?? []
+                guard supported.contains("generateContent") else { return nil }
+                return name.replacingOccurrences(of: "models/", with: "")
+            }
+
+            let sorted = candidateNames.filter { !retiredModels.contains($0) }
+                .sorted { a, b in
+                    let aFlash = a.lowercased().contains("flash")
+                    let bFlash = b.lowercased().contains("flash")
+                    if aFlash != bFlash { return aFlash && !bFlash }
+                    let aLatest = a.lowercased().contains("latest")
+                    let bLatest = b.lowercased().contains("latest")
+                    if aLatest != bLatest { return aLatest && !bLatest }
+                    return a > b
+                }
+
+            if !sorted.isEmpty {
+                discoveredLiveModels = sorted
+            }
+            return sorted
+        } catch {
+            return []
+        }
+    }
+
+    public func getEffectiveModels() async -> [String] {
+        var models = await fetchLiveModels()
+        let verifiedFallbacks = [
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-flash-latest",
+            "gemini-1.5-flash-latest",
+            "gemini-2.5-flash",
+            "gemini-3.5-flash",
+            "gemini-3.7-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash-exp"
+        ]
+        for f in verifiedFallbacks {
+            if !models.contains(f) && !retiredModels.contains(f) {
+                models.append(f)
+            }
+        }
+        return models.isEmpty ? ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"] : models
+    }
+
+    public func generateText(prompt: String, systemInstruction: String? = nil) async throws -> String {
+        let key = apiKey
+        guard !key.isEmpty else {
+            throw NSError(domain: "GeminiRecipeService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No API key set. Please enter your Gemini API key in Settings."])
+        }
+
+        let models = await getEffectiveModels()
+        var lastErrorMessage = "Unknown API connection error"
+
+        var fullPrompt = prompt
+        if let sys = systemInstruction {
+            fullPrompt = "\(sys)\n\n\(prompt)"
+        }
+
+        let requestBody: [String: Any] = [
+            "contents": [
+                ["parts": [["text": fullPrompt]]]
+            ],
+            "generationConfig": [
+                "temperature": 0.3
+            ]
+        ]
+
+        for model in models {
+            let urlString = "\(baseUrl)\(model):generateContent?key=\(key)"
+            guard let url = URL(string: urlString) else { continue }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
+
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let candidates = json["candidates"] as? [[String: Any]],
+                       let first = candidates.first,
+                       let content = first["content"] as? [String: Any],
+                       let parts = content["parts"] as? [[String: Any]],
+                       let text = parts.first?["text"] as? String {
+                        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                } else if let http = response as? HTTPURLResponse {
+                    let errStr = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+                    lastErrorMessage = "\(model) (\(http.statusCode)): \(errStr)"
+                    if http.statusCode == 404 {
+                        retiredModels.insert(model)
+                    }
+                }
+            } catch {
+                lastErrorMessage = error.localizedDescription
+            }
+        }
+
+        throw NSError(domain: "GeminiRecipeService", code: -2, userInfo: [NSLocalizedDescriptionKey: lastErrorMessage])
+    }
+
     public func testApiKey(_ rawKey: String? = nil) async -> (Bool, String) {
         let key = Self.sanitizeApiKey(rawKey ?? apiKey)
         guard !key.isEmpty else {
@@ -109,6 +244,21 @@ public final class GeminiRecipeService {
                 return (false, "No HTTP response.")
             }
             if (200...299).contains(httpResponse.statusCode) {
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let modelsArray = json["models"] as? [[String: Any]] {
+                    let names = modelsArray.compactMap { item -> String? in
+                        guard let name = item["name"] as? String else { return nil }
+                        let supported = item["supportedGenerationMethods"] as? [String] ?? []
+                        guard supported.contains("generateContent") else { return nil }
+                        return name.replacingOccurrences(of: "models/", with: "")
+                    }
+                    if !names.isEmpty {
+                        self.discoveredLiveModels = names
+                        let topFlash = names.filter { $0.contains("flash") }
+                        let displayModel = topFlash.first ?? names.first ?? "Gemini"
+                        return (true, "Active! (Connected to \(displayModel))")
+                    }
+                }
                 return (true, "Connected successfully to Google Gemini AI!")
             } else {
                 let errText = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
@@ -221,18 +371,12 @@ public final class GeminiRecipeService {
             ]
         ]
 
-        let fallbackChain = [
-            "gemini-2.5-flash",
-            "gemini-3.5-flash",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
-            "gemini-flash-latest"
-        ]
+        let models = await getEffectiveModels()
 
         var lastError: Error? = nil
         var responseData: Data? = nil
 
-        for model in fallbackChain {
+        for model in models {
             let urlString = "\(baseUrl)\(model):generateContent?key=\(key)"
             guard let url = URL(string: urlString) else { continue }
 
@@ -251,6 +395,9 @@ public final class GeminiRecipeService {
                 } else {
                     let errStr = String(data: data, encoding: .utf8) ?? "HTTP error"
                     lastError = NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "\(model): \(errStr)"])
+                    if let http = response as? HTTPURLResponse, http.statusCode == 404 {
+                        retiredModels.insert(model)
+                    }
                 }
             } catch {
                 lastError = error

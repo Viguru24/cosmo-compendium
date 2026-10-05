@@ -4,8 +4,8 @@ import Foundation
 public final class ProfileManager: ObservableObject {
     public static let shared = ProfileManager()
 
-    @AppStorage("active_profile_name") public var activeProfile: String = "Louis"
-    @AppStorage("default_profile_name") public var defaultProfile: String = "Louis"
+    @AppStorage("active_profile_name") public var activeProfile: String = "Annette"
+    @AppStorage("default_profile_name") public var defaultProfile: String = "Annette"
 
     @Published public var profiles: [String] = []
 
@@ -17,10 +17,29 @@ public final class ProfileManager: ObservableObject {
 
     public func loadProfiles() {
         if let data = UserDefaults.standard.array(forKey: profilesStorageKey) as? [String], !data.isEmpty {
-            profiles = data
-        } else {
-            profiles = ["Louis", "Wife"]
+            var list = data.map { $0.caseInsensitiveCompare("Wife") == .orderedSame ? "Annette" : $0 }
+            if !list.contains(where: { $0.caseInsensitiveCompare("Annette") == .orderedSame }) {
+                list.insert("Annette", at: 0)
+            }
+            if !list.contains(where: { $0.caseInsensitiveCompare("Louis") == .orderedSame }) {
+                list.append("Louis")
+            }
+            if !list.contains(where: { $0.caseInsensitiveCompare("Isabel") == .orderedSame }) {
+                list.append("Isabel")
+            }
+            profiles = list
             saveProfiles()
+        } else {
+            profiles = ["Annette", "Louis", "Isabel"]
+            saveProfiles()
+        }
+
+        // Migrate active and default profiles if needed
+        if activeProfile.caseInsensitiveCompare("Wife") == .orderedSame {
+            activeProfile = "Annette"
+        }
+        if defaultProfile.caseInsensitiveCompare("Wife") == .orderedSame {
+            defaultProfile = "Annette"
         }
     }
 

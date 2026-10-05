@@ -144,10 +144,10 @@ public struct ProfileSwitcherSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("All Family Recipes")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isSelected ? Color(red: 0x58 / 255.0, green: 0x1C / 255.0, blue: 0x87 / 255.0) : Color.primary)
+                        .foregroundStyle(isSelected ? Color(red: 0x58 / 255.0, green: 0x1C / 255.0, blue: 0x87 / 255.0) : Color(red: 0x1E / 255.0, green: 0x14 / 255.0, blue: 0x0C / 255.0))
                     Text("\(totalCount) total recipes across all members")
                         .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(red: 0x5A / 255.0, green: 0x4D / 255.0, blue: 0x41 / 255.0))
                 }
 
                 Spacer()
@@ -193,7 +193,7 @@ public struct ProfileSwitcherSheet: View {
                         HStack(spacing: 6) {
                             Text("\(name)'s Cookbook")
                                 .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(isSelected ? Color(red: 0x43 / 255.0, green: 0x14 / 255.0, blue: 0x07 / 255.0) : Color.primary)
+                                .foregroundStyle(isSelected ? Color(red: 0x43 / 255.0, green: 0x14 / 255.0, blue: 0x07 / 255.0) : Color(red: 0x1E / 255.0, green: 0x14 / 255.0, blue: 0x0C / 255.0))
 
                             if isDefault {
                                 Text("Default")
@@ -207,7 +207,7 @@ public struct ProfileSwitcherSheet: View {
 
                         Text("\(count) recipes")
                             .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color(red: 0x5A / 255.0, green: 0x4D / 255.0, blue: 0x41 / 255.0))
                     }
 
                     Spacer()
@@ -243,7 +243,7 @@ public struct ProfileSwitcherSheet: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Color(red: 0x5A / 255.0, green: 0x4D / 255.0, blue: 0x41 / 255.0))
                     .padding(8)
             }
         }
@@ -294,13 +294,15 @@ public struct AddMemberDialogView: View {
 
                 Text("Create a personalized cookbook for a member of your family:")
                     .font(.system(size: 13))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Color(red: 0x5A / 255.0, green: 0x4D / 255.0, blue: 0x41 / 255.0))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 16)
 
                 // Themed Outlined TextField
                 TextField("Member Name (e.g. Annette)", text: $memberName)
                     .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(red: 0x1E / 255.0, green: 0x14 / 255.0, blue: 0x0C / 255.0))
+                    .tint(Color(red: 0xCC / 255.0, green: 0x55 / 255.0, blue: 0x00 / 255.0))
                     .padding(14)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(
@@ -313,7 +315,7 @@ public struct AddMemberDialogView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("QUICK SUGGESTIONS")
                         .font(.system(size: 10, weight: .black))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color(red: 0x5A / 255.0, green: 0x4D / 255.0, blue: 0x41 / 255.0))
                         .padding(.horizontal, 20)
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -339,7 +341,7 @@ public struct AddMemberDialogView: View {
                                         Capsule()
                                             .stroke(isSelected ? Color(red: 0xCC / 255.0, green: 0x55 / 255.0, blue: 0x00 / 255.0) : Color.clear, lineWidth: 1.2)
                                     )
-                                    .foregroundStyle(isSelected ? Color(red: 0xCC / 255.0, green: 0x55 / 255.0, blue: 0x00 / 255.0) : Color.primary)
+                                    .foregroundStyle(isSelected ? Color(red: 0xCC / 255.0, green: 0x55 / 255.0, blue: 0x00 / 255.0) : Color(red: 0x1E / 255.0, green: 0x14 / 255.0, blue: 0x0C / 255.0))
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -375,7 +377,7 @@ public struct AddMemberDialogView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.secondary)
+                        .foregroundStyle(Color(red: 0x5A / 255.0, green: 0x4D / 255.0, blue: 0x41 / 255.0))
                 }
             }
         }

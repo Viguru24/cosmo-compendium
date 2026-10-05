@@ -6,18 +6,10 @@ public struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     // AI & Gemini Settings
-    @AppStorage("gemini_api_key") private var geminiApiKey = ""
-    @AppStorage("gemini_selected_model") private var selectedModel = "gemini-2.5-flash"
-    @State private var availableModels: [String] = [
-        "gemini-2.5-flash",
-        "gemini-3.5-flash",
-        "gemini-flash-latest",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-3.7-flash"
-    ]
+    @AppStorage("gemini_api_key") private var geminiApiKey = GeminiRecipeService.defaultApiKey
     @State private var isTestingApiKey = false
     @State private var apiTestResult: (success: Bool, message: String)? = nil
+    @State private var showApiKey = false
 
     // Image Generation Engine (ComfyUI Local Wi-Fi vs Gemini Cloud)
     @AppStorage("image_gen_engine") private var imageGenEngineRaw = ImageGenEngine.comfyUi.rawValue
@@ -30,7 +22,7 @@ public struct SettingsView: View {
     // Cloud Hub & Multi-Device Sync
     @AppStorage("sync_enabled") private var isCloudSyncEnabled = false
     @AppStorage("server_url") private var syncServerUrl = "https://api.cosmowhisper.com/cookbook"
-    @AppStorage("sync_token") private var syncSecretToken = ""
+    @AppStorage("sync_token") private var syncSecretToken = "heirloom-cookbook-sync-key-2026"
     @State private var isTestingSync = false
     @State private var syncTestResult: (success: Bool, message: String)? = nil
     @State private var isSyncing = false
@@ -288,8 +280,97 @@ public struct SettingsView: View {
 
                 // MARK: - SECTION 3: ✨ GEMINI VISION AI SCANNER & SOUS CHEF
                 Section {
-                    SecureField("AI Studio Gemini API Key", text: $geminiApiKey)
-                        .font(.system(size: 14, design: .monospaced))
+                    // Friendly Setup Guidance Card
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "key.fill")
+                                .foregroundStyle(Color(red: 0xD9 / 255.0, green: 0x77 / 255.0, blue: 0x06 / 255.0))
+                            Text("FREE GOOGLE AI KEY REQUIRED")
+                                .font(.system(size: 11, weight: .black, design: .serif))
+                                .tracking(1)
+                                .foregroundStyle(Color(red: 0x92 / 255.0, green: 0x40 / 255.0, blue: 0x0E / 255.0))
+                        }
+
+                        Text("Google Cloud disabled the old test project key (403 error). To enable AI card scanning, Sous Chef chat, and Cloud food art, create your free personal key at Google AI Studio:")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: 8) {
+                            Link(destination: URL(string: "https://aistudio.google.com/app/apikey")!) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "safari")
+                                    Text("Open Google AI Studio")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(red: 0x92 / 255.0, green: 0x40 / 255.0, blue: 0x0E / 255.0), in: Capsule())
+                                .foregroundStyle(.white)
+                            }
+
+                            Button {
+                                if let clip = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
+                                    geminiApiKey = clip
+                                    Task {
+                                        isTestingApiKey = true
+                                        let res = await GeminiRecipeService.shared.testApiKey(geminiApiKey)
+                                        apiTestResult = (res.0, res.1)
+                                        isTestingApiKey = false
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "doc.on.clipboard")
+                                    Text("Paste & Test")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(red: 0xFD / 255.0, green: 0xE6 / 255.0, blue: 0x8A / 255.0), in: Capsule())
+                                .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.top, 2)
+                    }
+                    .padding(8)
+                    .background(Color(red: 0xFF / 255.0, green: 0xFB / 255.0, blue: 0xEB / 255.0), in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0xFD / 255.0, green: 0xE6 / 255.0, blue: 0x8A / 255.0), lineWidth: 1))
+
+                    HStack {
+                        if showApiKey {
+                            TextField("AI Studio Gemini API Key", text: $geminiApiKey)
+                                .font(.system(size: 13, design: .monospaced))
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                        } else {
+                            SecureField("AI Studio Gemini API Key", text: $geminiApiKey)
+                                .font(.system(size: 13, design: .monospaced))
+                        }
+
+                        Button {
+                            showApiKey.toggle()
+                        } label: {
+                            Image(systemName: showApiKey ? "eye.slash" : "eye")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            if let clip = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
+                                geminiApiKey = clip
+                            }
+                        } label: {
+                            Text("Paste")
+                                .font(.system(size: 12, weight: .bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color(red: 0xFE / 255.0, green: 0xF3 / 255.0, blue: 0xC7 / 255.0), in: Capsule())
+                                .foregroundStyle(Color(red: 0x92 / 255.0, green: 0x40 / 255.0, blue: 0x0E / 255.0))
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     HStack {
                         Button {
@@ -297,13 +378,6 @@ public struct SettingsView: View {
                                 isTestingApiKey = true
                                 let res = await GeminiRecipeService.shared.testApiKey(geminiApiKey)
                                 apiTestResult = (res.0, res.1)
-                                if !res.2.isEmpty {
-                                    availableModels = res.2
-                                    if !res.2.contains(selectedModel) {
-                                        let flash = res.2.filter { $0.contains("flash") }
-                                        selectedModel = flash.first ?? res.2.first ?? "gemini-2.5-flash"
-                                    }
-                                }
                                 isTestingApiKey = false
                             }
                         } label: {
@@ -335,26 +409,8 @@ public struct SettingsView: View {
 
                     if let res = apiTestResult {
                         Text(res.message)
-                            .font(.caption2)
-                            .foregroundStyle(res.success ? Color.secondary : Color.red)
-                    }
-
-                    // Model Selection
-                    Picker("Active Gemini Model", selection: $selectedModel) {
-                        ForEach(availableModels, id: \.self) { m in
-                            Text(m).tag(m)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    HStack {
-                        Text("Model ID:")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.secondary)
-                        TextField("e.g. gemini-2.5-flash", text: $selectedModel)
-                            .font(.system(size: 13, design: .monospaced))
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                            .font(.caption2.bold())
+                            .foregroundStyle(res.success ? Color(red: 0x4A / 255.0, green: 0x7C / 255.0, blue: 0x59 / 255.0) : Color.red)
                     }
 
                     Link(destination: URL(string: "https://aistudio.google.com/app/apikey")!) {
@@ -396,13 +452,13 @@ public struct SettingsView: View {
                     } label: {
                         HStack {
                             Image(systemName: "arrow.counterclockwise")
-                            Text("Restore Default Recipe Collection")
+                            Text("Restore Heirloom Recipe Collection")
                         }
                     }
                 } header: {
                     Text("DATA MANAGEMENT")
                 } footer: {
-                    Text("Restores the original classic recipes (Apple Strudel, Sunday Roast, Black Forest Gateau, and Artisan Soap).")
+                    Text("Restores all 128 heirloom family recipes (including Annette's 122 recipes).")
                 }
 
                 Section {
@@ -419,7 +475,7 @@ public struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 } header: {
-                    Text("ABOUT COSMO COMPENDIUM")
+                    Text("ABOUT COOKBOOK")
                 }
             }
             .navigationTitle("Settings & AI Config")
@@ -439,9 +495,11 @@ public struct SettingsView: View {
                 Text("This will insert any missing default recipes into your collection.")
             }
             .onAppear {
-                let saved = GeminiRecipeService.shared.getDiscoveredModels()
-                for s in saved where !availableModels.contains(s) {
-                    availableModels.append(s)
+                if geminiApiKey.isEmpty {
+                    geminiApiKey = GeminiRecipeService.defaultApiKey
+                }
+                if syncSecretToken.isEmpty {
+                    syncSecretToken = "heirloom-cookbook-sync-key-2026"
                 }
             }
         }
@@ -449,8 +507,16 @@ public struct SettingsView: View {
 
     private func restoreDefaultRecipes() {
         let defaults = DefaultRecipes.initialRecipes()
+        let fetchDescriptor = FetchDescriptor<Recipe>()
+        let existing = (try? modelContext.fetch(fetchDescriptor)) ?? []
+        let existingIds = Set(existing.map { $0.id })
+        let existingTitles = Set(existing.map { $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) })
         for r in defaults {
-            modelContext.insert(r)
+            let titleKey = r.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            if !existingIds.contains(r.id) && !existingTitles.contains(titleKey) {
+                modelContext.insert(r)
+            }
         }
+        try? modelContext.save()
     }
 }

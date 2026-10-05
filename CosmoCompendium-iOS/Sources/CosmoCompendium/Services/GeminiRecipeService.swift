@@ -48,12 +48,14 @@ public struct GeminiStepResponse: Codable {
 public final class GeminiRecipeService {
     public static let shared = GeminiRecipeService()
 
+    public static let defaultApiKey = "AIzaSyA8xlBFyvjOgEqqsDSeLrz4lXBMDglPlo8"
     private let defaultModel = "gemini-2.5-flash"
     private let baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/"
 
     public var apiKey: String {
         get {
-            Self.sanitizeApiKey(UserDefaults.standard.string(forKey: "gemini_api_key"))
+            let stored = Self.sanitizeApiKey(UserDefaults.standard.string(forKey: "gemini_api_key"))
+            return stored.isEmpty ? Self.defaultApiKey : stored
         }
         set {
             UserDefaults.standard.set(Self.sanitizeApiKey(newValue), forKey: "gemini_api_key")
@@ -130,7 +132,7 @@ public final class GeminiRecipeService {
 
             let sorted = candidateNames.filter { !retiredModels.contains($0) }
                 .sorted { a, b in
-                    let stablePriority = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
+                    let stablePriority = ["gemini-1.5-pro", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
                     let aIdx = stablePriority.firstIndex(of: a) ?? 99
                     let bIdx = stablePriority.firstIndex(of: b) ?? 99
                     if aIdx != bIdx { return aIdx < bIdx }
@@ -157,6 +159,15 @@ public final class GeminiRecipeService {
 
     public static let primaryModel = "gemini-2.5-flash"
     public static let fallbackModel = "gemini-3.5-flash"
+    public static let legacyFallbackModel = "gemini-flash-latest"
+
+    public static let activeModels = [
+        "gemini-2.5-flash",
+        "gemini-3.5-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-flash-latest"
+    ]
 
     public var selectedModel: String {
         get {
@@ -168,32 +179,24 @@ public final class GeminiRecipeService {
         }
     }
 
-    public func getDiscoveredModels() -> [String] {
-        if !discoveredLiveModels.isEmpty { return discoveredLiveModels }
-        return UserDefaults.standard.stringArray(forKey: "gemini_discovered_models") ?? [
-            Self.primaryModel,
-            Self.fallbackModel,
-            "gemini-flash-latest",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-3.7-flash"
-        ]
-    }
-
-    public func getEffectiveModels() async -> [String] {
+    public func getEffectiveModels() -> [String] {
         var list: [String] = []
         let chosen = selectedModel
         if !chosen.isEmpty && !retiredModels.contains(chosen) {
             list.append(chosen)
         }
 
-        let chain = [Self.primaryModel, Self.fallbackModel, "gemini-flash-latest"]
-        for m in chain {
+        for m in Self.activeModels {
             if !list.contains(m) && !retiredModels.contains(m) {
                 list.append(m)
             }
         }
-        return list
+        for m in discoveredLiveModels {
+            if !list.contains(m) && !retiredModels.contains(m) {
+                list.append(m)
+            }
+        }
+        return list.isEmpty ? [Self.primaryModel, Self.fallbackModel, Self.legacyFallbackModel] : list
     }
 
     public func generateText(prompt: String, systemInstruction: String? = nil) async throws -> String {
@@ -202,7 +205,7 @@ public final class GeminiRecipeService {
             throw NSError(domain: "GeminiRecipeService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No API key set. Please enter your Gemini API key in Settings."])
         }
 
-        let models = await getEffectiveModels()
+        let models = getEffectiveModels()
         var lastErrorMessage = "Unknown API connection error"
 
         var fullPrompt = prompt
@@ -225,7 +228,7 @@ public final class GeminiRecipeService {
 
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
-            request.timeoutInterval = 12.0
+            request.timeoutInterval = 15.0
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
@@ -244,12 +247,18 @@ public final class GeminiRecipeService {
                     }
                 } else if let http = response as? HTTPURLResponse {
                     let errStr = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
-                    lastErrorMessage = "\(model) (\(http.statusCode)): \(errStr)"
-                    if http.statusCode == 404 {
+                    if http.statusCode == 403 || errStr.lowercased().contains("blocked") || errStr.lowercased().contains("disabled") {
+                        lastErrorMessage = "Google Gemini error (403): The project for this API key has been disabled by Google. Please create your free personal key at aistudio.google.com and paste it in Settings."
+                        break
+                    }
+                    if http.statusCode == 404 || errStr.lowercased().contains("not found") || errStr.lowercased().contains("no longer available") {
                         retiredModels.insert(model)
                     }
+                    print("[GeminiRecipeService] Model '\(model)' returned HTTP \(http.statusCode). Hot-swapping to next model in fallback chain...")
+                    lastErrorMessage = "\(model) (\(http.statusCode)): \(errStr)"
                 }
             } catch {
+                print("[GeminiRecipeService] Model '\(model)' network error: \(error.localizedDescription). Trying next model...")
                 lastErrorMessage = error.localizedDescription
             }
         }
@@ -257,55 +266,77 @@ public final class GeminiRecipeService {
         throw NSError(domain: "GeminiRecipeService", code: -2, userInfo: [NSLocalizedDescriptionKey: lastErrorMessage])
     }
 
-    public func testApiKey(_ rawKey: String? = nil) async -> (Bool, String, [String]) {
+    public func testApiKey(_ rawKey: String? = nil) async -> (Bool, String) {
         let key = Self.sanitizeApiKey(rawKey ?? apiKey)
         guard !key.isEmpty else {
-            return (false, "Please enter an API key.", [])
+            return (false, "Please enter an API key.")
         }
 
-        let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(key)"
-        guard let url = URL(string: urlString) else {
-            return (false, "Invalid URL structure.", [])
+        // Refresh discovered models in background
+        _ = await fetchLiveModels(forceRefresh: true)
+
+        let probeBody: [String: Any] = [
+            "contents": [
+                ["parts": [["text": "Hello! Please reply with 'OK' to verify API connection."]]]
+            ],
+            "generationConfig": [
+                "temperature": 0.1
+            ]
+        ]
+
+        guard let requestData = try? JSONSerialization.data(withJSONObject: probeBody) else {
+            return (false, "Failed to encode test probe.")
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 10.0
-        request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var lastErrorMsg = "Unable to connect to Google Gemini API."
+        var successModel: String? = nil
 
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                return (false, "No HTTP response.", [])
-            }
-            if (200...299).contains(httpResponse.statusCode) {
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let modelsArray = json["models"] as? [[String: Any]] {
-                    let names = modelsArray.compactMap { item -> String? in
-                        guard let name = item["name"] as? String else { return nil }
-                        let supported = item["supportedGenerationMethods"] as? [String] ?? []
-                        guard supported.contains("generateContent") else { return nil }
-                        return name.replacingOccurrences(of: "models/", with: "")
+        let modelsToTry = getEffectiveModels()
+
+        for model in modelsToTry {
+            let urlString = "\(baseUrl)\(model):generateContent?key=\(key)"
+            guard let url = URL(string: urlString) else { continue }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 12.0
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+            request.httpBody = requestData
+
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let candidates = json["candidates"] as? [[String: Any]],
+                       let first = candidates.first,
+                       let content = first["content"] as? [String: Any],
+                       let parts = content["parts"] as? [[String: Any]],
+                       let text = parts.first?["text"] as? String,
+                       !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        successModel = model
+                        self.selectedModel = model
+                        break
                     }
-                    if !names.isEmpty {
-                        self.discoveredLiveModels = names
-                        UserDefaults.standard.set(names, forKey: "gemini_discovered_models")
-                        let flashModels = names.filter { $0.contains("flash") }
-                        let best = flashModels.first ?? names.first ?? "gemini-2.0-flash"
-                        if UserDefaults.standard.string(forKey: "gemini_selected_model") == nil {
-                            self.selectedModel = best
-                        }
-                        return (true, "Active! Available models: \(names.prefix(4).joined(separator: ", "))", names)
+                } else if let http = response as? HTTPURLResponse {
+                    let errStr = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+                    if http.statusCode == 403 || errStr.lowercased().contains("blocked") || errStr.lowercased().contains("disabled") {
+                        return (false, "⚠️ Google Cloud returned 403: Project disabled. Please get a free API key at aistudio.google.com and paste it here.")
                     }
+                    if http.statusCode == 404 || errStr.lowercased().contains("not found") || errStr.lowercased().contains("no longer available") {
+                        retiredModels.insert(model)
+                    }
+                    lastErrorMsg = "\(model) (\(http.statusCode)): \(errStr)"
                 }
-                return (true, "Connected successfully to Google Gemini AI!", [])
-            } else {
-                let errText = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
-                return (false, "API Error (\(httpResponse.statusCode)): \(errText)", [])
+            } catch {
+                lastErrorMsg = error.localizedDescription
             }
-        } catch {
-            return (false, error.localizedDescription, [])
+        }
+
+        if let working = successModel {
+            return (true, "✓ Connected (\(working))")
+        } else {
+            return (false, lastErrorMsg)
         }
     }
 
@@ -336,7 +367,7 @@ public final class GeminiRecipeService {
 
         // Multimodal Vision Prompt enforcing AGENTS.md mandates
         let promptText = """
-        You are an expert culinary archivist and transcription specialist for the Cosmo Compendium cookbook.
+        You are an expert culinary archivist and transcription specialist for the Cookbook app.
         Analyze all provided recipe page images in order (Page 1, Page 2, Page 3...). Synthesize them into a single coherent recipe JSON.
 
         STRICT DIRECTIVES:
@@ -411,7 +442,7 @@ public final class GeminiRecipeService {
             ]
         ]
 
-        let models = await getEffectiveModels()
+        let models = getEffectiveModels()
 
         var lastError: Error? = nil
         var responseData: Data? = nil
@@ -585,5 +616,92 @@ public final class GeminiRecipeService {
             coverTheme: .vintageLeather
         )
         return (recipe, images.first)
+    }
+
+    /**
+     Generates a gourmet recipe dish photo using Google Imagen 3.
+     */
+    public func generateRecipeCoverImage(
+        title: String,
+        titleGerman: String? = nil,
+        category: String = "Main Dish",
+        ingredients: [String] = [],
+        steps: [String] = [],
+        notes: String? = nil,
+        customPrompt: String? = nil
+    ) async throws -> UIImage {
+        let key = apiKey
+        guard !key.isEmpty else {
+            throw NSError(domain: "GeminiRecipeService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Gemini API key is required. Please paste your free key in Settings."])
+        }
+
+        let names = (titleGerman?.isEmpty == false && titleGerman != title) ? "\(title) / \(titleGerman!)" : title
+        let ingSummary = !ingredients.isEmpty ? "Key ingredients: " + ingredients.prefix(8).joined(separator: ", ") + "." : ""
+        let stepsSummary = !steps.isEmpty ? "Preparation technique: " + steps.prefix(3).joined(separator: " ") + "." : ""
+
+        let promptText = customPrompt?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? customPrompt! :
+            "Create a stunning, mouth-watering, gourmet food photography portrait of the completed dish: \"\(names)\" (\(category)). \(ingSummary) \(stepsSummary) Render the dish served fresh and beautifully plated in a warm, rustic kitchen setting with soft natural window lighting, appetizing texture, shallow depth of field, 4k culinary studio detail. No watermarks or overlaid text."
+
+        let imagenModels = [
+            "imagen-3.0-generate-002",
+            "imagen-3.0-fast-generate-001",
+            "imagen-3.0-generate-001"
+        ]
+
+        let imagenPayload: [String: Any] = [
+            "instances": [
+                ["prompt": promptText]
+            ],
+            "parameters": [
+                "sampleCount": 1,
+                "aspectRatio": "1:1",
+                "outputMimeType": "image/jpeg"
+            ]
+        ]
+
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: imagenPayload) else {
+            throw NSError(domain: "GeminiRecipeService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode image payload."])
+        }
+
+        var lastError = "Unable to generate image with Google Imagen."
+
+        for model in imagenModels {
+            let urlString = "https://generativelanguage.googleapis.com/v1beta/models/\(model):predict?key=\(key)"
+            guard let url = URL(string: urlString) else { continue }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 30.0
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+            request.httpBody = httpBody
+
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let predictions = json["predictions"] as? [[String: Any]],
+                       let first = predictions.first,
+                       let b64 = first["bytesBase64Encoded"] as? String,
+                       let imgData = Data(base64Encoded: b64),
+                       let uiImg = UIImage(data: imgData) {
+                        return uiImg
+                    }
+                } else if let http = response as? HTTPURLResponse {
+                    let errStr = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+                    lastError = "Google Imagen (\(model)) error (\(http.statusCode)): \(errStr)"
+                    if http.statusCode == 403 {
+                        throw NSError(domain: "GeminiRecipeService", code: 403, userInfo: [NSLocalizedDescriptionKey: "Google returned 403 (Project Disabled). Please paste your free Gemini API key in Settings (from aistudio.google.com)."])
+                    }
+                }
+            } catch {
+                if (error as NSError).code == 403 {
+                    throw error
+                }
+                lastError = error.localizedDescription
+            }
+        }
+
+        throw NSError(domain: "GeminiRecipeService", code: -3, userInfo: [NSLocalizedDescriptionKey: lastError])
     }
 }

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CCB00312F267FB700E4F0B2 /* synced_vps_recipes.json in Resources */ = {isa = PBXBuildFile; fileRef = CCF00312F267FB700E4F0B2 /* synced_vps_recipes.json */; };
+		CCB00312F267FB700E4F0B1 /* SyncedImages in Resources */ = {isa = PBXBuildFile; fileRef = CCF00312F267FB700E4F0B1 /* SyncedImages */; };
 		CCB00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift */; };
 		CCB00022F267FB700E4F0B0 /* CoverTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00022F267FB700E4F0B0 /* CoverTheme.swift */; };
 		CCB00032F267FB700E4F0B0 /* DefaultRecipes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00032F267FB700E4F0B0 /* DefaultRecipes.swift */; };
@@ -36,9 +38,16 @@
 		CCB00272F267FB700E4F0B0 /* CookbookGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */; };
 		CCB00282F267FB700E4F0B0 /* ComfyUiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00282F267FB700E4F0B0 /* ComfyUiClient.swift */; };
 		CCB00292F267FB700E4F0B0 /* CloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00292F267FB700E4F0B0 /* CloudSyncManager.swift */; };
+		CCB00302F267FB700E4F0B0 /* HeirloomDatabaseSeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00302F267FB700E4F0B0 /* HeirloomDatabaseSeed.swift */; };
+		CCB00312F267FB700E4F0B0 /* heirloom_recipes.json in Resources */ = {isa = PBXBuildFile; fileRef = CCF00312F267FB700E4F0B0 /* heirloom_recipes.json */; };
+		CCB00322F267FB700E4F0B0 /* AudioEffectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00322F267FB700E4F0B0 /* AudioEffectManager.swift */; };
+		CCB00332F267FB700E4F0B0 /* CameraImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00332F267FB700E4F0B0 /* CameraImagePicker.swift */; };
+		CCB00342F267FB700E4F0B0 /* SpeechRecognizerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF00342F267FB700E4F0B0 /* SpeechRecognizerManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		CCF00312F267FB700E4F0B2 /* synced_vps_recipes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/CosmoCompendium/Resources/synced_vps_recipes.json"; sourceTree = "<group>"; };
+		CCF00312F267FB700E4F0B1 /* SyncedImages */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "Sources/CosmoCompendium/Resources/SyncedImages"; sourceTree = "<group>"; };
 		CCA00012F267FB700E4F0B0 /* CosmoCompendium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CosmoCompendium.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCF00012F267FB700E4F0B0 /* CosmoCompendiumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/CosmoCompendiumApp.swift"; sourceTree = "<group>"; };
 		CCF00022F267FB700E4F0B0 /* CoverTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/CoverTheme.swift"; sourceTree = "<group>"; };
@@ -69,6 +78,11 @@
 		CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/CookbookGuideSheet.swift"; sourceTree = "<group>"; };
 		CCF00282F267FB700E4F0B0 /* ComfyUiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/ComfyUiClient.swift"; sourceTree = "<group>"; };
 		CCF00292F267FB700E4F0B0 /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/CloudSyncManager.swift"; sourceTree = "<group>"; };
+		CCF00302F267FB700E4F0B0 /* HeirloomDatabaseSeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Models/HeirloomDatabaseSeed.swift"; sourceTree = "<group>"; };
+		CCF00312F267FB700E4F0B0 /* heirloom_recipes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/CosmoCompendium/Resources/heirloom_recipes.json"; sourceTree = "<group>"; };
+		CCF00322F267FB700E4F0B0 /* AudioEffectManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/AudioEffectManager.swift"; sourceTree = "<group>"; };
+		CCF00332F267FB700E4F0B0 /* CameraImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Views/CameraImagePicker.swift"; sourceTree = "<group>"; };
+		CCF00342F267FB700E4F0B0 /* SpeechRecognizerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/CosmoCompendium/Services/SpeechRecognizerManager.swift"; sourceTree = "<group>"; };
 		CCF09992F267FB700E4F0B0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -115,6 +129,13 @@
 				CCF00272F267FB700E4F0B0 /* CookbookGuideSheet.swift */,
 				CCF00282F267FB700E4F0B0 /* ComfyUiClient.swift */,
 				CCF00292F267FB700E4F0B0 /* CloudSyncManager.swift */,
+				CCF00302F267FB700E4F0B0 /* HeirloomDatabaseSeed.swift */,
+				CCF00312F267FB700E4F0B0 /* heirloom_recipes.json */,
+				CCF00312F267FB700E4F0B2 /* synced_vps_recipes.json */,
+				CCF00312F267FB700E4F0B1 /* SyncedImages */,
+				CCF00322F267FB700E4F0B0 /* AudioEffectManager.swift */,
+				CCF00332F267FB700E4F0B0 /* CameraImagePicker.swift */,
+				CCF00342F267FB700E4F0B0 /* SpeechRecognizerManager.swift */,
 				CCF09992F267FB700E4F0B0 /* Info.plist */,
 				CCG00022F267FB700E4F0B0 /* Products */,
 			);
@@ -185,6 +206,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCB00312F267FB700E4F0B0 /* heirloom_recipes.json in Resources */,
+				CCB00312F267FB700E4F0B2 /* synced_vps_recipes.json in Resources */,
+				CCB00312F267FB700E4F0B1 /* SyncedImages in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -224,6 +248,10 @@
 				CCB00272F267FB700E4F0B0 /* CookbookGuideSheet.swift in Sources */,
 				CCB00282F267FB700E4F0B0 /* ComfyUiClient.swift in Sources */,
 				CCB00292F267FB700E4F0B0 /* CloudSyncManager.swift in Sources */,
+				CCB00302F267FB700E4F0B0 /* HeirloomDatabaseSeed.swift in Sources */,
+				CCB00322F267FB700E4F0B0 /* AudioEffectManager.swift in Sources */,
+				CCB00332F267FB700E4F0B0 /* CameraImagePicker.swift in Sources */,
+				CCB00342F267FB700E4F0B0 /* SpeechRecognizerManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -281,12 +309,13 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cosmowhisper.JinShinFlow;
+				PRODUCT_BUNDLE_IDENTIFIER = com.louisdesouza.cookbook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -307,12 +336,13 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cosmowhisper.JinShinFlow;
+				PRODUCT_BUNDLE_IDENTIFIER = com.louisdesouza.cookbook;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

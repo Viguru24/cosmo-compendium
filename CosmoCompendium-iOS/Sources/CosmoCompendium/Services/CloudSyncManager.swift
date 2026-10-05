@@ -76,7 +76,7 @@ public final class CloudSyncManager {
             var item: [String: Any] = [
                 "id": r.id,
                 "title": r.title,
-                "titleGerman": r.titleGerman ?? "",
+                "titleGerman": r.titleGerman,
                 "category": r.category,
                 "servings": r.servings,
                 "prepTimeMinutes": r.prepTimeMinutes,
@@ -104,13 +104,15 @@ public final class CloudSyncManager {
             syncList.append(item)
         }
 
+        let lastSync = Int64(UserDefaults.standard.double(forKey: "last_sync_timestamp") * 1000)
         let payload: [String: Any] = [
+            "lastSyncTimestamp": lastSync,
             "clientTimestamp": Int64(Date().timeIntervalSince1970 * 1000),
             "clientType": "ios-native",
             "recipes": syncList
         ]
 
-        guard let syncUrl = URL(string: "\(cleanUrl)/api/sync") else {
+        guard let syncUrl = URL(string: "\(cleanUrl)/api/recipes/sync") else {
             throw NSError(domain: "CloudSync", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid sync endpoint URL"])
         }
 
@@ -122,7 +124,7 @@ public final class CloudSyncManager {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        req.timeoutInterval = 25.0
+        req.timeoutInterval = 30.0
 
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -132,12 +134,163 @@ public final class CloudSyncManager {
 
         var pulledCount = 0
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            pulledCount = json["pulledCount"] as? Int ?? 0
+            let remoteArr = (json["remoteChanges"] as? [[String: Any]]) ?? (json["recipes"] as? [[String: Any]]) ?? []
+            for item in remoteArr {
+                guard let title = item["title"] as? String, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+                let isDeleted = item["isDeleted"] as? Bool ?? false
+                let id = (item["id"] as? String) ?? UUID().uuidString
+
+                let existing = localRecipes.first { $0.id == id || $0.title.caseInsensitiveCompare(title) == .orderedSame }
+
+                if isDeleted {
+                    if let ex = existing {
+                        modelContext.delete(ex)
+                        pulledCount += 1
+                    }
+                } else {
+                    var ings: [RecipeIngredient] = []
+                    if let ingArr = item["ingredients"] as? [[String: Any]] {
+                        for ingObj in ingArr {
+                            let ingName = (ingObj["name"] as? String) ?? ""
+                            let ingAmt = "\(ingObj["amount"] ?? "")"
+                            let ingUnit = (ingObj["unit"] as? String) ?? ""
+                            let ingEn = ingObj["nameEnglish"] as? String
+                            let ingDe = ingObj["nameGerman"] as? String
+                            let ingOpt = ingObj["isOptional"] as? Bool ?? false
+                            let ingGrp = ingObj["group"] as? String
+                            ings.append(RecipeIngredient(name: ingName, amount: ingAmt, unit: ingUnit, nameGerman: ingDe, nameEnglish: ingEn, isOptional: ingOpt, group: ingGrp))
+                        }
+                    } else if let ingStr = item["ingredientsJson"] as? String, let ingData = ingStr.data(using: .utf8) {
+                        ings = (try? JSONDecoder().decode([RecipeIngredient].self, from: ingData)) ?? []
+                    }
+
+                    var steps: [RecipeStep] = []
+                    if let stepArr = item["steps"] as? [[String: Any]] {
+                        for stepObj in stepArr {
+                            let num = stepObj["stepNumber"] as? Int ?? 1
+                            let en = (stepObj["instructionEnglish"] as? String) ?? ""
+                            let de = (stepObj["instructionGerman"] as? String) ?? ""
+                            let timer = stepObj["timerMinutes"] as? Int ?? 0
+                            let tip = stepObj["tip"] as? String
+                            steps.append(RecipeStep(stepNumber: num, instructionEnglish: en, instructionGerman: de, timerMinutes: timer, tip: tip))
+                        }
+                    } else if let stepStr = item["stepsJson"] as? String, let stepData = stepStr.data(using: .utf8) {
+                        steps = (try? JSONDecoder().decode([RecipeStep].self, from: stepData)) ?? []
+                    }
+
+                    let category = (item["category"] as? String) ?? "Family Classics"
+                    let servings = (item["servingsText"] as? String) ?? "\(item["servings"] ?? "4 servings")"
+                    let prep = item["prepTimeMinutes"] as? Int ?? (item["prepTime"] as? Int ?? 20)
+                    let cook = item["cookTimeMinutes"] as? Int ?? (item["cookTime"] as? Int ?? 30)
+                    let diff = (item["difficulty"] as? String) ?? "Medium"
+                    let notes = (item["notes"] as? String) ?? ""
+                    let notesDe = (item["notesGerman"] as? String) ?? ""
+                    let prof = (item["profileName"] as? String) ?? "Annette"
+                    let themeRaw = (item["coverTheme"] as? String) ?? "VINTAGE_LEATHER"
+                    let fav = item["isFavorite"] as? Bool ?? false
+                    let rating = item["rating"] as? Int ?? 5
+
+                    let remoteCoverPhoto = (item["coverPhotoName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    var localImagePath: String? = nil
+                    if let coverName = remoteCoverPhoto, !coverName.isEmpty {
+                        localImagePath = await self.downloadCoverPhotoIfNeeded(serverUrl: cleanUrl, token: token, filename: coverName)
+                    }
+
+                    if let ex = existing {
+                        ex.title = title
+                        ex.category = category
+                        ex.servings = servings
+                        ex.prepTimeMinutes = prep
+                        ex.cookTimeMinutes = cook
+                        ex.difficulty = diff
+                        ex.notes = notes
+                        ex.notesGerman = notesDe
+                        ex.profileName = prof
+                        ex.coverThemeRaw = themeRaw
+                        ex.isFavorite = fav
+                        ex.rating = rating
+                        ex.ingredients = ings
+                        ex.steps = steps
+                        if let cover = remoteCoverPhoto, !cover.isEmpty {
+                            ex.coverPhotoName = cover
+                        }
+                        if let imgPath = localImagePath {
+                            ex.imagePath = imgPath
+                        }
+                    } else {
+                        let newRecipe = Recipe(
+                            id: id,
+                            title: title,
+                            titleGerman: (item["titleGerman"] as? String) ?? "",
+                            titleEnglish: (item["titleEnglish"] as? String) ?? title,
+                            category: category,
+                            servings: servings,
+                            prepTimeMinutes: prep,
+                            cookTimeMinutes: cook,
+                            difficulty: diff,
+                            ingredients: ings,
+                            steps: steps,
+                            notes: notes,
+                            notesGerman: notesDe,
+                            imagePath: localImagePath,
+                            coverTheme: CoverTheme(rawValue: themeRaw) ?? .vintageLeather,
+                            isFavorite: fav,
+                            rating: rating,
+                            coverPhotoName: remoteCoverPhoto,
+                            profileName: prof
+                        )
+                        modelContext.insert(newRecipe)
+                    }
+                    pulledCount += 1
+                }
+            }
+            try? modelContext.save()
         }
 
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "last_sync_timestamp")
         UserDefaults.standard.set("Success (Pushed \(localRecipes.count), Pulled \(pulledCount))", forKey: "last_sync_status")
 
         return "Sync Complete! (Pushed \(localRecipes.count), Pulled \(pulledCount))"
+    }
+
+    /// Downloads remote cover photo from GET /api/recipes/images/{filename} and stores in Documents folder
+    public func downloadCoverPhotoIfNeeded(serverUrl: String, token: String, filename: String) async -> String? {
+        let cleanName = (filename as NSString).lastPathComponent
+        guard !cleanName.isEmpty else { return nil }
+
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let localFile = docs.appendingPathComponent(cleanName)
+
+        if FileManager.default.fileExists(atPath: localFile.path) {
+            return localFile.path
+        }
+
+        // Also check if already bundled with app
+        let baseName = (cleanName as NSString).deletingPathExtension
+        let ext = (cleanName as NSString).pathExtension
+        if let bundleUrl = Bundle.main.url(forResource: baseName, withExtension: ext, subdirectory: "SyncedImages") ?? Bundle.main.url(forResource: cleanName, withExtension: nil) {
+            return bundleUrl.path
+        }
+
+        guard let url = URL(string: "\(serverUrl)/api/recipes/images/\(cleanName)") else { return nil }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 15.0
+        if !token.isEmpty {
+            req.setValue(token, forHTTPHeaderField: "x-sync-token")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode), !data.isEmpty {
+                try data.write(to: localFile)
+                return localFile.path
+            }
+        } catch {
+            print("Failed to download cover photo \(cleanName): \(error)")
+        }
+        return nil
     }
 }

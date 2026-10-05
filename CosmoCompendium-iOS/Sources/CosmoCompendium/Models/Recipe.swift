@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 
 @Model
 public final class Recipe {
@@ -28,6 +29,29 @@ public final class Recipe {
     public var isDeleted: Bool
     public var coverPhotoName: String?
     public var profileName: String = "Louis"
+
+    /// Dynamically resolves the cover image path from either imagePath, the bundle (SyncedImages), or local Documents
+    public var resolvedCoverImage: UIImage? {
+        if let path = imagePath, !path.isEmpty, FileManager.default.fileExists(atPath: path), let img = UIImage(contentsOfFile: path) {
+            return img
+        }
+        if let name = coverPhotoName, !name.isEmpty {
+            // Check Documents directory
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let docPath = docs.appendingPathComponent(name).path
+            if FileManager.default.fileExists(atPath: docPath), let img = UIImage(contentsOfFile: docPath) {
+                return img
+            }
+            // Check SyncedImages bundle or main bundle
+            let baseName = (name as NSString).deletingPathExtension
+            let ext = (name as NSString).pathExtension
+            if let bundleUrl = Bundle.main.url(forResource: baseName, withExtension: ext, subdirectory: "SyncedImages") ?? Bundle.main.url(forResource: name, withExtension: nil),
+               let img = UIImage(contentsOfFile: bundleUrl.path) {
+                return img
+            }
+        }
+        return nil
+    }
 
     // Craft / Formula fields (Soap, Balms, Maker notes)
     public var craftType: String?

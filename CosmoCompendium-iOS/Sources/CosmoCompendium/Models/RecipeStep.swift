@@ -24,6 +24,24 @@ public struct RecipeStep: Identifiable, Codable, Hashable {
         self.tip = tip
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, stepNumber, instructionEnglish, instructionGerman, timerMinutes, tip
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? container.decodeIfPresent(String.self, forKey: .id)) ?? UUID().uuidString
+        self.stepNumber = (try? container.decodeIfPresent(Int.self, forKey: .stepNumber)) ?? 1
+        self.instructionEnglish = (try? container.decodeIfPresent(String.self, forKey: .instructionEnglish)) ?? ""
+        self.instructionGerman = (try? container.decodeIfPresent(String.self, forKey: .instructionGerman)) ?? ""
+        self.timerMinutes = (try? container.decodeIfPresent(Int.self, forKey: .timerMinutes)) ?? 0
+        if let t = try? container.decodeIfPresent(String.self, forKey: .tip), t != "null", !t.isEmpty {
+            self.tip = t
+        } else {
+            self.tip = nil
+        }
+    }
+
     public func instruction(language: LanguageMode = .english, unitSystem: UnitSystem? = nil) -> String {
         let base: String
         switch language {

@@ -13,7 +13,7 @@ public struct CookbookGuideSheet: View {
                         icon: "doc.viewfinder.fill",
                         color: Color(red: 0xCC / 255.0, green: 0x55 / 255.0, blue: 0x00 / 255.0),
                         title: "Continuous Multi-Page Scanning",
-                        bodyText: "Snap Page 1, Page 2, Page 3, and more in rapid succession. Cosmo Compendium's Gemini Vision engine automatically detects front cards, back directions, and notes, synthesizing them all into a unified recipe book."
+                        bodyText: "Snap Page 1, Page 2, Page 3, and more in rapid succession. Cookbook's Gemini Vision engine automatically detects front cards, back directions, and notes, synthesizing them all into a unified recipe book."
                     )
 
                     guideSection(

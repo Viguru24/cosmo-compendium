@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import PDFKit
+import PhotosUI
 
 public struct BookletView: View {
     @Bindable var recipe: Recipe
@@ -14,6 +15,11 @@ public struct BookletView: View {
     @State private var isGeneratingPhoto = false
     @State private var photoGenStatus = ""
     @State private var photoGenError: String? = nil
+
+    // Photo picking states
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var isShowingPhotoLibrary = false
+    @State private var isShowingCamera = false
 
     @State private var activeTab = 0 // 0: Overview & Ingredients, 1: Directions, 2: Craft / Notes
     @State private var unitSystem: UnitSystem = .ukImperial
@@ -37,22 +43,44 @@ public struct BookletView: View {
                 // Segmented Tab Picker
                 tabPicker
 
-                // Main Scroll Content
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        recipeHeader
-
-                        if activeTab == 0 {
+                // 3D Skeuomorphic Swipeable Page-Turning Horizontal Pager
+                TabView(selection: $activeTab) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            recipeHeader
                             ingredientsSection
-                        } else if activeTab == 1 {
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 90)
+                    }
+                    .tag(0)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            recipeHeader
                             directionsSection
-                        } else {
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 90)
+                    }
+                    .tag(1)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            recipeHeader
                             notesAndCraftSection
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 90)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 90)
+                    .tag(2)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .onChange(of: activeTab) { _, _ in
+                    AudioEffectManager.shared.playPageTurn()
                 }
             }
 
@@ -111,10 +139,48 @@ public struct BookletView: View {
                 ShareSheet(items: [data])
             }
         }
+        .photosPicker(isPresented: $isShowingPhotoLibrary, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self),
+                   let img = UIImage(data: data) {
+                    await MainActor.run {
+                        saveDishPhoto(img)
+                        selectedPhotoItem = nil
+                    }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingCamera) {
+            CameraImagePicker(selectedImage: Binding(
+                get: { nil },
+                set: { img in
+                    if let img {
+                        saveDishPhoto(img)
+                    }
+                    isShowingCamera = false
+                }
+            ))
+            .ignoresSafeArea()
+        }
         .alert("Cover Photo Generation", isPresented: Binding(get: { photoGenError != nil }, set: { if !$0 { photoGenError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(photoGenError ?? "")
+        }
+    }
+
+    private func saveDishPhoto(_ image: UIImage) {
+        let filename = "recipe_cover_\(recipe.id)_\(Int(Date().timeIntervalSince1970)).jpg"
+        if let data = image.jpegData(compressionQuality: 0.88) {
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let path = docs.appendingPathComponent(filename)
+            try? data.write(to: path)
+            recipe.imagePath = path.path
+            recipe.coverPhotoName = filename
+            recipe.updatedAt = Date()
+            try? modelContext.save()
         }
     }
 
@@ -177,8 +243,8 @@ public struct BookletView: View {
             .font(.system(size: 12, design: .serif))
             .foregroundStyle(Color(red: 0x5D / 255.0, green: 0x40 / 255.0, blue: 0x37 / 255.0))
 
-            // Cover Photo Banner & Generator
-            if let path = recipe.imagePath, let uiImg = UIImage(contentsOfFile: path) {
+            // Cover Photo Banner & Actions
+            if let uiImg = recipe.resolvedCoverImage {
                 ZStack(alignment: .bottomTrailing) {
                     Image(uiImage: uiImg)
                         .resizable()
@@ -189,12 +255,34 @@ public struct BookletView: View {
                         .cornerRadius(12)
                         .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
 
-                    Button {
-                        generateCoverPhoto()
+                    Menu {
+                        Button {
+                            isShowingPhotoLibrary = true
+                        } label: {
+                            Label("Choose from Library", systemImage: "photo.on.rectangle")
+                        }
+                        Button {
+                            isShowingCamera = true
+                        } label: {
+                            Label("Take Dish Photo", systemImage: "camera")
+                        }
+                        Button {
+                            generateCoverPhoto()
+                        } label: {
+                            Label("Regenerate AI Food Photo", systemImage: "sparkles")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            recipe.imagePath = nil
+                            recipe.coverPhotoName = nil
+                            try? modelContext.save()
+                        } label: {
+                            Label("Remove Photo", systemImage: "trash")
+                        }
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
-                            Text("Regenerate Photo")
+                            Image(systemName: "camera.fill")
+                            Text("Change Photo")
                                 .font(.caption.bold())
                         }
                         .padding(.horizontal, 10)
@@ -205,21 +293,49 @@ public struct BookletView: View {
                     .padding(10)
                 }
             } else {
-                Button {
-                    generateCoverPhoto()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 15))
-                        Text(imageGenEngineRaw == ImageGenEngine.comfyUi.rawValue ? "Generate Cover Photo with Wi-Fi PC" : "Generate Cover Photo with Cloud AI")
-                            .font(.system(size: 13, weight: .bold, design: .serif))
+                HStack(spacing: 10) {
+                    Menu {
+                        Button {
+                            isShowingPhotoLibrary = true
+                        } label: {
+                            Label("Choose from Photo Library", systemImage: "photo.on.rectangle")
+                        }
+                        Button {
+                            isShowingCamera = true
+                        } label: {
+                            Label("Take Dish Photo", systemImage: "camera")
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "camera")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("Add Dish Photo")
+                                .font(.system(size: 12.5, weight: .bold, design: .serif))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color(red: 0xFF / 255.0, green: 0xFA / 255.0, blue: 0xED / 255.0))
+                        .foregroundStyle(Color(red: 0x9A / 255.0, green: 0x34 / 255.0, blue: 0x12 / 255.0))
+                        .cornerRadius(10)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0x9A / 255.0, green: 0x34 / 255.0, blue: 0x12 / 255.0).opacity(0.3), lineWidth: 1))
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(red: 0xFE / 255.0, green: 0xF3 / 255.0, blue: 0xC7 / 255.0))
-                    .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
-                    .cornerRadius(10)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0).opacity(0.3), lineWidth: 1))
+
+                    Button {
+                        generateCoverPhoto()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .bold))
+                            Text(imageGenEngineRaw == ImageGenEngine.comfyUi.rawValue ? "AI Photo (Wi-Fi PC)" : "AI Photo (Cloud)")
+                                .font(.system(size: 12.5, weight: .bold, design: .serif))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color(red: 0xFE / 255.0, green: 0xF3 / 255.0, blue: 0xC7 / 255.0))
+                        .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+                        .cornerRadius(10)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0).opacity(0.3), lineWidth: 1))
+                    }
                 }
             }
 
@@ -507,29 +623,18 @@ public struct BookletView: View {
                         }
                     }
                 } else {
-                    photoGenStatus = "Connecting to Gemini AI..."
-                    img = try await ComfyUiClient.shared.generateRecipeImage(
-                        baseUrl: comfyUiUrl,
+                    photoGenStatus = "Generating image with Google Imagen..."
+                    img = try await GeminiRecipeService.shared.generateRecipeCoverImage(
                         title: recipe.title,
+                        titleGerman: recipe.titleGerman,
                         category: recipe.category,
                         ingredients: recipe.ingredients.map { $0.nameEnglish ?? $0.name },
                         steps: recipe.steps.map(\.instructionEnglish),
-                        customCheckpoint: comfyUiCheckpoint
-                    ) { status in
-                        Task { @MainActor in
-                            photoGenStatus = status
-                        }
-                    }
+                        notes: recipe.notes
+                    )
                 }
 
-                let filename = "recipe_cover_\(recipe.id)_\(Int(Date().timeIntervalSince1970)).jpg"
-                if let data = img.jpegData(compressionQuality: 0.88) {
-                    let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                    let path = docs.appendingPathComponent(filename)
-                    try data.write(to: path)
-                    recipe.imagePath = path.path
-                    try? modelContext.save()
-                }
+                saveDishPhoto(img)
             } catch {
                 photoGenError = error.localizedDescription
             }

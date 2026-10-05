@@ -74,3 +74,16 @@ This document specifies the critical rules, architecture, and extraction contrac
   - Additional verified active models: `"gemini-3.7-flash"`, `"gemini-3.6-flash"`, `"gemini-flash-latest"`.
 - **Graceful Offline Fallback**: If Gemini API returns an error or is unavailable, the system must immediately and seamlessly fall back to `OfflineRecipeParser` without stalling, blocking, or hanging the UI.
 
+---
+
+## 7. Mandatory Build & Deployment Architecture (GitHub Actions CI/CD)
+
+> **CRITICAL DIRECTIVE ON BUILD ENVIRONMENT**:
+> - The local host machine is an older iMac running **macOS 13 (Ventura)** with an Xcode version that **CANNOT compile modern iOS 17+ SwiftData iPhone builds locally** or run modern Mac Catalyst binaries (which require macOS 14+ Sonoma).
+> - **DO NOT attempt to build or distribute iOS/iPhone binaries locally on this host.**
+> - **ALL iOS IPA and modern macOS DMG builds MUST BE PRODUCED VIA GITHUB ACTIONS CI/CD** (`.github/workflows/build.yml`) running on modern `macos-14` cloud runners.
+> - Whenever changes are made to iOS, models, or assets:
+>   1. Commit and push directly to `main` (or tag `v*`).
+>   2. The GitHub Actions workflow (`Build Cosmo Compendium (macOS DMG & iOS IPA)`) automatically compiles with **Xcode 15.4** on **macOS 14**.
+>   3. The signed/packaged **`CosmoCompendium.ipa`** and **`CosmoCompendium-macOS.dmg`** artifacts are uploaded to the GitHub Actions run and GitHub Releases for download.
+

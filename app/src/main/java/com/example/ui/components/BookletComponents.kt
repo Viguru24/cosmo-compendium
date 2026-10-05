@@ -531,6 +531,7 @@ fun RecipeLoreTableOfContentsPage(
     onJumpToPage: (Int) -> Unit,
     onEditDetails: (() -> Unit)? = null,
     onRotateOriginalPhoto: (() -> Unit)? = null,
+    onStartCookingMode: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -833,6 +834,38 @@ fun RecipeLoreTableOfContentsPage(
             )
 
             Spacer(modifier = Modifier.height(6.dp))
+
+            if (onStartCookingMode != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onStartCookingMode() }
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF9A3412),
+                    shadowElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🔥", fontSize = 16.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Start Kitchen Cook Mode",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            )
+                        }
+                        Text("➔", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+            }
 
             // Jump 1: Ingredients
             Surface(
@@ -1141,6 +1174,7 @@ fun RecipeIngredientsPage(
     onNextPage: (() -> Unit)? = null,
     onEditIngredients: (() -> Unit)? = null,
     onAddToShoppingList: (() -> Unit)? = null,
+    onStartCooking: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -1463,6 +1497,39 @@ fun RecipeIngredientsPage(
                     }
                 }
             }
+
+            // START KITCHEN COOK MODE BUTTON
+            if (onStartCooking != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF9A3412),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onStartCooking() }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("🔥", fontSize = 15.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Start Kitchen Cook Mode",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 13.sp
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1568,17 +1635,35 @@ fun RecipeStepPage(
                             }
                         }
 
-                        // Step Read Loud / TTS button
-                        IconButton(
-                            onClick = {
-                                onSpeak(step.getInstruction(languageMode, unitSystem), false)
-                            }
+                        // Step Read Aloud / TTS button
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF2EAE0),
+                            border = BorderStroke(1.dp, Color(0xFFDCCFBE)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    onSpeak(step.getInstruction(languageMode, unitSystem), false)
+                                }
                         ) {
-                            Icon(
-                                Icons.Default.VolumeUp,
-                                contentDescription = "Read Step Aloud",
-                                tint = Color(0xFF6B5B4E)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.VolumeUp,
+                                    contentDescription = "Read Step Aloud",
+                                    tint = TerracottaPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Read Aloud",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF451A03)
+                                )
+                            }
                         }
                     }
                 }

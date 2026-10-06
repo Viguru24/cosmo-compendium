@@ -146,16 +146,75 @@ object AppLocalization {
         }
     }
 
+    fun normalizeServings(servings: String): String {
+        if (servings.isBlank()) return "4-6 servings"
+        val trimmed = servings.trim()
+        val lower = trimmed.lowercase()
+
+        // Known corrupted range and yield mappings
+        val mapping = mapOf(
+            "46" to "4-6 servings",
+            "46 servings" to "4-6 servings",
+            "810" to "8-10 servings",
+            "810 servings" to "8-10 servings",
+            "1012" to "10-12 servings",
+            "1012 servings" to "10-12 servings",
+            "68" to "6-8 servings",
+            "68 servings" to "6-8 servings",
+            "1618" to "16-18 servings",
+            "1618 servings" to "16-18 servings",
+            "3040" to "30-40 cookies",
+            "3040 servings" to "30-40 cookies",
+            "4125" to "4-5 jars (approx 250ml each)",
+            "4125 servings" to "4-5 jars (approx 250ml each)",
+            "8300" to "8 jars (approx 300g each)",
+            "8300 servings" to "8 jars (approx 300g each)",
+            "2200" to "2-3 jars (approx 200g each)",
+            "2200 servings" to "2-3 jars (approx 200g each)",
+            "90302" to "4-6 jars (approx 300g each)",
+            "90302 servings" to "4-6 jars (approx 300g each)",
+            "45152" to "4-5 bottles (approx 150ml each)",
+            "45152 servings" to "4-5 bottles (approx 150ml each)",
+            "1112" to "1-2 jars (approx 500g each)",
+            "1112 servings" to "1-2 jars (approx 500g each)",
+            "681" to "6-8 servings",
+            "681 servings" to "6-8 servings",
+            "2000" to "Serves 8-10 (2kg batch)",
+            "2000 servings" to "Serves 8-10 (2kg batch)",
+            "500" to "4-5 jars (approx 500g each)",
+            "500 servings" to "4-5 jars (approx 500g each)",
+            "200" to "Makes about 40-50 pieces",
+            "200 servings" to "Makes about 40-50 pieces",
+            "50" to "Makes about 50 slices",
+            "50 servings" to "Makes about 50 slices"
+        )
+
+        mapping[lower]?.let { return it }
+
+        return trimmed
+    }
+
     fun getServingsLabel(servings: String, lang: LanguageMode = LanguageMode.ENGLISH): String {
-        if (servings.isBlank()) return servings
-        val clean = servings.replace(Regex("(?i)servings?|portions?|personen|raciones|porzioni|porties"), "").trim()
+        val normalized = normalizeServings(servings)
+        if (normalized.isBlank()) return normalized
+
+        // If it's a descriptive jar/cookie/piece label, return directly
+        if (normalized.contains("jar", ignoreCase = true) ||
+            normalized.contains("bottle", ignoreCase = true) ||
+            normalized.contains("piece", ignoreCase = true) ||
+            normalized.contains("cookie", ignoreCase = true) ||
+            normalized.contains("slice", ignoreCase = true)) {
+            return normalized
+        }
+
+        val clean = normalized.replace(Regex("(?i)servings?|portions?|personen|raciones|porzioni|porties"), "").trim()
         return when (lang) {
-            LanguageMode.GERMAN -> if (clean.isNotBlank()) "$clean Portionen" else servings
-            LanguageMode.FRENCH -> if (clean.isNotBlank()) "$clean portions" else servings
-            LanguageMode.ITALIAN -> if (clean.isNotBlank()) "$clean porzioni" else servings
-            LanguageMode.SPANISH -> if (clean.isNotBlank()) "$clean raciones" else servings
-            LanguageMode.DUTCH -> if (clean.isNotBlank()) "$clean porties" else servings
-            else -> if (clean.isNotBlank()) "$clean servings" else servings
+            LanguageMode.GERMAN -> if (clean.isNotBlank()) "$clean Portionen" else normalized
+            LanguageMode.FRENCH -> if (clean.isNotBlank()) "$clean portions" else normalized
+            LanguageMode.ITALIAN -> if (clean.isNotBlank()) "$clean porzioni" else normalized
+            LanguageMode.SPANISH -> if (clean.isNotBlank()) "$clean raciones" else normalized
+            LanguageMode.DUTCH -> if (clean.isNotBlank()) "$clean porties" else normalized
+            else -> if (clean.isNotBlank()) "$clean servings" else normalized
         }
     }
 

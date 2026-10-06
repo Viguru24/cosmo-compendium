@@ -170,8 +170,8 @@
       },
       {
         "stepNumber": 6,
-        "instructionEnglish": "Ferment in a dark, cool place (55-65\u00b0F) for 3 days.",
-        "instructionGerman": "Ferment in a dark, cool place (55-65\u00b0F) for 3 days.",
+        "instructionEnglish": "Ferment in a dark, cool place (55-65°F) for 3 days.",
+        "instructionGerman": "Ferment in a dark, cool place (55-65°F) for 3 days.",
         "timerMinutes": 4320
       },
       {
@@ -207,7 +207,7 @@
     "titleGerman": "",
     "titleEnglish": "Easy Blackberry & Apple Jelly",
     "category": "Preserves",
-    "servings": "8300 servings",
+    "servings": "8 jars (approx 300g each)",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 150,
     "difficulty": "Medium",
@@ -372,7 +372,7 @@
         "tip": "null"
       }
     ],
-    "notes": "Sterilise jars by washing in hot soapy water, fill with boiling water, empty and then place in oven for 20 minutes at 140\u00b0C. To make a strainer, use a colander lined with a new pair of tights, clean net curtains, a tea towel or muslin.",
+    "notes": "Sterilise jars by washing in hot soapy water, fill with boiling water, empty and then place in oven for 20 minutes at 140°C. To make a strainer, use a colander lined with a new pair of tights, clean net curtains, a tea towel or muslin.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -865,8 +865,8 @@
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Heat the oven to 140\u00b0F. Bake for 8-12 hours until the surface is smooth and no longer sticky. You can use a convection setting to speed up the process.",
-        "instructionGerman": "Heat the oven to 140\u00b0F. Bake for 8-12 hours until the surface is smooth and no longer sticky. You can use a convection setting to speed up the process.",
+        "instructionEnglish": "Heat the oven to 140°F. Bake for 8-12 hours until the surface is smooth and no longer sticky. You can use a convection setting to speed up the process.",
+        "instructionGerman": "Heat the oven to 140°F. Bake for 8-12 hours until the surface is smooth and no longer sticky. You can use a convection setting to speed up the process.",
         "timerMinutes": 480,
         "tip": "Can also be done in a food dehydrator."
       },
@@ -948,22 +948,22 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Tip the contents of the pan into a sieve and rub it through to remove the stones and skin, leaving you with a smooth damson pur\u00e9e.",
-        "instructionGerman": "Tip the contents of the pan into a sieve and rub it through to remove the stones and skin, leaving you with a smooth damson pur\u00e9e.",
+        "instructionEnglish": "Tip the contents of the pan into a sieve and rub it through to remove the stones and skin, leaving you with a smooth damson purée.",
+        "instructionGerman": "Tip the contents of the pan into a sieve and rub it through to remove the stones and skin, leaving you with a smooth damson purée.",
         "timerMinutes": 0,
         "tip": "null"
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Measure the pur\u00e9e by volume. For every 500ml, add 350g sugar.",
-        "instructionGerman": "Measure the pur\u00e9e by volume. For every 500ml, add 350g sugar.",
+        "instructionEnglish": "Measure the purée by volume. For every 500ml, add 350g sugar.",
+        "instructionGerman": "Measure the purée by volume. For every 500ml, add 350g sugar.",
         "timerMinutes": 0,
         "tip": "null"
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Combine in a large, heavy-based pan bringing it to a simmer over a low heat. Stir to dissolve the sugar, then cook gently, stirring regularly so it doesn't catch, until reduced to a thick pur\u00e9e. It's ready when you drag the spoon across the bottom of the pan and the base stays clearly visible for a second or two.",
-        "instructionGerman": "Combine in a large, heavy-based pan bringing it to a simmer over a low heat. Stir to dissolve the sugar, then cook gently, stirring regularly so it doesn't catch, until reduced to a thick pur\u00e9e. It's ready when you drag the spoon across the bottom of the pan and the base stays clearly visible for a second or two.",
+        "instructionEnglish": "Combine in a large, heavy-based pan bringing it to a simmer over a low heat. Stir to dissolve the sugar, then cook gently, stirring regularly so it doesn't catch, until reduced to a thick purée. It's ready when you drag the spoon across the bottom of the pan and the base stays clearly visible for a second or two.",
+        "instructionGerman": "Combine in a large, heavy-based pan bringing it to a simmer over a low heat. Stir to dissolve the sugar, then cook gently, stirring regularly so it doesn't catch, until reduced to a thick purée. It's ready when you drag the spoon across the bottom of the pan and the base stays clearly visible for a second or two.",
         "timerMinutes": 60,
         "tip": "This can take up to an hour of gentle, popping simmering and stirring."
       },
@@ -1094,7 +1094,7 @@
     "titleGerman": "",
     "titleEnglish": "The best blackberry jam with bay and vanilla",
     "category": "Preserves",
-    "servings": "2200 servings",
+    "servings": "2-3 jars (approx 200g each)",
     "prepTimeMinutes": 10,
     "cookTimeMinutes": 25,
     "difficulty": "Easy",
@@ -1224,7 +1224,7 @@
     "titleGerman": "",
     "titleEnglish": "Damson Chutney (Variation)",
     "category": "Condiments & Preserves",
-    "servings": "90302 servings",
+    "servings": "4-6 jars (approx 300g each)",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 180,
     "difficulty": "Medium",
@@ -1429,7 +1429,7 @@
     "titleGerman": "",
     "titleEnglish": "Damson Hoisin Sauce",
     "category": "Condiments & Sauces",
-    "servings": "45152 servings",
+    "servings": "4-5 bottles (approx 150ml each)",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 45,
     "difficulty": "Medium",
@@ -1594,7 +1594,7 @@
     "titleGerman": "",
     "titleEnglish": "Damson Ketchup Recipe",
     "category": "Condiments",
-    "servings": "500 servings",
+    "servings": "4-5 jars (approx 500g each)",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 15,
     "difficulty": "Easy",
@@ -1748,7 +1748,7 @@
     "titleGerman": "",
     "titleEnglish": "Cherry Tomato Relish",
     "category": "Condiments",
-    "servings": "1112 servings",
+    "servings": "1-2 jars (approx 500g each)",
     "prepTimeMinutes": 10,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -2154,8 +2154,8 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Heat the juice and sugar until the sugar dissolves, then boil rapidly until it reaches the 105\u00b0C setting point.",
-        "instructionGerman": "Heat the juice and sugar until the sugar dissolves, then boil rapidly until it reaches the 105\u00b0C setting point.",
+        "instructionEnglish": "Heat the juice and sugar until the sugar dissolves, then boil rapidly until it reaches the 105°C setting point.",
+        "instructionGerman": "Heat the juice and sugar until the sugar dissolves, then boil rapidly until it reaches the 105°C setting point.",
         "timerMinutes": 0
       },
       {
@@ -2707,8 +2707,8 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Preheat the oven to 350\u00b0F.",
-        "instructionGerman": "Preheat the oven to 350\u00b0F.",
+        "instructionEnglish": "Preheat the oven to 350°F.",
+        "instructionGerman": "Preheat the oven to 350°F.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -2768,7 +2768,7 @@
     "titleGerman": "",
     "titleEnglish": "Gluten-free lemon drizzle cake",
     "category": "Baking & Desserts",
-    "servings": "810 servings",
+    "servings": "8-10 servings",
     "prepTimeMinutes": 30,
     "cookTimeMinutes": 40,
     "difficulty": "Easy",
@@ -2972,8 +2972,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to 220\u00b0C/200\u00b0C fan/Gas 7 and line a baking sheet with non-stick baking paper.",
-        "instructionGerman": "Preheat the oven to 220\u00b0C/200\u00b0C fan/Gas 7 and line a baking sheet with non-stick baking paper.",
+        "instructionEnglish": "Preheat the oven to 220°C/200°C fan/Gas 7 and line a baking sheet with non-stick baking paper.",
+        "instructionGerman": "Preheat the oven to 220°C/200°C fan/Gas 7 and line a baking sheet with non-stick baking paper.",
         "timerMinutes": 0
       },
       {
@@ -2984,8 +2984,8 @@
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Spoon 12 domes of pastry on to the baking sheet. Brush with the extra beaten egg and bake for 10 minutes. Turn down the temperature to 190\u00b0C/170\u00b0C fan/Gas 5 and bake for another 20 minutes.",
-        "instructionGerman": "Spoon 12 domes of pastry on to the baking sheet. Brush with the extra beaten egg and bake for 10 minutes. Turn down the temperature to 190\u00b0C/170\u00b0C fan/Gas 5 and bake for another 20 minutes.",
+        "instructionEnglish": "Spoon 12 domes of pastry on to the baking sheet. Brush with the extra beaten egg and bake for 10 minutes. Turn down the temperature to 190°C/170°C fan/Gas 5 and bake for another 20 minutes.",
+        "instructionGerman": "Spoon 12 domes of pastry on to the baking sheet. Brush with the extra beaten egg and bake for 10 minutes. Turn down the temperature to 190°C/170°C fan/Gas 5 and bake for another 20 minutes.",
         "timerMinutes": 30
       },
       {
@@ -3039,7 +3039,7 @@
     "titleGerman": "",
     "titleEnglish": "Flourless chocolate & almond cake",
     "category": "Baking & Desserts",
-    "servings": "810 servings",
+    "servings": "8-10 servings",
     "prepTimeMinutes": 30,
     "cookTimeMinutes": 50,
     "difficulty": "Medium",
@@ -3178,7 +3178,7 @@
     "titleGerman": "",
     "titleEnglish": "Chocolate trifle",
     "category": "Desserts",
-    "servings": "1012 servings",
+    "servings": "10-12 servings",
     "prepTimeMinutes": 30,
     "cookTimeMinutes": 10,
     "difficulty": "Easy",
@@ -3580,8 +3580,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to 180\u00b0C / 160\u00b0C Fan (350\u00b0F / 325\u00b0F Fan forced). Grease and line two 8 inch baking tins.",
-        "instructionGerman": "Preheat the oven to 180\u00b0C / 160\u00b0C Fan (350\u00b0F / 325\u00b0F Fan forced). Grease and line two 8 inch baking tins.",
+        "instructionEnglish": "Preheat the oven to 180°C / 160°C Fan (350°F / 325°F Fan forced). Grease and line two 8 inch baking tins.",
+        "instructionGerman": "Preheat the oven to 180°C / 160°C Fan (350°F / 325°F Fan forced). Grease and line two 8 inch baking tins.",
         "timerMinutes": 0
       },
       {
@@ -3894,7 +3894,7 @@
         "name": "Walnuts (finely grated)",
         "amount": "10",
         "unit": "dag",
-        "nameGerman": "Waln\u00fcsse (fein gerieben)",
+        "nameGerman": "Walnüsse (fein gerieben)",
         "nameEnglish": "Walnuts (finely grated)",
         "isOptional": false,
         "group": "Main Mixture"
@@ -3921,7 +3921,7 @@
         "name": "Hazelnuts (coarsely chopped)",
         "amount": "10",
         "unit": "dag",
-        "nameGerman": "Haseln\u00fcsse (grob gehackt)",
+        "nameGerman": "Haselnüsse (grob gehackt)",
         "nameEnglish": "Hazelnuts (coarsely chopped)",
         "isOptional": false,
         "group": "For rolling"
@@ -3975,11 +3975,11 @@
   },
   {
     "id": "42",
-    "title": "Fine Anise Cookies with 'Feet' (Feine Aniskekse mit F\u00fc\u00dfle)",
+    "title": "Fine Anise Cookies with 'Feet' (Feine Aniskekse mit Füßle)",
     "titleGerman": "",
-    "titleEnglish": "Fine Anise Cookies with 'Feet' (Feine Aniskekse mit F\u00fc\u00dfle)",
+    "titleEnglish": "Fine Anise Cookies with 'Feet' (Feine Aniskekse mit Füßle)",
     "category": "Baking & Desserts",
-    "servings": "200 servings",
+    "servings": "Makes about 40-50 pieces",
     "prepTimeMinutes": 240,
     "cookTimeMinutes": 10,
     "difficulty": "Medium",
@@ -4052,13 +4052,13 @@
       },
       {
         "stepNumber": 5,
-        "instructionEnglish": "Bake at 200\u00b0C (392\u00b0F) until light in color. Keep the oven door slightly open to allow steam to escape.",
-        "instructionGerman": "Bake at 200\u00b0C (392\u00b0F) until light in color. Keep the oven door slightly open to allow steam to escape.",
+        "instructionEnglish": "Bake at 200°C (392°F) until light in color. Keep the oven door slightly open to allow steam to escape.",
+        "instructionGerman": "Bake at 200°C (392°F) until light in color. Keep the oven door slightly open to allow steam to escape.",
         "timerMinutes": 10,
         "tip": "A firm skin must have formed on the dough before baking to ensure the 'feet' develop."
       }
     ],
-    "notes": "Recipe provided by Peter Ellensohn. The 'feet' (F\u00fc\u00dfle) are a characteristic feature of these traditional anise cookies.",
+    "notes": "Recipe provided by Peter Ellensohn. The 'feet' (Füßle) are a characteristic feature of these traditional anise cookies.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -4074,11 +4074,11 @@
   },
   {
     "id": "43",
-    "title": "Small Spice Slices (Kleine Gew\u00fcrzschnitten)",
+    "title": "Small Spice Slices (Kleine Gewürzschnitten)",
     "titleGerman": "",
-    "titleEnglish": "Small Spice Slices (Kleine Gew\u00fcrzschnitten)",
+    "titleEnglish": "Small Spice Slices (Kleine Gewürzschnitten)",
     "category": "Baking & Desserts",
-    "servings": "50 servings",
+    "servings": "Makes about 50 slices",
     "prepTimeMinutes": 130,
     "cookTimeMinutes": 12,
     "difficulty": "Medium",
@@ -4123,7 +4123,7 @@
         "name": "Ground Cloves",
         "amount": "1",
         "unit": "pinch",
-        "nameGerman": "gemahlene Gew\u00fcrznelken",
+        "nameGerman": "gemahlene Gewürznelken",
         "nameEnglish": "Ground Cloves",
         "isOptional": false,
         "group": "Spices"
@@ -4132,7 +4132,7 @@
         "name": "Grated Nutmeg",
         "amount": "1",
         "unit": "pinch",
-        "nameGerman": "geriebene Muskatnu\u00df",
+        "nameGerman": "geriebene Muskatnuß",
         "nameEnglish": "Grated Nutmeg",
         "isOptional": false,
         "group": "Spices"
@@ -4168,7 +4168,7 @@
         "name": "Breadcrumbs",
         "amount": "125",
         "unit": "g",
-        "nameGerman": "Semmelbr\u00f6sel",
+        "nameGerman": "Semmelbrösel",
         "nameEnglish": "Breadcrumbs",
         "isOptional": false,
         "group": "null"
@@ -4231,8 +4231,8 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Preheat the oven to 200\u00b0C.",
-        "instructionGerman": "Preheat the oven to 200\u00b0C.",
+        "instructionEnglish": "Preheat the oven to 200°C.",
+        "instructionGerman": "Preheat the oven to 200°C.",
         "timerMinutes": 0
       },
       {
@@ -4370,8 +4370,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to 180\u00b0C (350\u00b0F) and line a 9\"x9\" baking pan with baking paper.",
-        "instructionGerman": "Preheat the oven to 180\u00b0C (350\u00b0F) and line a 9\"x9\" baking pan with baking paper.",
+        "instructionEnglish": "Preheat the oven to 180°C (350°F) and line a 9\"x9\" baking pan with baking paper.",
+        "instructionGerman": "Preheat the oven to 180°C (350°F) and line a 9\"x9\" baking pan with baking paper.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -4648,8 +4648,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to 325\u00b0F. Line three 8-inch cake pans with parchment rounds and spray parchment and sides of pans generously with nonstick cooking spray.",
-        "instructionGerman": "Preheat the oven to 325\u00b0F. Line three 8-inch cake pans with parchment rounds and spray parchment and sides of pans generously with nonstick cooking spray.",
+        "instructionEnglish": "Preheat the oven to 325°F. Line three 8-inch cake pans with parchment rounds and spray parchment and sides of pans generously with nonstick cooking spray.",
+        "instructionGerman": "Preheat the oven to 325°F. Line three 8-inch cake pans with parchment rounds and spray parchment and sides of pans generously with nonstick cooking spray.",
         "timerMinutes": 0
       },
       {
@@ -4991,8 +4991,8 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Bake in a moderate oven at 180C (356\u00b0F) until a knife inserted into the centre comes out clean.",
-        "instructionGerman": "Bake in a moderate oven at 180C (356\u00b0F) until a knife inserted into the centre comes out clean.",
+        "instructionEnglish": "Bake in a moderate oven at 180C (356°F) until a knife inserted into the centre comes out clean.",
+        "instructionGerman": "Bake in a moderate oven at 180C (356°F) until a knife inserted into the centre comes out clean.",
         "timerMinutes": 25
       }
     ],
@@ -5536,8 +5536,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to 170\u00b0C/gas mark 3 and grease 2 baking trays.",
-        "instructionGerman": "Preheat the oven to 170\u00b0C/gas mark 3 and grease 2 baking trays.",
+        "instructionEnglish": "Preheat the oven to 170°C/gas mark 3 and grease 2 baking trays.",
+        "instructionGerman": "Preheat the oven to 170°C/gas mark 3 and grease 2 baking trays.",
         "timerMinutes": 0
       },
       {
@@ -5751,8 +5751,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to 350\u00b0F (176\u00b0C). Prepare 4 8-inch round cake pans with parchment paper circles and cooking spray.",
-        "instructionGerman": "Preheat the oven to 350\u00b0F (176\u00b0C). Prepare 4 8-inch round cake pans with parchment paper circles and cooking spray.",
+        "instructionEnglish": "Preheat the oven to 350°F (176°C). Prepare 4 8-inch round cake pans with parchment paper circles and cooking spray.",
+        "instructionGerman": "Preheat the oven to 350°F (176°C). Prepare 4 8-inch round cake pans with parchment paper circles and cooking spray.",
         "timerMinutes": 0
       },
       {
@@ -5863,11 +5863,11 @@
         "group": "Fruit & Nuts"
       },
       {
-        "name": "Whole glac\u00e9 cherries",
+        "name": "Whole glacé cherries",
         "amount": "140",
         "unit": "g",
-        "nameGerman": "Whole glac\u00e9 cherries",
-        "nameEnglish": "Whole glac\u00e9 cherries",
+        "nameGerman": "Whole glacé cherries",
+        "nameEnglish": "Whole glacé cherries",
         "isOptional": false,
         "group": "Fruit & Nuts"
       },
@@ -6114,7 +6114,7 @@
     "titleGerman": "",
     "titleEnglish": "German Bread Spice Mixture",
     "category": "Spices & Seasonings",
-    "servings": "1012 servings",
+    "servings": "10-12 servings",
     "prepTimeMinutes": 5,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -6353,8 +6353,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Heat your oven to 350\u00b0F.",
-        "instructionGerman": "Heat your oven to 350\u00b0F.",
+        "instructionEnglish": "Heat your oven to 350°F.",
+        "instructionGerman": "Heat your oven to 350°F.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -6394,7 +6394,7 @@
         "tip": "null"
       }
     ],
-    "notes": "The cookies come out of the oven on the puffy side, but just wait a minute or so and they'll deflate. After they cooled they were the perfect cookies \u2013 crisp on the outside, chewy on the inside.",
+    "notes": "The cookies come out of the oven on the puffy side, but just wait a minute or so and they'll deflate. After they cooled they were the perfect cookies – crisp on the outside, chewy on the inside.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -6555,8 +6555,8 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Bake at 350\u00b0F (180\u00b0C).",
-        "instructionGerman": "Bake at 350\u00b0F (180\u00b0C).",
+        "instructionEnglish": "Bake at 350°F (180°C).",
+        "instructionGerman": "Bake at 350°F (180°C).",
         "timerMinutes": 50
       },
       {
@@ -6586,7 +6586,7 @@
     "titleGerman": "",
     "titleEnglish": "Spiced spatchcock chicken, quince glaze and bejewelled rice (Variation)",
     "category": "Main Course",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 30,
     "cookTimeMinutes": 80,
     "difficulty": "Medium",
@@ -6790,8 +6790,8 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Meanwhile, to make the chicken glaze, combine the membrillo and apple juice in a saucepan and simmer over a medium heat until it boils down to a glaze consistency (this should be about 4\u20135 tablespoons of liquid). Season the glaze with salt and pepper and set aside until the chicken is cooked.",
-        "instructionGerman": "Meanwhile, to make the chicken glaze, combine the membrillo and apple juice in a saucepan and simmer over a medium heat until it boils down to a glaze consistency (this should be about 4\u20135 tablespoons of liquid). Season the glaze with salt and pepper and set aside until the chicken is cooked.",
+        "instructionEnglish": "Meanwhile, to make the chicken glaze, combine the membrillo and apple juice in a saucepan and simmer over a medium heat until it boils down to a glaze consistency (this should be about 4–5 tablespoons of liquid). Season the glaze with salt and pepper and set aside until the chicken is cooked.",
+        "instructionGerman": "Meanwhile, to make the chicken glaze, combine the membrillo and apple juice in a saucepan and simmer over a medium heat until it boils down to a glaze consistency (this should be about 4–5 tablespoons of liquid). Season the glaze with salt and pepper and set aside until the chicken is cooked.",
         "timerMinutes": 10
       },
       {
@@ -6802,8 +6802,8 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Add the rice, spices, butter and a generous amount of salt and pepper and cook, stirring, until the vermicelli is evenly coated in the melted butter and spices. Pour in 600ml cold water and stir again, then cover the pan with the lid, reduce to a very gentle simmer and cook for 30\u201335 minutes, or until the rice on top is cooked and fluffy.",
-        "instructionGerman": "Add the rice, spices, butter and a generous amount of salt and pepper and cook, stirring, until the vermicelli is evenly coated in the melted butter and spices. Pour in 600ml cold water and stir again, then cover the pan with the lid, reduce to a very gentle simmer and cook for 30\u201335 minutes, or until the rice on top is cooked and fluffy.",
+        "instructionEnglish": "Add the rice, spices, butter and a generous amount of salt and pepper and cook, stirring, until the vermicelli is evenly coated in the melted butter and spices. Pour in 600ml cold water and stir again, then cover the pan with the lid, reduce to a very gentle simmer and cook for 30–35 minutes, or until the rice on top is cooked and fluffy.",
+        "instructionGerman": "Add the rice, spices, butter and a generous amount of salt and pepper and cook, stirring, until the vermicelli is evenly coated in the melted butter and spices. Pour in 600ml cold water and stir again, then cover the pan with the lid, reduce to a very gentle simmer and cook for 30–35 minutes, or until the rice on top is cooked and fluffy.",
         "timerMinutes": 35
       },
       {
@@ -6839,7 +6839,7 @@
     "titleGerman": "",
     "titleEnglish": "Spiced spatchcock chicken, quince glaze and bejewelled rice",
     "category": "Main Course",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 30,
     "cookTimeMinutes": 60,
     "difficulty": "Medium",
@@ -7364,8 +7364,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat the oven to gas 6, 200\u00b0C, fan 180\u00b0C. Toss the chopped veg with 2 1/2 tbsp oil and the sage in a roasting tin; season. Tuck in the halved garlic bulb and roast.",
-        "instructionGerman": "Preheat the oven to gas 6, 200\u00b0C, fan 180\u00b0C. Toss the chopped veg with 2 1/2 tbsp oil and the sage in a roasting tin; season. Tuck in the halved garlic bulb and roast.",
+        "instructionEnglish": "Preheat the oven to gas 6, 200°C, fan 180°C. Toss the chopped veg with 2 1/2 tbsp oil and the sage in a roasting tin; season. Tuck in the halved garlic bulb and roast.",
+        "instructionGerman": "Preheat the oven to gas 6, 200°C, fan 180°C. Toss the chopped veg with 2 1/2 tbsp oil and the sage in a roasting tin; season. Tuck in the halved garlic bulb and roast.",
         "timerMinutes": 20,
         "tip": "null"
       },
@@ -7630,8 +7630,8 @@
       },
       {
         "stepNumber": 9,
-        "instructionEnglish": "Place the bird on a large roasting tray, rub it all over with olive oil and season well. Surround with the chopped carrots, onions and remaining cloves of garlic, cover with tin foil and place in the preheated oven. Turn the heat down right away to 180\u00b0C/350\u00b0F/gas 4 and roast for the calculated time, or until the juices run clear from the thigh if you pierce it with a knife or a skewer. Remove the tin foil for the last 45 minutes to brown the bird.",
-        "instructionGerman": "Place the bird on a large roasting tray, rub it all over with olive oil and season well. Surround with the chopped carrots, onions and remaining cloves of garlic, cover with tin foil and place in the preheated oven. Turn the heat down right away to 180\u00b0C/350\u00b0F/gas 4 and roast for the calculated time, or until the juices run clear from the thigh if you pierce it with a knife or a skewer. Remove the tin foil for the last 45 minutes to brown the bird.",
+        "instructionEnglish": "Place the bird on a large roasting tray, rub it all over with olive oil and season well. Surround with the chopped carrots, onions and remaining cloves of garlic, cover with tin foil and place in the preheated oven. Turn the heat down right away to 180°C/350°F/gas 4 and roast for the calculated time, or until the juices run clear from the thigh if you pierce it with a knife or a skewer. Remove the tin foil for the last 45 minutes to brown the bird.",
+        "instructionGerman": "Place the bird on a large roasting tray, rub it all over with olive oil and season well. Surround with the chopped carrots, onions and remaining cloves of garlic, cover with tin foil and place in the preheated oven. Turn the heat down right away to 180°C/350°F/gas 4 and roast for the calculated time, or until the juices run clear from the thigh if you pierce it with a knife or a skewer. Remove the tin foil for the last 45 minutes to brown the bird.",
         "timerMinutes": 220
       },
       {
@@ -7789,8 +7789,8 @@
       },
       {
         "stepNumber": 6,
-        "instructionEnglish": "Bake in a hot oven at 200\u00b0C (top/bottom heat) until the desired level of browning is reached.",
-        "instructionGerman": "Bake in a hot oven at 200\u00b0C (top/bottom heat) until the desired level of browning is reached.",
+        "instructionEnglish": "Bake in a hot oven at 200°C (top/bottom heat) until the desired level of browning is reached.",
+        "instructionGerman": "Bake in a hot oven at 200°C (top/bottom heat) until the desired level of browning is reached.",
         "timerMinutes": 20,
         "tip": "null"
       }
@@ -7815,7 +7815,7 @@
     "titleGerman": "",
     "titleEnglish": "Sesame Prawn Toast",
     "category": "Appetizer",
-    "servings": "1618 servings",
+    "servings": "16-18 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 5,
     "difficulty": "Easy",
@@ -8007,8 +8007,8 @@
       },
       {
         "stepNumber": 6,
-        "instructionEnglish": "Heat the oil into medium heat about 320\u00b0F, test with a wooden chopstick or a piece of bread, once the oil bubbles start sizzling steadily it's ready to fry.",
-        "instructionGerman": "Heat the oil into medium heat about 320\u00b0F, test with a wooden chopstick or a piece of bread, once the oil bubbles start sizzling steadily it's ready to fry.",
+        "instructionEnglish": "Heat the oil into medium heat about 320°F, test with a wooden chopstick or a piece of bread, once the oil bubbles start sizzling steadily it's ready to fry.",
+        "instructionGerman": "Heat the oil into medium heat about 320°F, test with a wooden chopstick or a piece of bread, once the oil bubbles start sizzling steadily it's ready to fry.",
         "timerMinutes": 0
       },
       {
@@ -8036,7 +8036,7 @@
         "timerMinutes": 0
       }
     ],
-    "notes": "Bread: You can use white, sourdough, or wholemeal sandwich bread. Any dry stale bread or baguettes are great to make prawn toast as they don't absorb the oil much. Baking/ Air Frying Option: you can bake in an oven or in an air fryer. Place the toast filling side up on the baking tray. Spray or brush a bit of oil on the toast and bake in 400\u00b0 F preheated oven for 8-10 minutes or until crispy. Turn sides in halfway and bake until crispy golden brown. Pan Fry Option: If you wish to pan fry it, use a large flat pan or skillet, drizzle oil to slightly cover the pan, and fry the prawn side down first. Once it is crisp and golden, flip and fry another side.",
+    "notes": "Bread: You can use white, sourdough, or wholemeal sandwich bread. Any dry stale bread or baguettes are great to make prawn toast as they don't absorb the oil much. Baking/ Air Frying Option: you can bake in an oven or in an air fryer. Place the toast filling side up on the baking tray. Spray or brush a bit of oil on the toast and bake in 400° F preheated oven for 8-10 minutes or until crispy. Turn sides in halfway and bake until crispy golden brown. Pan Fry Option: If you wish to pan fry it, use a large flat pan or skillet, drizzle oil to slightly cover the pan, and fry the prawn side down first. Once it is crisp and golden, flip and fry another side.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -8056,7 +8056,7 @@
     "titleGerman": "",
     "titleEnglish": "Damson Chutney",
     "category": "Preserves & Condiments",
-    "servings": "500 servings",
+    "servings": "4-5 jars (approx 500g each)",
     "prepTimeMinutes": 25,
     "cookTimeMinutes": 210,
     "difficulty": "Medium",
@@ -8422,14 +8422,14 @@
       },
       {
         "stepNumber": 8,
-        "instructionEnglish": "Deep Frying: Heat the vegetable oil or neutral flavour oil into high heat about 350\u00b0F. Deep fry the spring rolls for 5-6 minutes, or until crispy golden brown.",
-        "instructionGerman": "Deep Frying: Heat the vegetable oil or neutral flavour oil into high heat about 350\u00b0F. Deep fry the spring rolls for 5-6 minutes, or until crispy golden brown.",
+        "instructionEnglish": "Deep Frying: Heat the vegetable oil or neutral flavour oil into high heat about 350°F. Deep fry the spring rolls for 5-6 minutes, or until crispy golden brown.",
+        "instructionGerman": "Deep Frying: Heat the vegetable oil or neutral flavour oil into high heat about 350°F. Deep fry the spring rolls for 5-6 minutes, or until crispy golden brown.",
         "timerMinutes": 6
       },
       {
         "stepNumber": 9,
-        "instructionEnglish": "Baking Option: Place the spring rolls on the wire rack, over the baking tray. Brush or spray generous amount of vegetable oil on both sides. Pre-heat the oven or air-fryer about 400\u00b0F, bake until crispy golden about 18-20 minutes. Turn sides halfway through.",
-        "instructionGerman": "Baking Option: Place the spring rolls on the wire rack, over the baking tray. Brush or spray generous amount of vegetable oil on both sides. Pre-heat the oven or air-fryer about 400\u00b0F, bake until crispy golden about 18-20 minutes. Turn sides halfway through.",
+        "instructionEnglish": "Baking Option: Place the spring rolls on the wire rack, over the baking tray. Brush or spray generous amount of vegetable oil on both sides. Pre-heat the oven or air-fryer about 400°F, bake until crispy golden about 18-20 minutes. Turn sides halfway through.",
+        "instructionGerman": "Baking Option: Place the spring rolls on the wire rack, over the baking tray. Brush or spray generous amount of vegetable oil on both sides. Pre-heat the oven or air-fryer about 400°F, bake until crispy golden about 18-20 minutes. Turn sides halfway through.",
         "timerMinutes": 20
       }
     ],
@@ -9080,8 +9080,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350\u00b0F with a rack in the center.",
-        "instructionGerman": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350\u00b0F with a rack in the center.",
+        "instructionEnglish": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350°F with a rack in the center.",
+        "instructionGerman": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350°F with a rack in the center.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -9318,7 +9318,7 @@
     "titleGerman": "",
     "titleEnglish": "Penny-Wise Peel Marmalade",
     "category": "Preserves",
-    "servings": "4125 servings",
+    "servings": "4-5 jars (approx 250ml each)",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 138,
     "difficulty": "Medium",
@@ -9533,7 +9533,7 @@
     "titleGerman": "",
     "titleEnglish": "Homemade candied peel",
     "category": "Baking Staples",
-    "servings": "200 servings",
+    "servings": "Makes about 40-50 pieces",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 215,
     "difficulty": "Easy",
@@ -9605,8 +9605,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Add the fruit rinds to a large saucepan and cover with water. Make sure they are totally submerged \u2013 a plate can help to weigh them down.",
-        "instructionGerman": "Add the fruit rinds to a large saucepan and cover with water. Make sure they are totally submerged \u2013 a plate can help to weigh them down.",
+        "instructionEnglish": "Add the fruit rinds to a large saucepan and cover with water. Make sure they are totally submerged – a plate can help to weigh them down.",
+        "instructionGerman": "Add the fruit rinds to a large saucepan and cover with water. Make sure they are totally submerged – a plate can help to weigh them down.",
         "timerMinutes": 0,
         "tip": "A plate can help to weigh them down."
       },
@@ -10010,8 +10010,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350\u00b0F (175\u00b0C) with a rack in the center.",
-        "instructionGerman": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350\u00b0F (175\u00b0C) with a rack in the center.",
+        "instructionEnglish": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350°F (175°C) with a rack in the center.",
+        "instructionGerman": "Lightly grease an 8\" square pan, then line with parchment and lightly grease the parchment. Preheat the oven to 350°F (175°C) with a rack in the center.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -10100,11 +10100,11 @@
         "group": "null"
       },
       {
-        "name": "Jalape\u00f1o",
+        "name": "Jalapeño",
         "amount": "1",
         "unit": "",
-        "nameGerman": "Jalape\u00f1o",
-        "nameEnglish": "Jalape\u00f1o",
+        "nameGerman": "Jalapeño",
+        "nameEnglish": "Jalapeño",
         "isOptional": false,
         "group": "null"
       },
@@ -10501,8 +10501,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Prepare jars: You will need jars with plastic-coated screw-top lids (so that the vinegar doesn't react with the metal). Prepare them by washing them thoroughly in hot soapy water, rinsing well, then putting them upside down on a tray in a very low oven (120\u00b0C/gas mark \u00bd) to dry out and warm up.",
-        "instructionGerman": "Prepare jars: You will need jars with plastic-coated screw-top lids (so that the vinegar doesn't react with the metal). Prepare them by washing them thoroughly in hot soapy water, rinsing well, then putting them upside down on a tray in a very low oven (120\u00b0C/gas mark \u00bd) to dry out and warm up.",
+        "instructionEnglish": "Prepare jars: You will need jars with plastic-coated screw-top lids (so that the vinegar doesn't react with the metal). Prepare them by washing them thoroughly in hot soapy water, rinsing well, then putting them upside down on a tray in a very low oven (120°C/gas mark ½) to dry out and warm up.",
+        "instructionGerman": "Prepare jars: You will need jars with plastic-coated screw-top lids (so that the vinegar doesn't react with the metal). Prepare them by washing them thoroughly in hot soapy water, rinsing well, then putting them upside down on a tray in a very low oven (120°C/gas mark ½) to dry out and warm up.",
         "timerMinutes": 0
       },
       {
@@ -10531,8 +10531,8 @@
       },
       {
         "stepNumber": 6,
-        "instructionEnglish": "The chutney is ready when it is rich, thick and reduced \u2013 it should part to reveal the base of the pan when a wooden spoon is dragged through it. If it starts to dry out before this stage, add boiling water.",
-        "instructionGerman": "The chutney is ready when it is rich, thick and reduced \u2013 it should part to reveal the base of the pan when a wooden spoon is dragged through it. If it starts to dry out before this stage, add boiling water.",
+        "instructionEnglish": "The chutney is ready when it is rich, thick and reduced – it should part to reveal the base of the pan when a wooden spoon is dragged through it. If it starts to dry out before this stage, add boiling water.",
+        "instructionGerman": "The chutney is ready when it is rich, thick and reduced – it should part to reveal the base of the pan when a wooden spoon is dragged through it. If it starts to dry out before this stage, add boiling water.",
         "timerMinutes": 0
       },
       {
@@ -10628,7 +10628,7 @@
         "name": "Oil",
         "amount": "125",
         "unit": "ml",
-        "nameGerman": "\u00d6l",
+        "nameGerman": "Öl",
         "nameEnglish": "Oil",
         "isOptional": false,
         "group": "null"
@@ -10663,7 +10663,7 @@
       {
         "stepNumber": 2,
         "instructionEnglish": "Mix in flour with baking powder, oil, and milk.",
-        "instructionGerman": "Mehl mit Backpulver, \u00d6l und Milch dazumixen.",
+        "instructionGerman": "Mehl mit Backpulver, Öl und Milch dazumixen.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -10676,7 +10676,7 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Spread dough onto a greased baking sheet and top with pitted plums, bake for one hour at 150\u00b0C (300\u00b0F).",
+        "instructionEnglish": "Spread dough onto a greased baking sheet and top with pitted plums, bake for one hour at 150°C (300°F).",
         "instructionGerman": "Auf befettetes Backblech Teig und darauf entfernte Zwetschken geben, eine Stunde bei 150 Grad backen.",
         "timerMinutes": 60,
         "tip": "null"
@@ -10684,7 +10684,7 @@
       {
         "stepNumber": 5,
         "instructionEnglish": "Add powdered sugar to the finished cake.",
-        "instructionGerman": "Auf fertigen Kuchen Staubzucker hinzuf\u00fcgen.",
+        "instructionGerman": "Auf fertigen Kuchen Staubzucker hinzufügen.",
         "timerMinutes": 0,
         "tip": "null"
       }
@@ -10927,7 +10927,7 @@
         "tip": "null"
       }
     ],
-    "notes": "Sandhya's Expert Tips:\n- Do not add the Yogurt to the blender along with the remaining ingredients. Your Dip will turn out really thin and watery.\n- First blend the fresh herbs along with green chilli, salt, sugar, and garlic ( if using any ) and then add it to yogurt.\n- Use Full fat yogurt instead of Low fat yogurt. Full fat yoghurt adds the tartness to the condiment.\n- If you do not have a blender at hand, use store bought mint sauce. Swirl the sauce into the yogurt along with \u00bd garam masala powder, \u00bc teaspoon chilli powder, lemon juice, salt & sugar. Whisk together and serve.",
+    "notes": "Sandhya's Expert Tips:\n- Do not add the Yogurt to the blender along with the remaining ingredients. Your Dip will turn out really thin and watery.\n- First blend the fresh herbs along with green chilli, salt, sugar, and garlic ( if using any ) and then add it to yogurt.\n- Use Full fat yogurt instead of Low fat yogurt. Full fat yoghurt adds the tartness to the condiment.\n- If you do not have a blender at hand, use store bought mint sauce. Swirl the sauce into the yogurt along with ½ garam masala powder, ¼ teaspoon chilli powder, lemon juice, salt & sugar. Whisk together and serve.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -11034,11 +11034,11 @@
         "group": "null"
       },
       {
-        "name": "Ocean Spray\u00ae Craisins\u00ae Dried Cranberries, any flavor",
+        "name": "Ocean Spray® Craisins® Dried Cranberries, any flavor",
         "amount": "6",
         "unit": "ounce package",
-        "nameGerman": "Ocean Spray\u00ae Craisins\u00ae Dried Cranberries, any flavor",
-        "nameEnglish": "Ocean Spray\u00ae Craisins\u00ae Dried Cranberries, any flavor",
+        "nameGerman": "Ocean Spray® Craisins® Dried Cranberries, any flavor",
+        "nameEnglish": "Ocean Spray® Craisins® Dried Cranberries, any flavor",
         "isOptional": false,
         "group": "null"
       },
@@ -11055,8 +11055,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat oven to 325\u00b0F (165\u00b0C). Combine dry ingredients (flour, sugar, baking powder, baking soda, cinnamon, nutmeg) in a medium mixing bowl.",
-        "instructionGerman": "Preheat oven to 325\u00b0F (165\u00b0C). Combine dry ingredients (flour, sugar, baking powder, baking soda, cinnamon, nutmeg) in a medium mixing bowl.",
+        "instructionEnglish": "Preheat oven to 325°F (165°C). Combine dry ingredients (flour, sugar, baking powder, baking soda, cinnamon, nutmeg) in a medium mixing bowl.",
+        "instructionGerman": "Preheat oven to 325°F (165°C). Combine dry ingredients (flour, sugar, baking powder, baking soda, cinnamon, nutmeg) in a medium mixing bowl.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -11097,8 +11097,8 @@
       },
       {
         "stepNumber": 7,
-        "instructionEnglish": "Reduce oven temperature to 300\u00b0F (150\u00b0C).",
-        "instructionGerman": "Reduce oven temperature to 300\u00b0F (150\u00b0C).",
+        "instructionEnglish": "Reduce oven temperature to 300°F (150°C).",
+        "instructionGerman": "Reduce oven temperature to 300°F (150°C).",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -11124,7 +11124,7 @@
         "tip": "null"
       }
     ],
-    "notes": "The handwritten '6 ounce - 170' next to the Craisins ingredient clarifies the package size. The handwritten '165\u00b0C' and '150\u00b0C' are temperature conversions.",
+    "notes": "The handwritten '6 ounce - 170' next to the Craisins ingredient clarifies the package size. The handwritten '165°C' and '150°C' are temperature conversions.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -11180,7 +11180,7 @@
         "name": "Vegetable Oil",
         "amount": "125",
         "unit": "ml",
-        "nameGerman": "Pflanzen\u00f6l",
+        "nameGerman": "Pflanzenöl",
         "nameEnglish": "Vegetable Oil",
         "isOptional": false,
         "group": "Dough"
@@ -11198,7 +11198,7 @@
         "name": "Cocoa Powder (instant) or Grated Nuts or a mixture thereof",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "Kakaopulver, instant oder geriebene N\u00fcsse oder eine Mischung davon",
+        "nameGerman": "Kakaopulver, instant oder geriebene Nüsse oder eine Mischung davon",
         "nameEnglish": "Cocoa Powder (instant) or Grated Nuts or a mixture thereof",
         "isOptional": true,
         "group": "Dough"
@@ -11282,8 +11282,8 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Preheat oven to 170-180\u00b0C (340-355\u00b0F). Bake the cake for 30-45 minutes.",
-        "instructionGerman": "Preheat oven to 170-180\u00b0C (340-355\u00b0F). Bake the cake for 30-45 minutes.",
+        "instructionEnglish": "Preheat oven to 170-180°C (340-355°F). Bake the cake for 30-45 minutes.",
+        "instructionGerman": "Preheat oven to 170-180°C (340-355°F). Bake the cake for 30-45 minutes.",
         "timerMinutes": 45,
         "tip": "null"
       },
@@ -11419,8 +11419,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Start by preheating your oven to 190\u00b0C, 170\u00b0C fan oven or Gas mark 5.",
-        "instructionGerman": "Start by preheating your oven to 190\u00b0C, 170\u00b0C fan oven or Gas mark 5.",
+        "instructionEnglish": "Start by preheating your oven to 190°C, 170°C fan oven or Gas mark 5.",
+        "instructionGerman": "Start by preheating your oven to 190°C, 170°C fan oven or Gas mark 5.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -11573,7 +11573,7 @@
         "name": "Oil or Butter",
         "amount": "220",
         "unit": "g",
-        "nameGerman": "\u00d6l (oder Butter)",
+        "nameGerman": "Öl (oder Butter)",
         "nameEnglish": "Oil or Butter",
         "isOptional": false,
         "group": "I"
@@ -11645,8 +11645,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Bake at 180\u00b0C (350\u00b0F) for 14 minutes.",
-        "instructionGerman": "Bake at 180\u00b0C (350\u00b0F) for 14 minutes.",
+        "instructionEnglish": "Bake at 180°C (350°F) for 14 minutes.",
+        "instructionGerman": "Bake at 180°C (350°F) for 14 minutes.",
         "timerMinutes": 14
       }
     ],
@@ -11683,10 +11683,10 @@
         "isOptional": false
       },
       {
-        "name": "/\u00bdoz fast-action dried yeast",
+        "name": "/½oz fast-action dried yeast",
         "amount": "14",
         "unit": "g",
-        "nameEnglish": "/\u00bdoz fast-action dried yeast",
+        "nameEnglish": "/½oz fast-action dried yeast",
         "isOptional": false
       },
       {
@@ -11697,10 +11697,10 @@
         "isOptional": false
       },
       {
-        "name": "/10\u00bdoz strong white flour",
+        "name": "/10½oz strong white flour",
         "amount": "300",
         "unit": "g",
-        "nameEnglish": "/10\u00bdoz strong white flour",
+        "nameEnglish": "/10½oz strong white flour",
         "isOptional": false
       },
       {
@@ -11712,7 +11712,7 @@
       },
       {
         "name": "bicarbonate of soda",
-        "amount": "\u00bd",
+        "amount": "½",
         "unit": "tsp",
         "nameEnglish": "bicarbonate of soda",
         "isOptional": false
@@ -11732,10 +11732,10 @@
         "isOptional": false
       },
       {
-        "name": "/3\u00bdoz ricotta",
+        "name": "/3½oz ricotta",
         "amount": "100",
         "unit": "g",
-        "nameEnglish": "/3\u00bdoz ricotta",
+        "nameEnglish": "/3½oz ricotta",
         "isOptional": false
       },
       {
@@ -11780,8 +11780,8 @@
       },
       {
         "stepNumber": 5,
-        "instructionEnglish": "Heat a large frying pan over a medium\u2013high heat.",
-        "instructionGerman": "Heat a large frying pan over a medium\u2013high heat.",
+        "instructionEnglish": "Heat a large frying pan over a medium–high heat.",
+        "instructionGerman": "Heat a large frying pan over a medium–high heat.",
         "timerMinutes": 0
       },
       {
@@ -11792,20 +11792,20 @@
       },
       {
         "stepNumber": 7,
-        "instructionEnglish": "Ladle the mixture into the crumpet rings leaving a 2cm/\u00bein gap at the top as they will rise.",
-        "instructionGerman": "Ladle the mixture into the crumpet rings leaving a 2cm/\u00bein gap at the top as they will rise.",
+        "instructionEnglish": "Ladle the mixture into the crumpet rings leaving a 2cm/¾in gap at the top as they will rise.",
+        "instructionGerman": "Ladle the mixture into the crumpet rings leaving a 2cm/¾in gap at the top as they will rise.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 8,
-        "instructionEnglish": "Cook over a medium heat for 6\u20138 minutes, or until the top bubbles.",
-        "instructionGerman": "Cook over a medium heat for 6\u20138 minutes, or until the top bubbles.",
+        "instructionEnglish": "Cook over a medium heat for 6–8 minutes, or until the top bubbles.",
+        "instructionGerman": "Cook over a medium heat for 6–8 minutes, or until the top bubbles.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 9,
-        "instructionEnglish": "Flip over and cook for 1\u20132 minutes to finish cooking. Repeat until all of the mixture is used up, you should have 8 crumpets total.",
-        "instructionGerman": "Flip over and cook for 1\u20132 minutes to finish cooking. Repeat until all of the mixture is used up, you should have 8 crumpets total.",
+        "instructionEnglish": "Flip over and cook for 1–2 minutes to finish cooking. Repeat until all of the mixture is used up, you should have 8 crumpets total.",
+        "instructionGerman": "Flip over and cook for 1–2 minutes to finish cooking. Repeat until all of the mixture is used up, you should have 8 crumpets total.",
         "timerMinutes": 0
       },
       {
@@ -11991,7 +11991,7 @@
     "titleGerman": "",
     "titleEnglish": "Quark Cream Cake",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Medium",
@@ -12091,13 +12091,13 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "For the sponge cake base: Beat the egg yolks with half of the sugar and the grated lemon zest until foamy.",
-        "instructionGerman": "Die Dotter mit der halben Zuckermenge und der geriebenen Zitronenschale schaumig r\u00fchren.",
+        "instructionGerman": "Die Dotter mit der halben Zuckermenge und der geriebenen Zitronenschale schaumig rühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "In a separate bowl, beat the egg whites with the remaining half of the sugar until stiff.",
-        "instructionGerman": "Den mit der zweiten H\u00e4lfte Zucker steif geschlagenen Schnee darunterheben.",
+        "instructionGerman": "Den mit der zweiten Hälfte Zucker steif geschlagenen Schnee darunterheben.",
         "timerMinutes": 0
       },
       {
@@ -12181,7 +12181,7 @@
         "name": "Apples",
         "amount": "750",
         "unit": "g",
-        "nameGerman": "\u00c4pfel",
+        "nameGerman": "Äpfel",
         "nameEnglish": "Apples",
         "isOptional": false,
         "group": "Filling"
@@ -12217,7 +12217,7 @@
         "name": "Almond Flakes",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "Mandelbl\u00e4ttchen",
+        "nameGerman": "Mandelblättchen",
         "nameEnglish": "Almond Flakes",
         "isOptional": false,
         "group": "Filling"
@@ -12226,7 +12226,7 @@
         "name": "Ground Hazelnuts",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "gemahlene Haseln\u00fcsse",
+        "nameGerman": "gemahlene Haselnüsse",
         "nameEnglish": "Ground Hazelnuts",
         "isOptional": false,
         "group": "Filling"
@@ -12265,8 +12265,8 @@
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Preheat oven to 180\u00b0C (350\u00b0F). Grease and flour a springform pan (approx. 26 cm diameter).",
-        "instructionGerman": "Preheat oven to 180\u00b0C (350\u00b0F). Grease and flour a springform pan (approx. 26 cm diameter).",
+        "instructionEnglish": "Preheat oven to 180°C (350°F). Grease and flour a springform pan (approx. 26 cm diameter).",
+        "instructionGerman": "Preheat oven to 180°C (350°F). Grease and flour a springform pan (approx. 26 cm diameter).",
         "timerMinutes": 0
       },
       {
@@ -12343,7 +12343,7 @@
         "name": "Wheat Kernels (for sprouting)",
         "amount": "150",
         "unit": "g",
-        "nameGerman": "Weizenk\u00f6rner",
+        "nameGerman": "Weizenkörner",
         "nameEnglish": "Wheat Kernels (for sprouting)",
         "isOptional": false
       },
@@ -12408,19 +12408,19 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Start sprouting the wheat kernels 3 days before baking day, following package instructions.",
-        "instructionGerman": "Die Weizenk\u00f6rner 3 Tage vor dem Backtag nach Empfehlung auf der Packung zum Keimen ansetzen.",
+        "instructionGerman": "Die Weizenkörner 3 Tage vor dem Backtag nach Empfehlung auf der Packung zum Keimen ansetzen.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Dissolve the yeast in the lukewarm water.",
-        "instructionGerman": "Die Hefe mit dem lauwarmen Wasser verr\u00fchren.",
+        "instructionGerman": "Die Hefe mit dem lauwarmen Wasser verrühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
         "instructionEnglish": "Add the salt, honey, liquid fat (melted butter), and half of the sifted flour to the yeast mixture and stir in.",
-        "instructionGerman": "Das Salz, den Honig, das fl\u00fcssige Fett u. d. H2O zu der Hefe geben u. d. H\u00e4lfte d. gesiebten Mehls unterr\u00fchren.",
+        "instructionGerman": "Das Salz, den Honig, das flüssige Fett u. d. H2O zu der Hefe geben u. d. Hälfte d. gesiebten Mehls unterrühren.",
         "timerMinutes": 0
       },
       {
@@ -12432,7 +12432,7 @@
       {
         "stepNumber": 5,
         "instructionEnglish": "Add the remaining flour, the sprouted wheat kernels, and another 1/4 liter of water to the dough and knead well.",
-        "instructionGerman": "Das restl. Mehl, die gekeimten Weizenk\u00f6rner u. noch einmal 1/4 l Wasser zum Teig geben u. diesen auch verkneten.",
+        "instructionGerman": "Das restl. Mehl, die gekeimten Weizenkörner u. noch einmal 1/4 l Wasser zum Teig geben u. diesen auch verkneten.",
         "timerMinutes": 0
       }
     ],
@@ -12452,11 +12452,11 @@
   },
   {
     "id": "96",
-    "title": "Butternut squash b\u00f6rek",
+    "title": "Butternut squash börek",
     "titleGerman": "",
-    "titleEnglish": "Butternut squash b\u00f6rek",
+    "titleEnglish": "Butternut squash börek",
     "category": "Daughter's Recipes",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 60,
     "cookTimeMinutes": 60,
     "difficulty": "Medium",
@@ -12469,10 +12469,10 @@
         "isOptional": false
       },
       {
-        "name": "/4\u00bdfl oz olive oil",
+        "name": "/4½fl oz olive oil",
         "amount": "125",
         "unit": "ml",
-        "nameEnglish": "/4\u00bdfl oz olive oil",
+        "nameEnglish": "/4½fl oz olive oil",
         "isOptional": false
       },
       {
@@ -12491,7 +12491,7 @@
       },
       {
         "name": "harissa paste",
-        "amount": "1\u00bd",
+        "amount": "1½",
         "unit": "tbsp",
         "nameEnglish": "harissa paste",
         "isOptional": false
@@ -12504,17 +12504,17 @@
         "isOptional": false
       },
       {
-        "name": "/1\u00bdoz fine bulgur wheat, cooked according to packet instructions",
+        "name": "/1½oz fine bulgur wheat, cooked according to packet instructions",
         "amount": "40",
         "unit": "g",
-        "nameEnglish": "/1\u00bdoz fine bulgur wheat, cooked according to packet instructions",
+        "nameEnglish": "/1½oz fine bulgur wheat, cooked according to packet instructions",
         "isOptional": false
       },
       {
-        "name": "/1\u00beoz sultanas or raisins",
+        "name": "/1¾oz sultanas or raisins",
         "amount": "50",
         "unit": "g",
-        "nameEnglish": "/1\u00beoz sultanas or raisins",
+        "nameEnglish": "/1¾oz sultanas or raisins",
         "isOptional": false
       },
       {
@@ -12526,16 +12526,16 @@
       },
       {
         "name": "dill",
-        "amount": "\u00bd",
+        "amount": "½",
         "unit": "bunch",
         "nameEnglish": "dill",
         "isOptional": false
       },
       {
-        "name": "\u2013300g packet filo pastry",
+        "name": "–300g packet filo pastry",
         "amount": "270",
         "unit": "",
-        "nameEnglish": "\u2013300g packet filo pastry",
+        "nameEnglish": "–300g packet filo pastry",
         "isOptional": false
       },
       {
@@ -12597,14 +12597,14 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Peel and chop the squash into 2cm/\u00bein pieces and place in a roasting tray with 3 tablespoons of the olive oil, half a teaspoon of sea salt, a good pinch of freshly ground black pepper, the ground cinnamon, 1 tablespoon of the harissa paste and the sugar. Toss together well and spread out into one even layer.",
-        "instructionGerman": "Peel and chop the squash into 2cm/\u00bein pieces and place in a roasting tray with 3 tablespoons of the olive oil, half a teaspoon of sea salt, a good pinch of freshly ground black pepper, the ground cinnamon, 1 tablespoon of the harissa paste and the sugar. Toss together well and spread out into one even layer.",
+        "instructionEnglish": "Peel and chop the squash into 2cm/¾in pieces and place in a roasting tray with 3 tablespoons of the olive oil, half a teaspoon of sea salt, a good pinch of freshly ground black pepper, the ground cinnamon, 1 tablespoon of the harissa paste and the sugar. Toss together well and spread out into one even layer.",
+        "instructionGerman": "Peel and chop the squash into 2cm/¾in pieces and place in a roasting tray with 3 tablespoons of the olive oil, half a teaspoon of sea salt, a good pinch of freshly ground black pepper, the ground cinnamon, 1 tablespoon of the harissa paste and the sugar. Toss together well and spread out into one even layer.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Roast in the oven for 25\u201330 minutes, until the squash is soft when poked with a knife and begins to char around the edges.",
-        "instructionGerman": "Roast in the oven for 25\u201330 minutes, until the squash is soft when poked with a knife and begins to char around the edges.",
+        "instructionEnglish": "Roast in the oven for 25–30 minutes, until the squash is soft when poked with a knife and begins to char around the edges.",
+        "instructionGerman": "Roast in the oven for 25–30 minutes, until the squash is soft when poked with a knife and begins to char around the edges.",
         "timerMinutes": 0
       },
       {
@@ -12627,8 +12627,8 @@
       },
       {
         "stepNumber": 7,
-        "instructionEnglish": "To make the borek, lay out a sheet of filo, the longest side nearest to you, and brush with oil, then top with another sheet. Spoon one-third of the mixture in a line about 4cm/\u00bein above the bottom edge of the pastry, then brush the pastry with more oil. Roll the pastry and filling up like a cigar then curl it into a swirl; this is the center of your pie.",
-        "instructionGerman": "To make the borek, lay out a sheet of filo, the longest side nearest to you, and brush with oil, then top with another sheet. Spoon one-third of the mixture in a line about 4cm/\u00bein above the bottom edge of the pastry, then brush the pastry with more oil. Roll the pastry and filling up like a cigar then curl it into a swirl; this is the center of your pie.",
+        "instructionEnglish": "To make the borek, lay out a sheet of filo, the longest side nearest to you, and brush with oil, then top with another sheet. Spoon one-third of the mixture in a line about 4cm/¾in above the bottom edge of the pastry, then brush the pastry with more oil. Roll the pastry and filling up like a cigar then curl it into a swirl; this is the center of your pie.",
+        "instructionGerman": "To make the borek, lay out a sheet of filo, the longest side nearest to you, and brush with oil, then top with another sheet. Spoon one-third of the mixture in a line about 4cm/¾in above the bottom edge of the pastry, then brush the pastry with more oil. Roll the pastry and filling up like a cigar then curl it into a swirl; this is the center of your pie.",
         "timerMinutes": 0
       },
       {
@@ -12639,8 +12639,8 @@
       },
       {
         "stepNumber": 9,
-        "instructionEnglish": "Brush the entire pie with a little more oil and sprinkle with the remaining salt. Bake for 35\u201345 minutes, until crisp and deep golden brown.",
-        "instructionGerman": "Brush the entire pie with a little more oil and sprinkle with the remaining salt. Bake for 35\u201345 minutes, until crisp and deep golden brown.",
+        "instructionEnglish": "Brush the entire pie with a little more oil and sprinkle with the remaining salt. Bake for 35–45 minutes, until crisp and deep golden brown.",
+        "instructionGerman": "Brush the entire pie with a little more oil and sprinkle with the remaining salt. Bake for 35–45 minutes, until crisp and deep golden brown.",
         "timerMinutes": 0
       },
       {
@@ -12674,7 +12674,7 @@
         "timerMinutes": 0
       }
     ],
-    "notes": "A Turkish-inspired filo pastry pie made with sweet and nutty squash \u2013 although it also works perfectly with pumpkin. Finished with a garlic and harissa oil and served with light and silky whipped feta, it combines sweetness, salt and spice. \n\nSource: https://www.bbc.co.uk/food/recipes/pumkin_borek_22658",
+    "notes": "A Turkish-inspired filo pastry pie made with sweet and nutty squash – although it also works perfectly with pumpkin. Finished with a garlic and harissa oil and served with light and silky whipped feta, it combines sweetness, salt and spice. \n\nSource: https://www.bbc.co.uk/food/recipes/pumkin_borek_22658",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -12728,7 +12728,7 @@
         "name": "White Wine Vinegar",
         "amount": "0.25",
         "unit": "L",
-        "nameGerman": "Essig (Wei\u00dfwein)",
+        "nameGerman": "Essig (Weißwein)",
         "nameEnglish": "White Wine Vinegar",
         "isOptional": false,
         "group": "Marinade"
@@ -12755,7 +12755,7 @@
         "name": "Mustard Seeds",
         "amount": "2",
         "unit": "tablespoons",
-        "nameGerman": "Senfk\u00f6rner",
+        "nameGerman": "Senfkörner",
         "nameEnglish": "Mustard Seeds",
         "isOptional": false,
         "group": "Marinade"
@@ -12764,7 +12764,7 @@
         "name": "Peppercorns",
         "amount": "to taste",
         "unit": "",
-        "nameGerman": "Pfefferk\u00f6rner",
+        "nameGerman": "Pfefferkörner",
         "nameEnglish": "Peppercorns",
         "isOptional": false,
         "group": "Marinade"
@@ -12881,7 +12881,7 @@
         "name": "Peppercorns",
         "amount": "1",
         "unit": "tablespoon",
-        "nameGerman": "Pfefferk\u00f6rner",
+        "nameGerman": "Pfefferkörner",
         "nameEnglish": "Peppercorns",
         "isOptional": false,
         "group": "Herb-Pepper Oil"
@@ -12890,7 +12890,7 @@
         "name": "Corn Oil",
         "amount": "1",
         "unit": "liter",
-        "nameGerman": "Maiskeim\u00f6l",
+        "nameGerman": "Maiskeimöl",
         "nameEnglish": "Corn Oil",
         "isOptional": false,
         "group": "Herb-Pepper Oil"
@@ -12917,7 +12917,7 @@
         "name": "Vanilla Pods, cut into pieces",
         "amount": "2",
         "unit": "",
-        "nameGerman": "Vanilleschoten, in St\u00fccke geschnitten",
+        "nameGerman": "Vanilleschoten, in Stücke geschnitten",
         "nameEnglish": "Vanilla Pods, cut into pieces",
         "isOptional": false,
         "group": "Anise Oil"
@@ -12926,7 +12926,7 @@
         "name": "Neutral Oil (e.g., Corn Oil or Sunflower Oil)",
         "amount": "1",
         "unit": "liter",
-        "nameGerman": "\u00d6l",
+        "nameGerman": "Öl",
         "nameEnglish": "Neutral Oil (e.g., Corn Oil or Sunflower Oil)",
         "isOptional": false,
         "group": "Anise Oil"
@@ -12962,7 +12962,7 @@
         "name": "Sunflower Oil",
         "amount": "1",
         "unit": "liter",
-        "nameGerman": "Sonnenblumen\u00f6l",
+        "nameGerman": "Sonnenblumenöl",
         "nameEnglish": "Sunflower Oil",
         "isOptional": false,
         "group": "Garlic Oil"
@@ -13093,7 +13093,7 @@
         "name": "Apples",
         "amount": "750",
         "unit": "g",
-        "nameGerman": "\u00c4pfel",
+        "nameGerman": "Äpfel",
         "nameEnglish": "Apples",
         "isOptional": false,
         "group": "Filling"
@@ -13129,7 +13129,7 @@
         "name": "Ground hazelnuts",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "gemahlene Haseln\u00fcsse",
+        "nameGerman": "gemahlene Haselnüsse",
         "nameEnglish": "Ground hazelnuts",
         "isOptional": false,
         "group": "Filling"
@@ -13183,7 +13183,7 @@
         "name": "Almond slivers",
         "amount": "optional",
         "unit": "",
-        "nameGerman": "Mandelbl\u00e4ttchen",
+        "nameGerman": "Mandelblättchen",
         "nameEnglish": "Almond slivers",
         "isOptional": true,
         "group": "Topping"
@@ -13198,8 +13198,8 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Preheat oven to 200\u00b0C. Roll out two-thirds of the dough thinly, line a springform pan, and prick the bottom several times.",
-        "instructionGerman": "Preheat oven to 200\u00b0C. Roll out two-thirds of the dough thinly, line a springform pan, and prick the bottom several times.",
+        "instructionEnglish": "Preheat oven to 200°C. Roll out two-thirds of the dough thinly, line a springform pan, and prick the bottom several times.",
+        "instructionGerman": "Preheat oven to 200°C. Roll out two-thirds of the dough thinly, line a springform pan, and prick the bottom several times.",
         "timerMinutes": 0
       },
       {
@@ -13253,7 +13253,7 @@
     "titleGerman": "",
     "titleEnglish": "Linzer Torte",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Medium",
@@ -13302,7 +13302,7 @@
         "name": "Breadcrumbs or Nuts",
         "amount": "150",
         "unit": "grams",
-        "nameGerman": "Br\u00f6sel oder N\u00fcsse",
+        "nameGerman": "Brösel oder Nüsse",
         "nameEnglish": "Breadcrumbs or Nuts",
         "isOptional": false
       },
@@ -13310,7 +13310,7 @@
         "name": "Nuts",
         "amount": "120",
         "unit": "grams",
-        "nameGerman": "N\u00fcsse",
+        "nameGerman": "Nüsse",
         "nameEnglish": "Nuts",
         "isOptional": false
       },
@@ -13376,7 +13376,7 @@
     "titleGerman": "",
     "titleEnglish": "Fine Meringue Cake",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Medium",
@@ -13421,7 +13421,7 @@
         "name": "Hazelnuts",
         "amount": "200",
         "unit": "g",
-        "nameGerman": "Haseln\u00fcsse",
+        "nameGerman": "Haselnüsse",
         "nameEnglish": "Hazelnuts",
         "isOptional": false,
         "group": "Cake Base"
@@ -13448,7 +13448,7 @@
         "name": "Meringue pieces",
         "amount": "32",
         "unit": "pieces",
-        "nameGerman": "St\u00fcck",
+        "nameGerman": "Stück",
         "nameEnglish": "Meringue pieces",
         "isOptional": false,
         "group": "Cake Assembly"
@@ -13475,7 +13475,7 @@
         "name": "Grated hazelnuts",
         "amount": "",
         "unit": "",
-        "nameGerman": "geriebene Haseln\u00fcsse",
+        "nameGerman": "geriebene Haselnüsse",
         "nameEnglish": "Grated hazelnuts",
         "isOptional": false,
         "group": "Decoration"
@@ -13484,7 +13484,7 @@
         "name": "Almond flakes",
         "amount": "",
         "unit": "",
-        "nameGerman": "Mandelpl\u00e4ttchen",
+        "nameGerman": "Mandelplättchen",
         "nameEnglish": "Almond flakes",
         "isOptional": false,
         "group": "Decoration"
@@ -13537,7 +13537,7 @@
         "name": "Instant Coffee",
         "amount": "1-2",
         "unit": "teaspoons",
-        "nameGerman": "L\u00f6scaffee",
+        "nameGerman": "Löscaffee",
         "nameEnglish": "Instant Coffee",
         "isOptional": false,
         "group": "Filling"
@@ -13564,7 +13564,7 @@
         "name": "Egg Liqueur",
         "amount": "4",
         "unit": "tablespoons",
-        "nameGerman": "Eierlik\u00f6r",
+        "nameGerman": "Eierlikör",
         "nameEnglish": "Egg Liqueur",
         "isOptional": false,
         "group": "Filling"
@@ -13616,7 +13616,7 @@
     "titleGerman": "",
     "titleEnglish": "Rum Balls",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -13625,7 +13625,7 @@
         "name": "Nuts",
         "amount": "140",
         "unit": "g",
-        "nameGerman": "N\u00fcsse",
+        "nameGerman": "Nüsse",
         "nameEnglish": "Nuts",
         "isOptional": false
       },
@@ -13696,7 +13696,7 @@
     "titleGerman": "",
     "titleEnglish": "Apricot Balls (Variation)",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -13705,7 +13705,7 @@
         "name": "Dried Apricots, small diced",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "getrocknete Marillen (kleinw\u00fcrfelig)",
+        "nameGerman": "getrocknete Marillen (kleinwürfelig)",
         "nameEnglish": "Dried Apricots, small diced",
         "isOptional": false
       },
@@ -13721,7 +13721,7 @@
         "name": "Walnuts, grated",
         "amount": "100",
         "unit": "g",
-        "nameGerman": "Waln\u00fcsse (gerieben)",
+        "nameGerman": "Walnüsse (gerieben)",
         "nameEnglish": "Walnuts, grated",
         "isOptional": false
       },
@@ -13745,7 +13745,7 @@
         "name": "Hazelnuts, coarsely chopped",
         "amount": "100",
         "unit": "g",
-        "nameGerman": "Haseln\u00fcsse grob gehackt",
+        "nameGerman": "Haselnüsse grob gehackt",
         "nameEnglish": "Hazelnuts, coarsely chopped",
         "isOptional": false,
         "group": "For Rolling"
@@ -13812,7 +13812,7 @@
     "titleGerman": "",
     "titleEnglish": "Stuffed Bell Peppers",
     "category": "Appetizer",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -13895,7 +13895,7 @@
     "titleGerman": "",
     "titleEnglish": "Linzer Cookie Shortcrust Pastry",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Medium",
@@ -13956,7 +13956,7 @@
       }
     ],
     "steps": [],
-    "notes": "This recipe card only lists the ingredients for the shortcrust pastry (M\u00fcrbteig) used for Linzeraugen (Linzer Cookies). No instructions for preparation or baking are provided.",
+    "notes": "This recipe card only lists the ingredients for the shortcrust pastry (Mürbteig) used for Linzeraugen (Linzer Cookies). No instructions for preparation or baking are provided.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -13976,7 +13976,7 @@
     "titleGerman": "",
     "titleEnglish": "Yogurt Gugelhupf",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 40,
     "difficulty": "Easy",
@@ -14041,7 +14041,7 @@
         "name": "Vegetable Oil (with butter flavor)",
         "amount": "15",
         "unit": "dag",
-        "nameGerman": "Kronen\u00f6l spezial mit feinem Buttergeschmack",
+        "nameGerman": "Kronenöl spezial mit feinem Buttergeschmack",
         "nameEnglish": "Vegetable Oil (with butter flavor)",
         "isOptional": false
       },
@@ -14066,19 +14066,19 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "For the batter (8 min.): Beat eggs, sugar, vanilla sugar, grated lemon zest, and a pinch of salt. Then beat in oil for 3 min.",
-        "instructionGerman": "Zum Abtrieb (8 min.) von Eiern, Zucker, Vanillezucker, geriebener Zitronenschale und einer Prise Salz r\u00fchrt man \u00d6l - 3 min. weiterschlagen.",
+        "instructionGerman": "Zum Abtrieb (8 min.) von Eiern, Zucker, Vanillezucker, geriebener Zitronenschale und einer Prise Salz rührt man Öl - 3 min. weiterschlagen.",
         "timerMinutes": 8
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Sift flour with baking powder and almonds and fold into the mixture. Finally, stir in the yogurt. Fill the batter into a greased and floured Gugelhupf pan.",
-        "instructionGerman": "Mit Backpulver versiebtes Mehl und Mandeln unterheben. Zuletzt das Joghurt einr\u00fchren. Teig in eine befettete und bemehlte Kuchenform f\u00fcllen und im vorgeheizten Rohr bei 160\u00b0 ca. 40 min. backen.",
+        "instructionGerman": "Mit Backpulver versiebtes Mehl und Mandeln unterheben. Zuletzt das Joghurt einrühren. Teig in eine befettete und bemehlte Kuchenform füllen und im vorgeheizten Rohr bei 160° ca. 40 min. backen.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Bake in a preheated oven at 160\u00b0C for approx. 40 minutes.",
-        "instructionGerman": "im vorgeheizten Rohr bei 160\u00b0 ca. 40 min. backen.",
+        "instructionEnglish": "Bake in a preheated oven at 160°C for approx. 40 minutes.",
+        "instructionGerman": "im vorgeheizten Rohr bei 160° ca. 40 min. backen.",
         "timerMinutes": 40
       }
     ],
@@ -14210,7 +14210,7 @@
         "instructionEnglish": "Put mixture in 3 greased loaf tins, bake in pre-heated oven (gas mark 4 or 5) for 1.50 hours (90 minutes) or until baked.",
         "instructionGerman": "Put mixture in 3 greased loaf tins, bake in pre-heated oven (gas mark 4 or 5) for 1.50 hours (90 minutes) or until baked.",
         "timerMinutes": 90,
-        "tip": "Gas mark 4 is approximately 350\u00b0F (175\u00b0C), and gas mark 5 is approximately 375\u00b0F (190\u00b0C)."
+        "tip": "Gas mark 4 is approximately 350°F (175°C), and gas mark 5 is approximately 375°F (190°C)."
       }
     ],
     "notes": "Recipe by Velma Glasgow, dated 26/02/00.",
@@ -14413,8 +14413,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat oven to 190\u00b0C. Grease and flour a 26 cm springform pan.",
-        "instructionGerman": "Preheat oven to 190\u00b0C. Grease and flour a 26 cm springform pan.",
+        "instructionEnglish": "Preheat oven to 190°C. Grease and flour a 26 cm springform pan.",
+        "instructionGerman": "Preheat oven to 190°C. Grease and flour a 26 cm springform pan.",
         "timerMinutes": 0
       },
       {
@@ -14461,7 +14461,7 @@
         "timerMinutes": 0
       }
     ],
-    "notes": "The recipe is from 'Gro\u00dfmutters Backgeheimnisse' (Grandmother's Baking Secrets) and is part of 'Gro\u00dfe Torten-Nostalgie' (Great Cake Nostalgia). The calorie information is 2060 Joules / 490 Calories per piece for 12 servings.",
+    "notes": "The recipe is from 'Großmutters Backgeheimnisse' (Grandmother's Baking Secrets) and is part of 'Große Torten-Nostalgie' (Great Cake Nostalgia). The calorie information is 2060 Joules / 490 Calories per piece for 12 servings.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -14481,7 +14481,7 @@
     "titleGerman": "",
     "titleEnglish": "Chocolate Mousse",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 5,
     "difficulty": "Easy",
@@ -14547,7 +14547,7 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Whip cream until stiff.",
-        "instructionGerman": "Qimia glatt r\u00fchren",
+        "instructionGerman": "Qimia glatt rühren",
         "timerMinutes": 0
       },
       {
@@ -14589,7 +14589,7 @@
     "titleGerman": "",
     "titleEnglish": "Pepper Sauce",
     "category": "Sauces & Condiments",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 10,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -14681,7 +14681,7 @@
     "titleGerman": "",
     "titleEnglish": "Pumpkin Seed Spread",
     "category": "Snacks & Appetizers",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -14841,7 +14841,7 @@
     "titleGerman": "",
     "titleEnglish": "Tiramisu (Variation)",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 30,
     "difficulty": "Medium",
@@ -14874,7 +14874,7 @@
         "name": "Instant Coffee Powder",
         "amount": "1",
         "unit": "EL",
-        "nameGerman": "L\u00f6skaffee pulver",
+        "nameGerman": "Löskaffee pulver",
         "nameEnglish": "Instant Coffee Powder",
         "isOptional": false
       },
@@ -14898,7 +14898,7 @@
         "name": "Almond Liqueur",
         "amount": "2",
         "unit": "EL",
-        "nameGerman": "Mandel Lik\u00f6r",
+        "nameGerman": "Mandel Likör",
         "nameEnglish": "Almond Liqueur",
         "isOptional": false
       },
@@ -14939,7 +14939,7 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Whip Qimiq. Add mascarpone, milk, coffee, sugar, vanilla sugar, and almond liqueur. Mix well.",
-        "instructionGerman": "Qimiq glatt r\u00fchren + Mascarpone, Milch, Kaffee, Zu, Vz Lik\u00f6r",
+        "instructionGerman": "Qimiq glatt rühren + Mascarpone, Milch, Kaffee, Zu, Vz Likör",
         "timerMinutes": 0
       },
       {
@@ -14979,7 +14979,7 @@
         "timerMinutes": 0
       }
     ],
-    "notes": "The recipe is written in German. The term 'VZ' likely refers to Vanillezucker (vanilla sugar). 'EL' is Essl\u00f6ffel (tablespoon). 'g' is Gramm (gram). 'Obers' is a regional term for cream, often heavy cream or whipping cream.",
+    "notes": "The recipe is written in German. The term 'VZ' likely refers to Vanillezucker (vanilla sugar). 'EL' is Esslöffel (tablespoon). 'g' is Gramm (gram). 'Obers' is a regional term for cream, often heavy cream or whipping cream.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -15125,8 +15125,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Prepare muffin tins with liners or grease. Preheat oven to 375-400\u00b0F (190-200\u00b0C) for a conventional oven, Gas Mark 5-6.",
-        "instructionGerman": "Prepare muffin tins with liners or grease. Preheat oven to 375-400\u00b0F (190-200\u00b0C) for a conventional oven, Gas Mark 5-6.",
+        "instructionEnglish": "Prepare muffin tins with liners or grease. Preheat oven to 375-400°F (190-200°C) for a conventional oven, Gas Mark 5-6.",
+        "instructionGerman": "Prepare muffin tins with liners or grease. Preheat oven to 375-400°F (190-200°C) for a conventional oven, Gas Mark 5-6.",
         "timerMinutes": 0,
         "tip": "See page 10 for fan ovens and further guidelines."
       },
@@ -15307,7 +15307,7 @@
       },
       {
         "stepNumber": 8,
-        "instructionEnglish": "Bake at 370\u00b0F for 30 minutes, or until golden brown.",
+        "instructionEnglish": "Bake at 370°F for 30 minutes, or until golden brown.",
         "instructionGerman": "",
         "timerMinutes": 30
       },
@@ -15449,8 +15449,8 @@
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Bake or Grill: Roast in a preheated oven at 200\u00b0C (400\u00b0F) for about 12-15 minutes, or until the salmon flakes easily with a fork and the asparagus is tender-crisp.",
-        "instructionGerman": "Bake or Grill: Roast in a preheated oven at 200\u00b0C (400\u00b0F) for about 12-15 minutes, or until the salmon flakes easily with a fork and the asparagus is tender-crisp.",
+        "instructionEnglish": "Bake or Grill: Roast in a preheated oven at 200°C (400°F) for about 12-15 minutes, or until the salmon flakes easily with a fork and the asparagus is tender-crisp.",
+        "instructionGerman": "Bake or Grill: Roast in a preheated oven at 200°C (400°F) for about 12-15 minutes, or until the salmon flakes easily with a fork and the asparagus is tender-crisp.",
         "timerMinutes": 15
       },
       {
@@ -15579,8 +15579,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat your oven to 400\u00b0F (200\u00b0C). Line a large baking sheet with aluminum foil for easy cleanup.",
-        "instructionGerman": "Preheat your oven to 400\u00b0F (200\u00b0C). Line a large baking sheet with aluminum foil for easy cleanup.",
+        "instructionEnglish": "Preheat your oven to 400°F (200°C). Line a large baking sheet with aluminum foil for easy cleanup.",
+        "instructionGerman": "Preheat your oven to 400°F (200°C). Line a large baking sheet with aluminum foil for easy cleanup.",
         "timerMinutes": 0,
         "tip": "null"
       },
@@ -15640,7 +15640,7 @@
     "titleGerman": "",
     "titleEnglish": "Vegan Date + Banana Cake",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 50,
     "difficulty": "Medium",
@@ -15779,7 +15779,7 @@
     "titleGerman": "",
     "titleEnglish": "Waldorf Salad",
     "category": "Salads & Starters",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -15788,7 +15788,7 @@
         "name": "Apples",
         "amount": "250",
         "unit": "g",
-        "nameGerman": "\u00c4pfel",
+        "nameGerman": "Äpfel",
         "nameEnglish": "Apples",
         "isOptional": false
       },
@@ -15836,7 +15836,7 @@
         "name": "Walnuts",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "Waln\u00fcsse",
+        "nameGerman": "Walnüsse",
         "nameEnglish": "Walnuts",
         "isOptional": false
       }
@@ -15845,7 +15845,7 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Peel, halve, and finely slice the apples.",
-        "instructionGerman": "\u00c4pfel sch\u00e4len, halbieren, fein hobeln.",
+        "instructionGerman": "Äpfel schälen, halbieren, fein hobeln.",
         "timerMinutes": 0
       },
       {
@@ -15863,7 +15863,7 @@
       {
         "stepNumber": 4,
         "instructionEnglish": "Mix everything, sprinkle with walnuts, and let it sit for at least one hour.",
-        "instructionGerman": "Vermischen, mit Waln\u00fcssen bestreuen + mind. eine Stunde ziehen lassen.",
+        "instructionGerman": "Vermischen, mit Walnüssen bestreuen + mind. eine Stunde ziehen lassen.",
         "timerMinutes": 60
       }
     ],
@@ -15887,7 +15887,7 @@
     "titleGerman": "",
     "titleEnglish": "Orange Cookies",
     "category": "Baking & Desserts",
-    "servings": "3040 servings",
+    "servings": "30-40 cookies",
     "prepTimeMinutes": 30,
     "cookTimeMinutes": 12,
     "difficulty": "Medium",
@@ -15987,32 +15987,32 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Cream the butter with the powdered sugar, vanilla sugar, salt, and orange zest until light and fluffy.",
-        "instructionGerman": "Butter mit Staubzucker, Vanillezucker, Salz und Orangenschale schaumig r\u00fchren.",
+        "instructionGerman": "Butter mit Staubzucker, Vanillezucker, Salz und Orangenschale schaumig rühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Stir in the egg yolks and flour to form a smooth dough.",
-        "instructionGerman": "Eidotter und Mehl unterr\u00fchren.",
+        "instructionGerman": "Eidotter und Mehl unterrühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
         "instructionEnglish": "Transfer the dough to a piping bag and pipe small rounds or shapes onto a baking sheet.",
-        "instructionGerman": "Teig in einen Dressiersack f\u00fcllen und auf ein Backblech spritzen.",
+        "instructionGerman": "Teig in einen Dressiersack füllen und auf ein Backblech spritzen.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Bake in a preheated oven at 180\u00b0C (350\u00b0F) until lightly golden.",
-        "instructionGerman": "Bei 180 \u00b0C backen.",
+        "instructionEnglish": "Bake in a preheated oven at 180°C (350°F) until lightly golden.",
+        "instructionGerman": "Bei 180 °C backen.",
         "timerMinutes": 12,
         "tip": "Keep a close eye on them as piped cookies bake quickly."
       },
       {
         "stepNumber": 5,
         "instructionEnglish": "For the filling, mix the raw marzipan paste, finely chopped candied orange peel, and a splash of Cointreau until smooth. Use this mixture to sandwich the cooled cookies together.",
-        "instructionGerman": "F\u00fcr die F\u00fcllung Marzipan-Rohmasse, fein gehacktes Orangeat und etwas Cointreau verr\u00fchren und die Kekse damit zusammensetzen.",
+        "instructionGerman": "Für die Füllung Marzipan-Rohmasse, fein gehacktes Orangeat und etwas Cointreau verrühren und die Kekse damit zusammensetzen.",
         "timerMinutes": 0
       }
     ],
@@ -16036,7 +16036,7 @@
     "titleGerman": "",
     "titleEnglish": "Lemon Coconut Macaroons",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 20,
     "difficulty": "Easy",
@@ -16142,8 +16142,8 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Bake at 160\u00b0C - 180\u00b0C (320\u00b0F - 350\u00b0F) for 20 minutes.",
-        "instructionGerman": "Bake at 160\u00b0C - 180\u00b0C (320\u00b0F - 350\u00b0F) for 20 minutes.",
+        "instructionEnglish": "Bake at 160°C - 180°C (320°F - 350°F) for 20 minutes.",
+        "instructionGerman": "Bake at 160°C - 180°C (320°F - 350°F) for 20 minutes.",
         "timerMinutes": 20
       }
     ],
@@ -16167,7 +16167,7 @@
     "titleGerman": "",
     "titleEnglish": "Leela's Chicken Recipe",
     "category": "Main Dishes",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 45,
     "difficulty": "Easy",
@@ -16282,7 +16282,7 @@
         "name": "Semolina",
         "amount": "150",
         "unit": "gr",
-        "nameGerman": "Grie\u00df",
+        "nameGerman": "Grieß",
         "nameEnglish": "Semolina",
         "isOptional": false
       },
@@ -16315,13 +16315,13 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Beat the egg yolks, sugar, and butter until foamy, then stir in the quark (Topfen).",
-        "instructionGerman": "Eigelb, Zucker, Butter schaumig + Topfen r\u00fchren",
+        "instructionGerman": "Eigelb, Zucker, Butter schaumig + Topfen rühren",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Cook the semolina with the milk.",
-        "instructionGerman": "Grie\u00df + Milch kochen",
+        "instructionGerman": "Grieß + Milch kochen",
         "timerMinutes": 0
       },
       {
@@ -16413,7 +16413,7 @@
     "titleGerman": "",
     "titleEnglish": "Almond Cake (Variation)",
     "category": "Baking & Desserts",
-    "servings": "68 servings",
+    "servings": "6-8 servings",
     "prepTimeMinutes": 15,
     "cookTimeMinutes": 60,
     "difficulty": "Easy",
@@ -16470,8 +16470,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Preheat oven to 180\u00b0C.",
-        "instructionGerman": "Preheat oven to 180\u00b0C.",
+        "instructionEnglish": "Preheat oven to 180°C.",
+        "instructionGerman": "Preheat oven to 180°C.",
         "timerMinutes": 0
       },
       {
@@ -16522,7 +16522,7 @@
         "name": "Oil",
         "amount": "",
         "unit": "",
-        "nameGerman": "\u00d6l",
+        "nameGerman": "Öl",
         "nameEnglish": "Oil",
         "isOptional": false,
         "group": "Dressing"
@@ -16594,7 +16594,7 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Mix together oil, vinegar, mustard, salt, pepper, and 1 small onion.",
-        "instructionGerman": "\u00d6l, Essig, Senf, Salz, Pfeffer + 1 kleine Zwiebel verr\u00fchren.",
+        "instructionGerman": "Öl, Essig, Senf, Salz, Pfeffer + 1 kleine Zwiebel verrühren.",
         "timerMinutes": 0
       },
       {
@@ -17155,7 +17155,7 @@
         "name": "Ground mace",
         "amount": "1",
         "unit": "g",
-        "nameGerman": "Muskat - Bl\u00fcte, gemahlen",
+        "nameGerman": "Muskat - Blüte, gemahlen",
         "nameEnglish": "Ground mace",
         "isOptional": false,
         "group": "null"
@@ -17165,7 +17165,7 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Mix everything well together and you already have your own homemade gingerbread spice blend!",
-        "instructionGerman": "Alles gut vermischen und schon hat mein seine eigene hergestellte Lebkuchengew\u00fcrzmischung!",
+        "instructionGerman": "Alles gut vermischen und schon hat mein seine eigene hergestellte Lebkuchengewürzmischung!",
         "timerMinutes": 0,
         "tip": "null"
       }
@@ -17365,7 +17365,7 @@
         "name": "Egg (for the dough)",
         "amount": "1",
         "unit": "",
-        "nameGerman": "Ei f\u00fcr Teig",
+        "nameGerman": "Ei für Teig",
         "nameEnglish": "Egg (for the dough)",
         "isOptional": false,
         "group": "Dough"
@@ -17382,8 +17382,8 @@
       {
         "name": "Packet gingerbread spice",
         "amount": "1",
-        "unit": "P\u00e4ckchen",
-        "nameGerman": "P\u00e4ckchen Honiglebkuchen gew\u00fcrz",
+        "unit": "Päckchen",
+        "nameGerman": "Päckchen Honiglebkuchen gewürz",
         "nameEnglish": "Packet gingerbread spice",
         "isOptional": false,
         "group": "Dough"
@@ -17402,13 +17402,13 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Mix everything together and let rest overnight.",
-        "instructionGerman": "alles zusammen mischen \u00fcber Nacht stehen lassen",
+        "instructionGerman": "alles zusammen mischen über Nacht stehen lassen",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Bake at 170\u00b0C and brush with egg.",
-        "instructionGerman": "170\u00b0C mit Ei bestreichen",
+        "instructionEnglish": "Bake at 170°C and brush with egg.",
+        "instructionGerman": "170°C mit Ei bestreichen",
         "timerMinutes": 0
       }
     ],
@@ -17432,7 +17432,7 @@
     "titleGerman": "",
     "titleEnglish": "Dotter Makronen (Variation)",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 15,
     "difficulty": "Easy",
@@ -17482,7 +17482,7 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Cream the butter, sugar, vanilla sugar, and egg yolks together until fluffy.",
-        "instructionGerman": "Bu, Zu, 2 V.z., 3 Eigelb schaumig r\u00fchren",
+        "instructionGerman": "Bu, Zu, 2 V.z., 3 Eigelb schaumig rühren",
         "timerMinutes": 0
       },
       {
@@ -17499,12 +17499,12 @@
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Bake at 180\u00b0C.",
-        "instructionGerman": "180\u00b0C",
+        "instructionEnglish": "Bake at 180°C.",
+        "instructionGerman": "180°C",
         "timerMinutes": 0
       }
     ],
-    "notes": "Note: 150\u00b0C was crossed out and replaced with 180\u00b0C.",
+    "notes": "Note: 150°C was crossed out and replaced with 180°C.",
     "notesGerman": "",
     "sourceLanguage": "both",
     "coverTheme": "VINTAGE_LEATHER",
@@ -17590,14 +17590,14 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Beat egg yolks, vanilla sugar, and half of the sugar over steam (double boiler).",
-        "instructionGerman": "Dotter, VZ und 1/2 Zucker \u00fcber Dampf schlagen",
+        "instructionGerman": "Dotter, VZ und 1/2 Zucker über Dampf schlagen",
         "timerMinutes": 0,
         "tip": "Use a double boiler to gently cook the egg yolks while whipping."
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Whip egg whites and the remaining sugar until stiff.",
-        "instructionGerman": "Eiwei\u00df schlagen u. Zucker",
+        "instructionGerman": "Eiweiß schlagen u. Zucker",
         "timerMinutes": 0
       },
       {
@@ -17609,7 +17609,7 @@
       {
         "stepNumber": 4,
         "instructionEnglish": "Fold the yolk mousse into the melted chocolate, then gently fold in mocha, rum, whipped egg whites, and whipped cream.",
-        "instructionGerman": "Dottermousse in Schoko, Mokka, Rum, Eischnee und Sahne unterr\u00fchren",
+        "instructionGerman": "Dottermousse in Schoko, Mokka, Rum, Eischnee und Sahne unterrühren",
         "timerMinutes": 0
       }
     ],
@@ -17837,7 +17837,7 @@
         "name": "Orange liqueur",
         "amount": "",
         "unit": "",
-        "nameGerman": "Orangenlik\u00f6r",
+        "nameGerman": "Orangenlikör",
         "nameEnglish": "Orange liqueur",
         "isOptional": true,
         "group": "Assembly"
@@ -17856,14 +17856,14 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Beat butter and sugar until fluffy, then mix in the egg yolks, flour, and orange zest. Alternatively, use a piping bag if desired.",
-        "instructionGerman": "Bu + Zu schaumig r\u00fchren + Dotter + Mehl, Spritzsack.",
+        "instructionGerman": "Bu + Zu schaumig rühren + Dotter + Mehl, Spritzsack.",
         "timerMinutes": 0,
         "tip": "Can be piped using a piping bag (Spritzsack)."
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Pipe or shape cookies, bake, and once cooled, sandwich two cookies together with orange marmalade (mixed with a bit of orange liqueur if desired).",
-        "instructionGerman": "Mit Orangenmarmelade + Orangenlik\u00f6r, 2 Kekse mit Schokoglasur verzieren.",
+        "instructionGerman": "Mit Orangenmarmelade + Orangenlikör, 2 Kekse mit Schokoglasur verzieren.",
         "timerMinutes": 0,
         "tip": "Decorate two cookies together with chocolate glaze."
       }
@@ -17966,8 +17966,8 @@
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "Bake at 220\u00b0 for 10 min.",
-        "instructionGerman": "Bake at 220\u00b0 for 10 min.",
+        "instructionEnglish": "Bake at 220° for 10 min.",
+        "instructionGerman": "Bake at 220° for 10 min.",
         "timerMinutes": 10
       }
     ],
@@ -17991,7 +17991,7 @@
     "titleGerman": "",
     "titleEnglish": "Coconut-Oatmeal Cookies",
     "category": "Baking & Desserts",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 20,
     "cookTimeMinutes": 12,
     "difficulty": "Medium",
@@ -18016,7 +18016,7 @@
         "name": "White Sugar",
         "amount": "100",
         "unit": "g",
-        "nameGerman": "wei\u00dfer Zucker",
+        "nameGerman": "weißer Zucker",
         "nameEnglish": "White Sugar",
         "isOptional": false
       },
@@ -18089,25 +18089,25 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Cream butter and sugar until fluffy.",
-        "instructionGerman": "Butter + Zucker schaumig r\u00fchren.",
+        "instructionGerman": "Butter + Zucker schaumig rühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "Stir in eggs one by one.",
-        "instructionGerman": "Eier einzeln gut unterr\u00fchren.",
+        "instructionGerman": "Eier einzeln gut unterrühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
         "instructionEnglish": "Mix dry ingredients and stir them into the wet mixture.",
-        "instructionGerman": "Trockene Zutaten mischen + unterr\u00fchren.",
+        "instructionGerman": "Trockene Zutaten mischen + unterrühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "Place teaspoon-sized portions of dough onto a greased baking sheet and bake at 180\u00b0C for about 12 minutes.",
-        "instructionGerman": "Teig in teel\u00f6ffelgro\u00dfe Portionen auf gefettetes Backblech setzen und bei 180\u00b0C etwa 12 Min backen.",
+        "instructionEnglish": "Place teaspoon-sized portions of dough onto a greased baking sheet and bake at 180°C for about 12 minutes.",
+        "instructionGerman": "Teig in teelöffelgroße Portionen auf gefettetes Backblech setzen und bei 180°C etwa 12 Min backen.",
         "timerMinutes": 12
       }
     ],
@@ -18131,7 +18131,7 @@
     "titleGerman": "",
     "titleEnglish": "Basic Sauce",
     "category": "Sauces & Condiments",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 10,
     "cookTimeMinutes": 10,
     "difficulty": "Easy",
@@ -18338,8 +18338,8 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "Saut\u00e9 chopped onion in butter.",
-        "instructionGerman": "Saut\u00e9 chopped onion in butter.",
+        "instructionEnglish": "Sauté chopped onion in butter.",
+        "instructionGerman": "Sauté chopped onion in butter.",
         "timerMinutes": 0
       },
       {
@@ -18538,7 +18538,7 @@
     "titleGerman": "",
     "titleEnglish": "Italian Salad",
     "category": "Salads & Starters",
-    "servings": "46 servings",
+    "servings": "4-6 servings",
     "prepTimeMinutes": 25,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -18555,7 +18555,7 @@
         "name": "Cooked yellow beets",
         "amount": "",
         "unit": "",
-        "nameGerman": "gelbe R\u00fcben - gekocht",
+        "nameGerman": "gelbe Rüben - gekocht",
         "nameEnglish": "Cooked yellow beets",
         "isOptional": false
       },
@@ -18579,7 +18579,7 @@
         "name": "Tart apples",
         "amount": "3",
         "unit": "",
-        "nameGerman": "s\u00e4uerliche \u00c4pfel",
+        "nameGerman": "säuerliche Äpfel",
         "nameEnglish": "Tart apples",
         "isOptional": false
       },
@@ -18612,7 +18612,7 @@
         "name": "Oil",
         "amount": "1/8",
         "unit": "liter",
-        "nameGerman": "\u00d6l",
+        "nameGerman": "Öl",
         "nameEnglish": "Oil",
         "isOptional": false,
         "group": "Mayonnaise"
@@ -18648,7 +18648,7 @@
         "name": "Broth",
         "amount": "",
         "unit": "",
-        "nameGerman": "Suppenbr\u00fche",
+        "nameGerman": "Suppenbrühe",
         "nameEnglish": "Broth",
         "isOptional": false
       }
@@ -18657,19 +18657,19 @@
       {
         "stepNumber": 1,
         "instructionEnglish": "Prepare all main ingredients: Dice or slice the potatoes, yellow beets, celery, apples, pickles, and sausage as desired.",
-        "instructionGerman": "Kartoffeln, gelbe R\u00fcben, Sellerie, \u00c4pfel, Essiggurken und Wurst nach Belieben w\u00fcrfeln oder schneiden.",
+        "instructionGerman": "Kartoffeln, gelbe Rüben, Sellerie, Äpfel, Essiggurken und Wurst nach Belieben würfeln oder schneiden.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
         "instructionEnglish": "For the mayonnaise dressing, whisk together the egg yolks, oil, mustard, salt, and pepper until well combined.",
-        "instructionGerman": "F\u00fcr die Mayonnaise-Dressing, Dotter, \u00d6l, Senf, Salz und Pfeffer gut verr\u00fchren.",
+        "instructionGerman": "Für die Mayonnaise-Dressing, Dotter, Öl, Senf, Salz und Pfeffer gut verrühren.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
         "instructionEnglish": "Combine all prepared main ingredients in a large bowl. Add the mayonnaise dressing and mix thoroughly. Gradually add broth until the desired consistency is reached.",
-        "instructionGerman": "Alle vorbereiteten Hauptzutaten in einer gro\u00dfen Sch\u00fcssel vermischen. Die Mayonnaise-Dressing hinzuf\u00fcgen und gut verr\u00fchren. Nach und nach Suppenbr\u00fche hinzuf\u00fcgen, bis die gew\u00fcnschte Konsistenz erreicht ist.",
+        "instructionGerman": "Alle vorbereiteten Hauptzutaten in einer großen Schüssel vermischen. Die Mayonnaise-Dressing hinzufügen und gut verrühren. Nach und nach Suppenbrühe hinzufügen, bis die gewünschte Konsistenz erreicht ist.",
         "timerMinutes": 0
       }
     ],
@@ -18723,7 +18723,7 @@
         "group": "Noodle Dough"
       },
       {
-        "name": "Aged Alpine Cheese (Gruy\u00e8re or Bergk\u00e4se)",
+        "name": "Aged Alpine Cheese (Gruyère or Bergkäse)",
         "amount": "150",
         "unit": "g",
         "nameEnglish": "Aged Alpine Cheese",
@@ -18890,8 +18890,8 @@
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "Bake sponge at 175\u00b0C (350\u00b0F) for 30-35 minutes. Once cooled, slice horizontally into three even cake discs.",
-        "instructionGerman": "Bake sponge at 175\u00b0C (350\u00b0F) for 30-35 minutes. Once cooled, slice horizontally into three even cake discs.",
+        "instructionEnglish": "Bake sponge at 175°C (350°F) for 30-35 minutes. Once cooled, slice horizontally into three even cake discs.",
+        "instructionGerman": "Bake sponge at 175°C (350°F) for 30-35 minutes. Once cooled, slice horizontally into three even cake discs.",
         "timerMinutes": 32
       },
       {
@@ -18933,7 +18933,7 @@
     "titleGerman": "",
     "titleEnglish": "Easy Indian Mint Sauce (Restaurant Style Pudina Chutney)",
     "category": "Family Classics",
-    "servings": "681 servings",
+    "servings": "6-8 servings",
     "prepTimeMinutes": 10,
     "cookTimeMinutes": 30,
     "difficulty": "Easy",
@@ -19082,11 +19082,11 @@
     "difficulty": "Advanced",
     "ingredients": [
       {
-        "name": "/ 1.3lbs\u00a0boneless skinless\u00a0Chicken Thighs,\u00a0diced into bite-sized pieces",
+        "name": "/ 1.3lbs boneless skinless Chicken Thighs, diced into bite-sized pieces",
         "amount": "600",
         "unit": "g",
-        "nameGerman": "/ 1.3lbs\u00a0boneless skinless\u00a0H\u00e4hnchen Thighs,\u00a0diced into bite-sized pieces",
-        "nameEnglish": "/ 1.3lbs\u00a0boneless skinless\u00a0Chicken Thighs,\u00a0diced into bite-sized pieces",
+        "nameGerman": "/ 1.3lbs boneless skinless Hähnchen Thighs, diced into bite-sized pieces",
+        "nameEnglish": "/ 1.3lbs boneless skinless Chicken Thighs, diced into bite-sized pieces",
         "isOptional": false
       },
       {
@@ -19098,75 +19098,75 @@
         "isOptional": false
       },
       {
-        "name": "+ 2 tsp\u00a0Light Soy Sauce",
+        "name": "+ 2 tsp Light Soy Sauce",
         "amount": "1",
         "unit": "tbsp",
-        "nameGerman": "+ 2 tsp\u00a0Light Soy Sauce",
-        "nameEnglish": "+ 2 tsp\u00a0Light Soy Sauce",
+        "nameGerman": "+ 2 tsp Light Soy Sauce",
+        "nameEnglish": "+ 2 tsp Light Soy Sauce",
         "isOptional": false
       },
       {
-        "name": "/ 1/3 cup\u00a0Plain Flour",
+        "name": "/ 1/3 cup Plain Flour",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "/ 1/3 cup\u00a0Plain Mehl",
-        "nameEnglish": "/ 1/3 cup\u00a0Plain Flour",
+        "nameGerman": "/ 1/3 cup Plain Mehl",
+        "nameEnglish": "/ 1/3 cup Plain Flour",
         "isOptional": false
       },
       {
-        "name": "/ 1/2 cup\u00a0Veg Oil\u00a0(for frying)",
+        "name": "/ 1/2 cup Veg Oil (for frying)",
         "amount": "120",
         "unit": "ml",
-        "nameGerman": "/ 1/2 cup\u00a0Veg Oil\u00a0(for frying)",
-        "nameEnglish": "/ 1/2 cup\u00a0Veg Oil\u00a0(for frying)",
+        "nameGerman": "/ 1/2 cup Veg Oil (for frying)",
+        "nameEnglish": "/ 1/2 cup Veg Oil (for frying)",
         "isOptional": false
       },
       {
-        "name": "/ 7oz\u00a0Unsalted Cashew Nuts",
+        "name": "/ 7oz Unsalted Cashew Nuts",
         "amount": "200",
         "unit": "g",
-        "nameGerman": "/ 7oz\u00a0UnSalzed Cashew Nuts",
-        "nameEnglish": "/ 7oz\u00a0Unsalted Cashew Nuts",
+        "nameGerman": "/ 7oz UnSalzed Cashew Nuts",
+        "nameEnglish": "/ 7oz Unsalted Cashew Nuts",
         "isOptional": false
       },
       {
-        "name": "medium\u00a0White Onions,\u00a0halved then diced into 1/4s (pull layers apart)",
+        "name": "medium White Onions, halved then diced into 1/4s (pull layers apart)",
         "amount": "2",
         "unit": "",
-        "nameGerman": "medium\u00a0White Zwiebeln,\u00a0halved then diced into 1/4s (pull layers apart)",
-        "nameEnglish": "medium\u00a0White Onions,\u00a0halved then diced into 1/4s (pull layers apart)",
+        "nameGerman": "medium White Zwiebeln, halved then diced into 1/4s (pull layers apart)",
+        "nameEnglish": "medium White Onions, halved then diced into 1/4s (pull layers apart)",
         "isOptional": false
       },
       {
-        "name": "medium\u00a0Peppers,\u00a0I use 1 red 1 green (diced into pieces to similar size as the onion)",
+        "name": "medium Peppers, I use 1 red 1 green (diced into pieces to similar size as the onion)",
         "amount": "2",
         "unit": "",
-        "nameGerman": "medium\u00a0Peppers,\u00a0I use 1 red 1 green (diced into pieces to similar size as the Zwiebel)",
-        "nameEnglish": "medium\u00a0Peppers,\u00a0I use 1 red 1 green (diced into pieces to similar size as the onion)",
+        "nameGerman": "medium Peppers, I use 1 red 1 green (diced into pieces to similar size as the Zwiebel)",
+        "nameEnglish": "medium Peppers, I use 1 red 1 green (diced into pieces to similar size as the onion)",
         "isOptional": false
       },
       {
-        "name": "Garlic,\u00a0finely diced",
+        "name": "Garlic, finely diced",
         "amount": "4",
         "unit": "cloves",
-        "nameGerman": "Knoblauch,\u00a0finely diced",
-        "nameEnglish": "Garlic,\u00a0finely diced",
+        "nameGerman": "Knoblauch, finely diced",
+        "nameEnglish": "Garlic, finely diced",
         "isOptional": false
       },
       {
-        "name": "Red Chillies,\u00a0deseeded if you want to reduce spice",
+        "name": "Red Chillies, deseeded if you want to reduce spice",
         "amount": "2",
         "unit": "",
-        "nameGerman": "Red Chillies,\u00a0deseeded if you want to reduce spice",
-        "nameEnglish": "Red Chillies,\u00a0deseeded if you want to reduce spice",
+        "nameGerman": "Red Chillies, deseeded if you want to reduce spice",
+        "nameEnglish": "Red Chillies, deseeded if you want to reduce spice",
         "isOptional": false
       },
       {
-        "name": "ring Onion,\u00a0separated into firm white part and green part, then chopped into 2.5cm/1\u201d pieces",
+        "name": "ring Onion, separated into firm white part and green part, then chopped into 2.5cm/1” pieces",
         "amount": "3",
         "unit": "spoon",
-        "nameGerman": "ring Zwiebel,\u00a0separated into firm white part and green part, then chopped into 2.5cm/1\u201d pieces",
-        "nameEnglish": "ring Onion,\u00a0separated into firm white part and green part, then chopped into 2.5cm/1\u201d pieces",
+        "nameGerman": "ring Zwiebel, separated into firm white part and green part, then chopped into 2.5cm/1” pieces",
+        "nameEnglish": "ring Onion, separated into firm white part and green part, then chopped into 2.5cm/1” pieces",
         "isOptional": false
       },
       {
@@ -19186,11 +19186,11 @@
         "isOptional": false
       },
       {
-        "name": "Cooked Rice,\u00a0for serving",
+        "name": "Cooked Rice, for serving",
         "amount": "",
         "unit": "",
-        "nameGerman": "Cooked Rice,\u00a0for serving",
-        "nameEnglish": "Cooked Rice,\u00a0for serving",
+        "nameGerman": "Cooked Rice, for serving",
+        "nameEnglish": "Cooked Rice, for serving",
         "isOptional": false
       },
       {
@@ -19202,11 +19202,11 @@
         "isOptional": false
       },
       {
-        "name": "/ 1.3lbs\u00a0boneless skinless\u00a0Chicken Thighs,\u00a0diced into bite-sized pieces",
+        "name": "/ 1.3lbs boneless skinless Chicken Thighs, diced into bite-sized pieces",
         "amount": "600",
         "unit": "g",
-        "nameGerman": "/ 1.3lbs\u00a0boneless skinless\u00a0H\u00e4hnchen Thighs,\u00a0diced into bite-sized pieces",
-        "nameEnglish": "/ 1.3lbs\u00a0boneless skinless\u00a0Chicken Thighs,\u00a0diced into bite-sized pieces",
+        "nameGerman": "/ 1.3lbs boneless skinless Hähnchen Thighs, diced into bite-sized pieces",
+        "nameEnglish": "/ 1.3lbs boneless skinless Chicken Thighs, diced into bite-sized pieces",
         "isOptional": false
       },
       {
@@ -19218,75 +19218,75 @@
         "isOptional": false
       },
       {
-        "name": "+ 2 tsp\u00a0Light Soy Sauce",
+        "name": "+ 2 tsp Light Soy Sauce",
         "amount": "1",
         "unit": "tbsp",
-        "nameGerman": "+ 2 tsp\u00a0Light Soy Sauce",
-        "nameEnglish": "+ 2 tsp\u00a0Light Soy Sauce",
+        "nameGerman": "+ 2 tsp Light Soy Sauce",
+        "nameEnglish": "+ 2 tsp Light Soy Sauce",
         "isOptional": false
       },
       {
-        "name": "/ 1/3 cup\u00a0Plain Flour",
+        "name": "/ 1/3 cup Plain Flour",
         "amount": "50",
         "unit": "g",
-        "nameGerman": "/ 1/3 cup\u00a0Plain Mehl",
-        "nameEnglish": "/ 1/3 cup\u00a0Plain Flour",
+        "nameGerman": "/ 1/3 cup Plain Mehl",
+        "nameEnglish": "/ 1/3 cup Plain Flour",
         "isOptional": false
       },
       {
-        "name": "/ 1/2 cup\u00a0Veg Oil\u00a0(for frying)",
+        "name": "/ 1/2 cup Veg Oil (for frying)",
         "amount": "120",
         "unit": "ml",
-        "nameGerman": "/ 1/2 cup\u00a0Veg Oil\u00a0(for frying)",
-        "nameEnglish": "/ 1/2 cup\u00a0Veg Oil\u00a0(for frying)",
+        "nameGerman": "/ 1/2 cup Veg Oil (for frying)",
+        "nameEnglish": "/ 1/2 cup Veg Oil (for frying)",
         "isOptional": false
       },
       {
-        "name": "/ 7oz\u00a0Unsalted Cashew Nuts",
+        "name": "/ 7oz Unsalted Cashew Nuts",
         "amount": "200",
         "unit": "g",
-        "nameGerman": "/ 7oz\u00a0UnSalzed Cashew Nuts",
-        "nameEnglish": "/ 7oz\u00a0Unsalted Cashew Nuts",
+        "nameGerman": "/ 7oz UnSalzed Cashew Nuts",
+        "nameEnglish": "/ 7oz Unsalted Cashew Nuts",
         "isOptional": false
       },
       {
-        "name": "medium\u00a0White Onions,\u00a0halved then diced into 1/4s (pull layers apart)",
+        "name": "medium White Onions, halved then diced into 1/4s (pull layers apart)",
         "amount": "2",
         "unit": "",
-        "nameGerman": "medium\u00a0White Zwiebeln,\u00a0halved then diced into 1/4s (pull layers apart)",
-        "nameEnglish": "medium\u00a0White Onions,\u00a0halved then diced into 1/4s (pull layers apart)",
+        "nameGerman": "medium White Zwiebeln, halved then diced into 1/4s (pull layers apart)",
+        "nameEnglish": "medium White Onions, halved then diced into 1/4s (pull layers apart)",
         "isOptional": false
       },
       {
-        "name": "medium\u00a0Peppers,\u00a0I use 1 red 1 green (diced into pieces to similar size as the onion)",
+        "name": "medium Peppers, I use 1 red 1 green (diced into pieces to similar size as the onion)",
         "amount": "2",
         "unit": "",
-        "nameGerman": "medium\u00a0Peppers,\u00a0I use 1 red 1 green (diced into pieces to similar size as the Zwiebel)",
-        "nameEnglish": "medium\u00a0Peppers,\u00a0I use 1 red 1 green (diced into pieces to similar size as the onion)",
+        "nameGerman": "medium Peppers, I use 1 red 1 green (diced into pieces to similar size as the Zwiebel)",
+        "nameEnglish": "medium Peppers, I use 1 red 1 green (diced into pieces to similar size as the onion)",
         "isOptional": false
       },
       {
-        "name": "Garlic,\u00a0finely diced",
+        "name": "Garlic, finely diced",
         "amount": "4",
         "unit": "cloves",
-        "nameGerman": "Knoblauch,\u00a0finely diced",
-        "nameEnglish": "Garlic,\u00a0finely diced",
+        "nameGerman": "Knoblauch, finely diced",
+        "nameEnglish": "Garlic, finely diced",
         "isOptional": false
       },
       {
-        "name": "Red Chillies,\u00a0deseeded if you want to reduce spice",
+        "name": "Red Chillies, deseeded if you want to reduce spice",
         "amount": "2",
         "unit": "",
-        "nameGerman": "Red Chillies,\u00a0deseeded if you want to reduce spice",
-        "nameEnglish": "Red Chillies,\u00a0deseeded if you want to reduce spice",
+        "nameGerman": "Red Chillies, deseeded if you want to reduce spice",
+        "nameEnglish": "Red Chillies, deseeded if you want to reduce spice",
         "isOptional": false
       },
       {
-        "name": "ring Onion,\u00a0separated into firm white part and green part, then chopped into 2.5cm/1\u201d pieces",
+        "name": "ring Onion, separated into firm white part and green part, then chopped into 2.5cm/1” pieces",
         "amount": "3",
         "unit": "spoon",
-        "nameGerman": "ring Zwiebel,\u00a0separated into firm white part and green part, then chopped into 2.5cm/1\u201d pieces",
-        "nameEnglish": "ring Onion,\u00a0separated into firm white part and green part, then chopped into 2.5cm/1\u201d pieces",
+        "nameGerman": "ring Zwiebel, separated into firm white part and green part, then chopped into 2.5cm/1” pieces",
+        "nameEnglish": "ring Onion, separated into firm white part and green part, then chopped into 2.5cm/1” pieces",
         "isOptional": false
       },
       {
@@ -19306,11 +19306,11 @@
         "isOptional": false
       },
       {
-        "name": "Cooked Rice,\u00a0for serving",
+        "name": "Cooked Rice, for serving",
         "amount": "",
         "unit": "",
-        "nameGerman": "Cooked Rice,\u00a0for serving",
-        "nameEnglish": "Cooked Rice,\u00a0for serving",
+        "nameGerman": "Cooked Rice, for serving",
+        "nameEnglish": "Cooked Rice, for serving",
         "isOptional": false
       },
       {
@@ -19325,26 +19325,26 @@
     "steps": [
       {
         "stepNumber": 1,
-        "instructionEnglish": "1\ufe0f\u20e3In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
-        "instructionGerman": "1\ufe0f\u20e3In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
+        "instructionEnglish": "1️⃣In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
+        "instructionGerman": "1️⃣In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 2,
-        "instructionEnglish": "2\ufe0f\u20e3Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they\u2019ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
-        "instructionGerman": "2\ufe0f\u20e3Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they\u2019ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
+        "instructionEnglish": "2️⃣Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they’ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
+        "instructionGerman": "2️⃣Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they’ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 3,
-        "instructionEnglish": "3\ufe0f\u20e3Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
-        "instructionGerman": "3\ufe0f\u20e3Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
+        "instructionEnglish": "3️⃣Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
+        "instructionGerman": "3️⃣Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
         "timerMinutes": 5
       },
       {
         "stepNumber": 4,
-        "instructionEnglish": "4\ufe0f\u20e3Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\"",
-        "instructionGerman": "4\ufe0f\u20e3Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\"",
+        "instructionEnglish": "4️⃣Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\"",
+        "instructionGerman": "4️⃣Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\"",
         "timerMinutes": 0
       },
       {
@@ -19355,8 +19355,8 @@
       },
       {
         "stepNumber": 6,
-        "instructionEnglish": "35K likes, 538 comments - dontgobaconmyheart_ on June 22, 2025: \"This is a gem of a recipe that I\u2019ve been devouring for many years! Hope you love it just as much as I do \ud83d\ude04 Chris x",
-        "instructionGerman": "35K likes, 538 comments - dontgobaconmyheart_ on June 22, 2025: \"This is a gem of a recipe that I\u2019ve been devouring for many years! Hope you love it just as much as I do \ud83d\ude04 Chris x",
+        "instructionEnglish": "35K likes, 538 comments - dontgobaconmyheart_ on June 22, 2025: \"This is a gem of a recipe that I’ve been devouring for many years! Hope you love it just as much as I do 😄 Chris x",
+        "instructionGerman": "35K likes, 538 comments - dontgobaconmyheart_ on June 22, 2025: \"This is a gem of a recipe that I’ve been devouring for many years! Hope you love it just as much as I do 😄 Chris x",
         "timerMinutes": 0
       },
       {
@@ -19367,26 +19367,26 @@
       },
       {
         "stepNumber": 8,
-        "instructionEnglish": "1\ufe0f\u20e3In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
-        "instructionGerman": "1\ufe0f\u20e3In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
+        "instructionEnglish": "1️⃣In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
+        "instructionGerman": "1️⃣In a large mixing bowl, combine the chicken with the white pepper + 2 tsp soy sauce. Mix in the flour until the chicken is fully coated.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 9,
-        "instructionEnglish": "2\ufe0f\u20e3Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they\u2019ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
-        "instructionGerman": "2\ufe0f\u20e3Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they\u2019ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
+        "instructionEnglish": "2️⃣Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they’ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
+        "instructionGerman": "2️⃣Heat the oil in a wok or large, deep frying pan/wok over a medium-high heat for a few mins. Once hot, add the cashews and fry until deep golden. Keep an eye on them, as they’ll burn quickly. Remove with a slotted spoon and place in a bowl to one side, leaving the oil behind.",
         "timerMinutes": 0
       },
       {
         "stepNumber": 10,
-        "instructionEnglish": "3\ufe0f\u20e3Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
-        "instructionGerman": "3\ufe0f\u20e3Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
+        "instructionEnglish": "3️⃣Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
+        "instructionGerman": "3️⃣Working in two batches, shake off any excess flour from the chicken and add it to the oil. Fry until golden and crisp on the outside and piping hot right through the centre (about 5 mins per batch). Remove each batch with a slotted spoon and set aside. Discard all but around 2 tbsp of oil (just eyeball it).",
         "timerMinutes": 5
       },
       {
         "stepNumber": 11,
-        "instructionEnglish": "4\ufe0f\u20e3Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\".",
-        "instructionGerman": "4\ufe0f\u20e3Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\".",
+        "instructionEnglish": "4️⃣Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\".",
+        "instructionGerman": "4️⃣Add the peppers, onions and garlic and fry for a couple of mins, then add the chilli and firm white parts of the spring onions and fry for a min longer. Stir in the chicken, then stir in the sugar, oyster sauce and remaining 1 tbsp soy sauce. Toss in the cashews and the rest of the spring onion. The sugar should have fully dissolved and the sauce should have a glossy texture that just lightly coats everything. Serve & enjoy!\".",
         "timerMinutes": 0
       },
       {

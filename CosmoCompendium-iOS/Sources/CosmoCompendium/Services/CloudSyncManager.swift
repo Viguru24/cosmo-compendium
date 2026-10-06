@@ -179,7 +179,8 @@ public final class CloudSyncManager {
                     }
 
                     let category = (item["category"] as? String) ?? "Family Classics"
-                    let servings = (item["servingsText"] as? String) ?? "\(item["servings"] ?? "4 servings")"
+                    let rawServings = (item["servingsText"] as? String) ?? "\(item["servings"] ?? "4 servings")"
+                    let servings = Self.normalizeServings(rawServings)
                     let prep = item["prepTimeMinutes"] as? Int ?? (item["prepTime"] as? Int ?? 20)
                     let cook = item["cookTimeMinutes"] as? Int ?? (item["cookTime"] as? Int ?? 30)
                     let diff = (item["difficulty"] as? String) ?? "Medium"
@@ -292,5 +293,49 @@ public final class CloudSyncManager {
             print("Failed to download cover photo \(cleanName): \(error)")
         }
         return nil
+    }
+
+    public static func normalizeServings(_ raw: String?) -> String {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return "4-6 servings"
+        }
+        let lower = raw.lowercased()
+        let mapping: [String: String] = [
+            "46": "4-6 servings",
+            "46 servings": "4-6 servings",
+            "810": "8-10 servings",
+            "810 servings": "8-10 servings",
+            "1012": "10-12 servings",
+            "1012 servings": "10-12 servings",
+            "68": "6-8 servings",
+            "68 servings": "6-8 servings",
+            "1618": "16-18 servings",
+            "1618 servings": "16-18 servings",
+            "3040": "30-40 cookies",
+            "3040 servings": "30-40 cookies",
+            "4125": "4-5 jars (approx 250ml each)",
+            "4125 servings": "4-5 jars (approx 250ml each)",
+            "8300": "8 jars (approx 300g each)",
+            "8300 servings": "8 jars (approx 300g each)",
+            "2200": "2-3 jars (approx 200g each)",
+            "2200 servings": "2-3 jars (approx 200g each)",
+            "90302": "4-6 jars (approx 300g each)",
+            "90302 servings": "4-6 jars (approx 300g each)",
+            "45152": "4-5 bottles (approx 150ml each)",
+            "45152 servings": "4-5 bottles (approx 150ml each)",
+            "1112": "1-2 jars (approx 500g each)",
+            "1112 servings": "1-2 jars (approx 500g each)",
+            "681": "6-8 servings",
+            "681 servings": "6-8 servings",
+            "2000": "Serves 8-10 (2kg batch)",
+            "2000 servings": "Serves 8-10 (2kg batch)",
+            "500": "4-5 jars (approx 500g each)",
+            "500 servings": "4-5 jars (approx 500g each)",
+            "200": "Makes about 40-50 pieces",
+            "200 servings": "Makes about 40-50 pieces",
+            "50": "Makes about 50 slices",
+            "50 servings": "Makes about 50 slices"
+        ]
+        return mapping[lower] ?? raw
     }
 }

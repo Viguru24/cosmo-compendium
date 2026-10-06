@@ -376,6 +376,7 @@ public struct SettingsView: View {
                         Button {
                             Task {
                                 isTestingApiKey = true
+                                GeminiRecipeService.shared.apiKey = geminiApiKey
                                 let res = await GeminiRecipeService.shared.testApiKey(geminiApiKey)
                                 apiTestResult = (res.0, res.1)
                                 isTestingApiKey = false

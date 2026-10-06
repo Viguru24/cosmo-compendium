@@ -881,7 +881,7 @@ public struct BookletView: View {
                 Button {
                     recipe.timesCooked += 1
                     try? modelContext.save()
-                    AudioEffectManager.shared.playSuccess()
+                    AudioEffectManager.shared.playToggle(enabled: true)
                 } label: {
                     HStack(spacing: 4) {
                         Text("🔥")
@@ -1067,7 +1067,7 @@ public struct BookletView: View {
             modelContext.insert(item)
         }
         try? modelContext.save()
-        AudioEffectManager.shared.playSuccess()
+        AudioEffectManager.shared.playToggle(enabled: true)
     }
 
     private func saveDishPhoto(_ image: UIImage) {
@@ -1102,11 +1102,68 @@ public struct BookletView: View {
     }
 
     private func exportPdf() {
-        let renderer = Image(uiImage: recipe.resolvedCoverImage ?? UIImage())
         let text = "\(recipe.displayTitle())\n\n" + recipe.ingredients.map { "- \($0.displayName()): \($0.amount) \($0.unit)" }.joined(separator: "\n") + "\n\n" + recipe.steps.map { "\($0.stepNumber). \($0.instructionEnglish)" }.joined(separator: "\n")
         pdfData = text.data(using: .utf8)
         isShowingShareSheet = true
     }
+}
+
+// Subsheet for German culinary glossary substitution
+struct GlossaryDetailSheet: View {
+    let item: GlossaryItem
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(item.germanName)
+                    .font(.system(size: 22, weight: .bold, design: .serif))
+                    .foregroundStyle(Color(red: 0x78 / 255.0, green: 0x35 / 255.0, blue: 0x0F / 255.0))
+
+                Text(item.englishName)
+                    .font(.system(size: 15, design: .serif))
+                    .italic()
+                    .foregroundStyle(.secondary)
+
+                Text(item.descriptionText)
+                    .font(.system(size: 14, design: .serif))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("RECOMMENDED SUBSTITUTES")
+                        .font(.system(size: 11, weight: .bold, design: .serif))
+                        .foregroundStyle(Color(red: 0x9A / 255.0, green: 0x34 / 255.0, blue: 0x12 / 255.0))
+
+                    ForEach(item.substitutes, id: \.self) { sub in
+                        Label(sub, systemImage: "arrow.triangle.swap")
+                            .font(.system(size: 13, design: .serif))
+                    }
+                }
+                .padding(12)
+                .background(Color(red: 0xFF / 255.0, green: 0xFA / 255.0, blue: 0xED / 255.0), in: RoundedRectangle(cornerRadius: 8))
+
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle("Glossary & Substitutes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Text to Speech Manager for Step-by-Step Read Aloud
@@ -1174,10 +1231,10 @@ public final class TextToSpeechManager: NSObject, ObservableObject, AVSpeechSynt
 // MARK: - Step Ingredient Matcher
 public struct MatchedStepIngredient: Identifiable {
     public var id: String { ingredient.id }
-    public let ingredient: Ingredient
+    public let ingredient: RecipeIngredient
     public let displayAmount: String
 
-    public init(ingredient: Ingredient, displayAmount: String) {
+    public init(ingredient: RecipeIngredient, displayAmount: String) {
         self.ingredient = ingredient
         self.displayAmount = displayAmount
     }
@@ -1196,7 +1253,7 @@ public enum StepIngredientMatcher {
 
     public static func findIngredients(
         in stepInstruction: String,
-        ingredients: [Ingredient],
+        ingredients: [RecipeIngredient],
         unitSystem: UnitSystem = .ukImperial,
         multiplier: Double = 1.0
     ) -> [MatchedStepIngredient] {
@@ -1211,10 +1268,10 @@ public enum StepIngredientMatcher {
             let amountStr = ing.convertedAmount(targetSystem: unitSystem, multiplier: multiplier)
 
             let candidateNames = [
-                ing.nameEnglish.lowercased(),
+                ing.nameEnglish?.lowercased(),
                 ing.name.lowercased(),
-                ing.nameGerman.lowercased()
-            ].filter { !$0.isEmpty }
+                ing.nameGerman?.lowercased()
+            ].compactMap { $0 }.filter { !$0.isEmpty }
 
             var matched = false
             for cand in candidateNames {

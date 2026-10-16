@@ -2620,6 +2620,72 @@ fun SettingsDialog(
                                 }
                             }
                         }
+                    // ==========================================
+                    // SECTION 6B: 🚀 SOVEREIGN OVER-THE-AIR (OTA) UPDATES
+                    // ==========================================
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFF0FDF4),
+                        border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+                        modifier = Modifier.fillMaxWidth().testTag("settings_ota_updates_section")
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CloudSync, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Sovereign Over-The-Air (OTA) Updates",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                                )
+                            }
+                            Text(
+                                text = "Updates are served directly from your sovereign VPS (api.cosmowhisper.com). Current build: v${com.example.data.AppUpdateManager(context).currentVersionName} (code ${com.example.data.AppUpdateManager(context).currentVersionCode}).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF166534)
+                            )
+                            var updateCheckStatus by remember { mutableStateOf<String?>(null) }
+                            var isCheckingUpdate by remember { mutableStateOf(false) }
+                            val otaScope = rememberCoroutineScope()
+
+                            if (updateCheckStatus != null) {
+                                Text(
+                                    text = updateCheckStatus!!,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color(0xFF15803D)
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    isCheckingUpdate = true
+                                    updateCheckStatus = "Connecting to sovereign VPS..."
+                                    otaScope.launch {
+                                        val mgr = com.example.data.AppUpdateManager(context)
+                                        val info = mgr.checkForUpdates()
+                                        isCheckingUpdate = false
+                                        if (info != null) {
+                                            updateCheckStatus = "New version ${info.versionName} available! Reopen the app or trigger update."
+                                        } else {
+                                            updateCheckStatus = "You are running the latest sovereign build (v${mgr.currentVersionName})."
+                                        }
+                                    }
+                                },
+                                enabled = !isCheckingUpdate,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (isCheckingUpdate) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Checking Sovereign VPS...", color = Color.White, fontSize = 12.sp)
+                                } else {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Check for Updates Now", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
 
                     // ==========================================

@@ -20,7 +20,7 @@ Double-click `Publish_Cooking_App_Compendium.bat` inside `C:\Users\louis\Desktop
 
 ### Option B: From Terminal / PowerShell
 ```powershell
-cd C:\Users\louis\Documents\GitHub\cosmo-compendium
+cd E:\Documents\GitHub\cookbook
 .\publish-update.ps1 -Notes "Culinary enhancements, updated recipes and performance fixes"
 ```
 

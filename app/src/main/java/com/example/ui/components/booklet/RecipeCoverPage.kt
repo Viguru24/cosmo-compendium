@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -158,21 +158,21 @@ fun RecipeCoverPage(
                 if (hasPhoto) {
                     Surface(
                         shape = CircleShape,
-                        color = Color(0x55000000),
-                        border = BorderStroke(0.75.dp, Color(0x4DFFFFFF)),
+                        color = Color(0x66000000),
+                        border = BorderStroke(1.dp, Color(0x66FFFFFF)),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(top = 16.dp, end = 16.dp)
-                            .size(32.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .clickable { showFullCoverPhotoDialog = true }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                Icons.Default.Fullscreen,
-                                contentDescription = "View Full Picture",
-                                tint = Color(0xFFF3E7DA),
-                                modifier = Modifier.size(18.dp)
+                                Icons.Default.ZoomIn,
+                                contentDescription = "Zoom Recipe Picture",
+                                tint = Color(0xFFFFD54F),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -420,55 +420,19 @@ fun RecipeCoverPage(
             }
         }
 
-        // Full Screen Cover Photo Modal
+        // Premium Full Screen Cover Photo Lightbox with Pinch-to-Zoom & Pan
         if (showFullCoverPhotoDialog && hasPhoto) {
-            Dialog(onDismissRequest = { showFullCoverPhotoDialog = false }) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF1E1610),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.88f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = recipe.getDisplayTitle(),
-                                color = Color(0xFFEADBCE),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = { showFullCoverPhotoDialog = false }) {
-                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val imgData = if (recipe.imageUri!!.startsWith("/") || recipe.imageUri!!.startsWith("file://")) {
-                            File(recipe.imageUri!!.removePrefix("file://"))
-                        } else {
-                            recipe.imageUri!!
-                        }
-                        AsyncImage(
-                            model = imgData,
-                            contentDescription = recipe.getDisplayTitle(),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
+            val imgData = if (recipe.imageUri!!.startsWith("/") || recipe.imageUri!!.startsWith("file://")) {
+                File(recipe.imageUri!!.removePrefix("file://"))
+            } else {
+                recipe.imageUri!!
             }
+            ZoomableImageLightboxDialog(
+                imageModel = imgData,
+                title = recipe.getDisplayTitle(),
+                subtitle = "Pinch to zoom • Drag to explore • Double-tap to expand",
+                onDismiss = { showFullCoverPhotoDialog = false }
+            )
         }
     }
 }

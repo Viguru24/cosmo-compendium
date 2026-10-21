@@ -231,3 +231,18 @@ fun FloatingKitchenTimerWidget(
     onAddMinute = onAddMinute,
     modifier = modifier
 )
+
+@Composable
+fun ZoomableImageLightboxDialog(
+    imageModel: Any?,
+    title: String = "Photo Inspection",
+    subtitle: String? = "Pinch to zoom • Drag to explore • Double-tap to expand",
+    onDismiss: () -> Unit,
+    onRotate: (() -> Unit)? = null
+) = com.example.ui.components.booklet.ZoomableImageLightboxDialog(
+    imageModel = imageModel,
+    title = title,
+    subtitle = subtitle,
+    onDismiss = onDismiss,
+    onRotate = onRotate
+)

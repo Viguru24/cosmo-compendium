@@ -1,4 +1,4 @@
-package com.example
+﻿package com.example
 
 import android.app.Activity
 import android.os.Bundle
@@ -8,12 +8,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -116,8 +117,6 @@ fun CookbookApp(viewModel: RecipeViewModel) {
     }
 
     val selectedRecipe by viewModel.selectedRecipe.collectAsStateWithLifecycle()
-    val selectedRecipeId = selectedRecipe?.id
-
     BackHandler(enabled = selectedRecipe != null) {
         if (viewModel.isCookMode.value) {
             viewModel.isCookMode.value = false
@@ -126,34 +125,36 @@ fun CookbookApp(viewModel: RecipeViewModel) {
         }
     }
 
-    AnimatedContent(
-        targetState = selectedRecipeId,
-        transitionSpec = {
-            if (targetState != null && initialState == null) {
-                slideInHorizontally { width -> width } + fadeIn() togetherWith
-                        slideOutHorizontally { width -> -width } + fadeOut()
-            } else if (targetState == null && initialState != null) {
-                slideInHorizontally { width -> -width } + fadeIn() togetherWith
-                        slideOutHorizontally { width -> width } + fadeOut()
-            } else {
-                fadeIn() togetherWith fadeOut()
+    var lastViewedRecipe by remember { mutableStateOf<com.example.data.local.RecipeEntity?>(null) }
+    if (selectedRecipe != null) {
+        lastViewedRecipe = selectedRecipe
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        BookshelfScreen(
+            viewModel = viewModel,
+            onRecipeClick = { clicked ->
+                viewModel.selectRecipe(clicked)
             }
-        },
-        label = "ScreenTransition"
-    ) { recipeId ->
-        if (recipeId == null) {
-            BookshelfScreen(
-                viewModel = viewModel,
-                onRecipeClick = { clicked ->
-                    viewModel.selectRecipe(clicked)
-                }
-            )
-        } else {
-            val currentRecipe = selectedRecipe
-            if (currentRecipe != null) {
+        )
+
+        AnimatedVisibility(
+            visible = selectedRecipe != null,
+            enter = slideInHorizontally(
+                initialOffsetX = { width -> width },
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 260, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = androidx.compose.animation.core.tween(durationMillis = 180)),
+            exit = slideOutHorizontally(
+                targetOffsetX = { width -> width },
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 220, easing = androidx.compose.animation.core.FastOutLinearInEasing)
+            ) + fadeOut(animationSpec = androidx.compose.animation.core.tween(durationMillis = 160)),
+            label = "RecipeDetailOverlay"
+        ) {
+            val recipeToDisplay = selectedRecipe ?: lastViewedRecipe
+            if (recipeToDisplay != null) {
                 BookletScreen(
                     viewModel = viewModel,
-                    recipe = currentRecipe,
+                    recipe = recipeToDisplay,
                     onBack = {
                         viewModel.selectRecipe(null)
                     }

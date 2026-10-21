@@ -1188,13 +1188,13 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     // Shopping list flows
     val shoppingItems: StateFlow<List<ShoppingItemEntity>> = repository.allShoppingItems.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = emptyList()
     )
 
     val uncheckedShoppingCount: StateFlow<Int> = repository.uncheckedShoppingCount.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = 0
     )
 
@@ -1229,7 +1229,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     // Total Recipe Count & Collection Statistics
     val totalRecipeCount: StateFlow<Int> = repository.allRecipes.map { it.size }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = 0
     )
 
@@ -1279,7 +1279,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = CookbookStats()
     )
 
@@ -1287,7 +1287,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         RecipeImageClassifier.computeStats(all)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = RecipePhotoStats()
     )
 
@@ -1319,7 +1319,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         counts
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = emptyMap()
     )
 
@@ -1335,13 +1335,13 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = emptyList()
     )
 
     val activeProfileTotalCount: StateFlow<Int> = activeProfileRecipes.map { it.size }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = 0
     )
 
@@ -1349,7 +1349,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         list.count { it.isFavorite }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = 0
     )
 
@@ -1378,7 +1378,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         foundCats.toList()
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = defaultCategories
     )
 
@@ -1393,22 +1393,38 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         counts
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = emptyMap()
     )
 
     val activeProfileDietaryCounts: StateFlow<Map<DietaryFilter, Int>> = activeProfileRecipes.map { list ->
         val counts = mutableMapOf<DietaryFilter, Int>()
         counts[DietaryFilter.ALL] = list.size
-        for (filter in DietaryFilter.values()) {
-            if (filter != DietaryFilter.ALL) {
-                counts[filter] = list.count { DietaryClassifier.matchesFilter(it, filter) }
-            }
+        var celiac = 0
+        var gf = 0
+        var veg = 0
+        var vegan = 0
+        var dairyFree = 0
+        var nutFree = 0
+        for (recipe in list) {
+            val analysis = DietaryClassifier.analyze(recipe)
+            if (analysis.isCeliacSafe) celiac++
+            if (analysis.isGlutenFree) gf++
+            if (analysis.isVegetarian) veg++
+            if (analysis.isVegan) vegan++
+            if (analysis.isDairyFree) dairyFree++
+            if (analysis.isNutFree) nutFree++
         }
+        counts[DietaryFilter.CELIAC_SAFE] = celiac
+        counts[DietaryFilter.GLUTEN_FREE] = gf
+        counts[DietaryFilter.VEGETARIAN] = veg
+        counts[DietaryFilter.VEGAN] = vegan
+        counts[DietaryFilter.DAIRY_FREE] = dairyFree
+        counts[DietaryFilter.NUT_FREE] = nutFree
         counts
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = emptyMap()
     )
 
@@ -1422,28 +1438,27 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         onlyFavorites,
         selectedDietaryFilter
     ) { (all, query, category), favOnly, dietaryFilter ->
+        val hasQuery = query.isNotBlank()
         val filtered = all.filter { recipe ->
-            val matchesCategory = if (category == "All") {
-                true
-            } else {
-                recipe.category.equals(category, ignoreCase = true) ||
-                    extractCategoriesFromRecipe(recipe.category)
-                        .any { it.equals(category, ignoreCase = true) }
+            if (favOnly && !recipe.isFavorite) return@filter false
+            if (dietaryFilter != DietaryFilter.ALL && !DietaryClassifier.matchesFilter(recipe, dietaryFilter)) return@filter false
+            if (category != "All") {
+                val matchesCategory = recipe.category.equals(category, ignoreCase = true) ||
+                        extractCategoriesFromRecipe(recipe.category).any { it.equals(category, ignoreCase = true) }
+                if (!matchesCategory) return@filter false
             }
-            val matchesFav = !favOnly || recipe.isFavorite
-            val matchesDietary = DietaryClassifier.matchesFilter(recipe, dietaryFilter)
-            val matchesQuery = com.example.ui.util.FuzzySearchHelper.matches(recipe, query)
-            matchesCategory && matchesFav && matchesDietary && matchesQuery
+            if (hasQuery && !com.example.ui.util.FuzzySearchHelper.matches(recipe, query)) return@filter false
+            true
         }
 
-        if (query.isNotBlank()) {
+        if (hasQuery) {
             filtered.sortedByDescending { com.example.ui.util.FuzzySearchHelper.score(it, query) }
         } else {
             filtered
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Lazily,
         initialValue = emptyList()
     )
 
@@ -1969,7 +1984,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     val recipesMissingPhotosCount: StateFlow<Int> = recipes.map { list ->
         list.count { RecipeImageClassifier.isMissingAiPhoto(it.imageUri) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     fun openBatchCoverDialog() {
         showBatchCoverDialog.value = true

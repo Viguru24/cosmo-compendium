@@ -478,56 +478,12 @@ fun RecipeLoreTableOfContentsPage(
     }
 
     if (showFullReferencePhotoDialog && !originalCardPath.isNullOrBlank()) {
-        Dialog(onDismissRequest = { showFullReferencePhotoDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF1E1610),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.85f)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Original Recipe Card Photo",
-                            color = Color(0xFFEADBCE),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (onRotateOriginalPhoto != null) {
-                                IconButton(onClick = { onRotateOriginalPhoto() }) {
-                                    Icon(
-                                        Icons.Default.Refresh,
-                                        contentDescription = "Rotate 90°",
-                                        tint = Color(0xFFEADBCE),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            IconButton(onClick = { showFullReferencePhotoDialog = false }) {
-                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AsyncImage(
-                        model = File(originalCardPath),
-                        contentDescription = "Original recipe photo reference",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            }
-        }
+        ZoomableImageLightboxDialog(
+            imageModel = File(originalCardPath),
+            title = "Original Recipe Card Photo",
+            subtitle = "Pinch to zoom handwriting & details • Drag to explore",
+            onDismiss = { showFullReferencePhotoDialog = false },
+            onRotate = onRotateOriginalPhoto
+        )
     }
 }

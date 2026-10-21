@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import com.example.data.model.getCharacteristicBadge
 import com.example.ui.components.CategoryManagerDialog
@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -238,8 +239,6 @@ fun BookshelfScreen(
     val activeProfileTotalCount by viewModel.activeProfileTotalCount.collectAsStateWithLifecycle()
     val activeProfileFavoritesCount by viewModel.activeProfileFavoritesCount.collectAsStateWithLifecycle()
     val activeProfileCategoryCounts by viewModel.activeProfileCategoryCounts.collectAsStateWithLifecycle()
-    val cookbookStats by viewModel.cookbookStats.collectAsStateWithLifecycle()
-    val recipePhotoStats by viewModel.recipePhotoStats.collectAsStateWithLifecycle()
     val selectedBatchFilter by viewModel.selectedBatchFilter.collectAsStateWithLifecycle()
     val isBatchGeneratingCovers by viewModel.isBatchGeneratingCovers.collectAsStateWithLifecycle()
     val batchCoverProgress by viewModel.batchCoverProgress.collectAsStateWithLifecycle()
@@ -254,6 +253,7 @@ fun BookshelfScreen(
     val selectedDietaryFilter by viewModel.selectedDietaryFilter.collectAsStateWithLifecycle()
     val activeProfileDietaryCounts by viewModel.activeProfileDietaryCounts.collectAsStateWithLifecycle()
 
+    val gridState = rememberLazyGridState()
     var showScanSheet by remember { mutableStateOf(false) }
     var recipePendingDelete by remember { mutableStateOf<RecipeEntity?>(null) }
     var recipePendingShare by remember { mutableStateOf<RecipeEntity?>(null) }
@@ -536,6 +536,7 @@ fun BookshelfScreen(
                     }
                     LazyVerticalGrid(
                         columns = columns,
+                        state = gridState,
                         contentPadding = PaddingValues(
                             start = if (isTablet) 24.dp else 12.dp,
                             end = if (isTablet) 24.dp else 12.dp,
@@ -654,6 +655,7 @@ fun BookshelfScreen(
 
         // Settings Dialog
         if (isSettingsOpen) {
+            val cookbookStats by viewModel.cookbookStats.collectAsStateWithLifecycle()
             SettingsDialog(
                 currentLanguage = languageMode,
                 onLanguageChange = { viewModel.setLanguageMode(it) },
@@ -779,6 +781,7 @@ fun BookshelfScreen(
 
         // Batch AI Photo Studio Dialog
         if (showBatchCoverDialog) {
+            val recipePhotoStats by viewModel.recipePhotoStats.collectAsStateWithLifecycle()
             BatchCoverGenerationDialog(
                 isGenerating = isBatchGeneratingCovers,
                 progress = batchCoverProgress,

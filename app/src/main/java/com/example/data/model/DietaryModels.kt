@@ -186,6 +186,27 @@ data class RecipeDietaryAnalysis(
  */
 object DietaryClassifier {
 
+    private class FastKeywordMatcher(keywords: Set<String>) {
+        val singleWords: Set<String> = keywords.filter { !it.contains(' ') && !it.contains('-') }.map { it.lowercase(Locale.ROOT) }.toSet()
+        val phrases: List<String> = keywords.filter { it.contains(' ') || it.contains('-') }.map { it.lowercase(Locale.ROOT) }
+
+        fun matches(textLower: String, words: Set<String>): Boolean {
+            for (w in words) {
+                if (w in singleWords) return true
+            }
+            for (phrase in phrases) {
+                if (textLower.contains(phrase)) return true
+            }
+            return false
+        }
+    }
+
+    private val analysisCache = java.util.concurrent.ConcurrentHashMap<Long, Pair<Int, RecipeDietaryAnalysis>>()
+
+    fun clearCache() {
+        analysisCache.clear()
+    }
+
     // --- GLUTEN KEYWORDS ---
     private val GLUTEN_KEYWORDS = setOf(
         "flour", "wheat", "all-purpose", "all purpose", "bread flour", "pastry flour", "cake flour",
@@ -299,10 +320,40 @@ object DietaryClassifier {
         "sesam", "sesamkörner", "sesamöl"
     )
 
+    private val GLUTEN_MATCHER by lazy { FastKeywordMatcher(GLUTEN_KEYWORDS) }
+    private val CELIAC_RISK_MATCHER by lazy { FastKeywordMatcher(CELIAC_RISK_KEYWORDS) }
+    private val DAIRY_MATCHER by lazy { FastKeywordMatcher(DAIRY_KEYWORDS) }
+    private val MEAT_MATCHER by lazy { FastKeywordMatcher(MEAT_KEYWORDS) }
+    private val SEAFOOD_MATCHER by lazy { FastKeywordMatcher(SEAFOOD_KEYWORDS) }
+    private val EGG_MATCHER by lazy { FastKeywordMatcher(EGG_KEYWORDS) }
+    private val PEANUT_MATCHER by lazy { FastKeywordMatcher(PEANUT_KEYWORDS) }
+    private val TREE_NUT_MATCHER by lazy { FastKeywordMatcher(TREE_NUT_KEYWORDS) }
+    private val SOY_MATCHER by lazy { FastKeywordMatcher(SOY_KEYWORDS) }
+    private val SESAME_MATCHER by lazy { FastKeywordMatcher(SESAME_KEYWORDS) }
+    private val FISH_MATCHER by lazy { FastKeywordMatcher(setOf("fish", "fisch", "salmon", "lachs", "trout", "forelle", "tuna", "thunfisch", "cod", "kabeljau")) }
+    private val SHELLFISH_MATCHER by lazy { FastKeywordMatcher(setOf("shrimp", "garnele", "garnelen", "prawn", "crab", "krabbe", "lobster", "hummer", "clam", "mussel", "muschel", "oyster", "auster")) }
+    private val HIGH_CARBS_MATCHER by lazy { FastKeywordMatcher(setOf("sugar", "zucker", "honey", "honig", "potato", "kartoffel", "rice", "reis", "pasta", "nudeln", "corn", "mais")) }
+
     /**
-     * Complete dietary analysis of a recipe.
+     * Complete dietary analysis of a recipe (memoized with high-speed token matching).
      */
     fun analyze(recipe: RecipeEntity): RecipeDietaryAnalysis {
+        val cacheKey = recipe.id
+        val contentHash = recipe.ingredients.hashCode() xor recipe.title.hashCode() xor recipe.notes.hashCode()
+        if (cacheKey > 0) {
+            val cached = analysisCache[cacheKey]
+            if (cached != null && cached.first == contentHash) {
+                return cached.second
+            }
+        }
+        val computed = computeAnalysis(recipe)
+        if (cacheKey > 0) {
+            analysisCache[cacheKey] = Pair(contentHash, computed)
+        }
+        return computed
+    }
+
+    private fun computeAnalysis(recipe: RecipeEntity): RecipeDietaryAnalysis {
         val ingredientTokens = recipe.ingredients.map { ing ->
             listOfNotNull(
                 ing.name,
@@ -314,43 +365,44 @@ object DietaryClassifier {
         val allIngredientsJoined = ingredientTokens.joinToString(" ")
         val titleTokens = "${recipe.title} ${recipe.titleEnglish} ${recipe.titleGerman}".lowercase(Locale.ROOT)
         val combinedText = "$titleTokens $allIngredientsJoined ${recipe.category.lowercase(Locale.ROOT)} ${recipe.notes.lowercase(Locale.ROOT)}"
+        val wordsSet = combinedText.split(Regex("[^\\p{L}\\p{Nd}]+")).filter { it.isNotEmpty() }.toSet()
 
         // 1. Detect Allergens
         val allergens = mutableSetOf<Allergen>()
 
-        val hasGluten = containsKeyword(combinedText, GLUTEN_KEYWORDS)
+        val hasGluten = GLUTEN_MATCHER.matches(combinedText, wordsSet)
         if (hasGluten) allergens.add(Allergen.GLUTEN)
 
-        val hasDairy = containsKeyword(combinedText, DAIRY_KEYWORDS)
+        val hasDairy = DAIRY_MATCHER.matches(combinedText, wordsSet)
         if (hasDairy) allergens.add(Allergen.DAIRY)
 
-        val hasEggs = containsKeyword(combinedText, EGG_KEYWORDS)
+        val hasEggs = EGG_MATCHER.matches(combinedText, wordsSet)
         if (hasEggs) allergens.add(Allergen.EGGS)
 
-        val hasPeanuts = containsKeyword(combinedText, PEANUT_KEYWORDS)
+        val hasPeanuts = PEANUT_MATCHER.matches(combinedText, wordsSet)
         if (hasPeanuts) allergens.add(Allergen.PEANUTS)
 
-        val hasTreeNuts = containsKeyword(combinedText, TREE_NUT_KEYWORDS)
+        val hasTreeNuts = TREE_NUT_MATCHER.matches(combinedText, wordsSet)
         if (hasTreeNuts) allergens.add(Allergen.TREE_NUTS)
 
-        val hasSoy = containsKeyword(combinedText, SOY_KEYWORDS)
+        val hasSoy = SOY_MATCHER.matches(combinedText, wordsSet)
         if (hasSoy) allergens.add(Allergen.SOY)
 
-        val hasFish = containsKeyword(combinedText, setOf("fish", "fisch", "salmon", "lachs", "trout", "forelle", "tuna", "thunfisch", "cod", "kabeljau"))
+        val hasFish = FISH_MATCHER.matches(combinedText, wordsSet)
         if (hasFish) allergens.add(Allergen.FISH)
 
-        val hasShellfish = containsKeyword(combinedText, setOf("shrimp", "garnele", "garnelen", "prawn", "crab", "krabbe", "lobster", "hummer", "clam", "mussel", "muschel", "oyster", "auster"))
+        val hasShellfish = SHELLFISH_MATCHER.matches(combinedText, wordsSet)
         if (hasShellfish) allergens.add(Allergen.SHELLFISH)
 
-        val hasSesame = containsKeyword(combinedText, SESAME_KEYWORDS)
+        val hasSesame = SESAME_MATCHER.matches(combinedText, wordsSet)
         if (hasSesame) allergens.add(Allergen.SESAME)
 
-        val hasMeat = containsKeyword(combinedText, MEAT_KEYWORDS)
-        val hasSeafood = containsKeyword(combinedText, SEAFOOD_KEYWORDS)
+        val hasMeat = MEAT_MATCHER.matches(combinedText, wordsSet)
+        val hasSeafood = SEAFOOD_MATCHER.matches(combinedText, wordsSet)
 
         // 2. Celiac Risk Detection
         val celiacWarnings = mutableListOf<String>()
-        val hasCeliacRiskIngredients = containsKeyword(combinedText, CELIAC_RISK_KEYWORDS)
+        val hasCeliacRiskIngredients = CELIAC_RISK_MATCHER.matches(combinedText, wordsSet)
 
         if (hasGluten) {
             celiacWarnings.add("Contains gluten-containing grains (wheat, barley, rye, or spelt)")
@@ -414,7 +466,7 @@ object DietaryClassifier {
         }
 
         // H. Keto / Low-Carb: Gluten-free, no potatoes, no rice, no sugar, no bread
-        val hasHighCarbs = hasGluten || containsKeyword(combinedText, setOf("sugar", "zucker", "honey", "honig", "potato", "kartoffel", "rice", "reis", "pasta", "nudeln", "corn", "mais"))
+        val hasHighCarbs = hasGluten || HIGH_CARBS_MATCHER.matches(combinedText, wordsSet)
         if (!hasHighCarbs && (hasMeat || hasFish || hasDairy || hasEggs) && recipe.ingredients.isNotEmpty()) {
             tags.add(DietaryTag.KETO)
         }
@@ -444,11 +496,14 @@ object DietaryClassifier {
     }
 
     private fun containsKeyword(text: String, keywords: Set<String>): Boolean {
+        val textLower = text.lowercase(Locale.ROOT)
+        val words = textLower.split(Regex("[^\\p{L}\\p{Nd}]+")).filter { it.isNotEmpty() }.toSet()
         for (kw in keywords) {
-            // Regex boundary check for exact word matching
-            val pattern = "\\b${Regex.escape(kw)}\\b".toRegex(RegexOption.IGNORE_CASE)
-            if (pattern.containsMatchIn(text)) {
-                return true
+            val kwLower = kw.lowercase(Locale.ROOT)
+            if (kwLower.contains(' ') || kwLower.contains('-')) {
+                if (textLower.contains(kwLower)) return true
+            } else {
+                if (words.contains(kwLower)) return true
             }
         }
         return false

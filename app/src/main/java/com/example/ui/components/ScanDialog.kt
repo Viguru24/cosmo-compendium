@@ -94,6 +94,7 @@ import java.io.File
 import com.example.data.local.RecipeEntity
 import com.example.data.model.RecipeIngredient
 import com.example.data.model.RecipeStep
+import com.example.ui.components.booklet.ZoomableImageLightboxDialog
 import com.example.ui.theme.SageGreen
 import com.example.ui.theme.TerracottaPrimary
 
@@ -1587,45 +1588,12 @@ fun RecipeReviewAndSaveView(
     }
 
     if (showFullImageDialog && !initialDraft.imageUri.isNullOrBlank()) {
-        Dialog(onDismissRequest = { showFullImageDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF1E1610),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.85f)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "📸 Captured Recipe Card",
-                            color = Color(0xFFFEF3C7),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        IconButton(onClick = { showFullImageDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AsyncImage(
-                        model = File(initialDraft.imageUri),
-                        contentDescription = "Original recipe photo reference",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            }
-        }
+        ZoomableImageLightboxDialog(
+            imageModel = File(initialDraft.imageUri),
+            title = "📸 Captured Recipe Card",
+            subtitle = "Pinch to zoom • Drag to explore scanned card details",
+            onDismiss = { showFullImageDialog = false }
+        )
     }
 }
 

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -48,6 +51,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.DietaryFilter
 import com.example.data.model.LanguageMode
 import com.example.ui.components.VoiceInputOrb
 import com.example.ui.theme.TerracottaPrimary
@@ -66,8 +70,11 @@ fun BookshelfSearchBar(
     activeProfileCategoryCounts: Map<String, Int>,
     totalRecipeCount: Int,
     languageMode: LanguageMode,
+    selectedDietaryFilter: DietaryFilter = DietaryFilter.ALL,
+    activeProfileDietaryCounts: Map<DietaryFilter, Int> = emptyMap(),
     onSelectFavorites: () -> Unit,
     onSelectCategory: (String) -> Unit,
+    onSelectDietaryFilter: (DietaryFilter) -> Unit = {},
     onExportCompleteCookbookPdf: () -> Unit,
     onOpenCategoryManager: () -> Unit,
     modifier: Modifier = Modifier
@@ -418,6 +425,78 @@ fun BookshelfSearchBar(
                                     onOpenCategoryManager()
                                 }
                             )
+                        }
+                    }
+                }
+
+                // Dietary Filter Chips (Celiac-Safe, Vegetarian, Vegan, Gluten-Free, Dairy-Free, Nut-Free)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("dietary_filter_row"),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(DietaryFilter.entries) { filter ->
+                        val isSelected = selectedDietaryFilter == filter
+                        val count = activeProfileDietaryCounts[filter] ?: 0
+                        val isAll = filter == DietaryFilter.ALL
+
+                        val activeColor = when (filter) {
+                            DietaryFilter.ALL -> TerracottaPrimary
+                            DietaryFilter.CELIAC_SAFE -> Color(0xFF047857)
+                            DietaryFilter.GLUTEN_FREE -> Color(0xFFB45309)
+                            DietaryFilter.VEGAN -> Color(0xFF059669)
+                            DietaryFilter.VEGETARIAN -> Color(0xFF16A34A)
+                            DietaryFilter.DAIRY_FREE -> Color(0xFF0284C7)
+                            DietaryFilter.NUT_FREE -> Color(0xFFD97706)
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) activeColor.copy(alpha = 0.12f) else Color(0xFFFBF8F3),
+                            border = BorderStroke(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) activeColor else Color(0xFFE2D7C8)
+                            ),
+                            modifier = Modifier
+                                .clickable { onSelectDietaryFilter(filter) }
+                                .testTag("dietary_chip_${filter.name}")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text(
+                                    text = filter.emoji,
+                                    fontSize = 12.5.sp
+                                )
+                                Text(
+                                    text = filter.getLabel(languageMode),
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) activeColor else Color(0xFF4A3E36)
+                                )
+                                if (!isAll || count > 0) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isSelected) activeColor else Color(0xFFE7DECFAF)
+                                    ) {
+                                        Text(
+                                            text = count.toString(),
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) Color.White else Color(0xFF5A4D41)
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

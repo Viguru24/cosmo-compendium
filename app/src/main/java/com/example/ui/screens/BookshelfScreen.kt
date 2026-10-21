@@ -151,6 +151,7 @@ import com.example.ui.components.getProfileEmoji
 import com.example.ui.util.AppLocalization
 import com.example.ui.util.getDisplayCategory
 import com.example.ui.util.getDisplayTitle
+import com.example.data.model.dietaryAnalysis
 import com.example.ui.viewmodel.RecipeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -249,6 +250,8 @@ fun BookshelfScreen(
     val recipesMissingPhotosCount by viewModel.recipesMissingPhotosCount.collectAsStateWithLifecycle()
     val isExportingFullPdf by viewModel.isExportingFullPdf.collectAsStateWithLifecycle()
     val showErrorLogDialog by viewModel.showErrorLogDialog.collectAsStateWithLifecycle()
+    val selectedDietaryFilter by viewModel.selectedDietaryFilter.collectAsStateWithLifecycle()
+    val activeProfileDietaryCounts by viewModel.activeProfileDietaryCounts.collectAsStateWithLifecycle()
 
     var showScanSheet by remember { mutableStateOf(false) }
     var recipePendingDelete by remember { mutableStateOf<RecipeEntity?>(null) }
@@ -284,6 +287,7 @@ fun BookshelfScreen(
                 uncheckedShoppingCount = uncheckedShoppingCount,
                 soundEffectsEnabled = soundEffectsEnabled,
                 languageMode = languageMode,
+
                 onOpenProfileSwitcher = { viewModel.openProfileSwitcher() },
                 onOpenSousChef = { viewModel.openSousChef() },
                 onOpenShoppingList = { viewModel.openShoppingList() },
@@ -390,11 +394,15 @@ fun BookshelfScreen(
                 activeProfileCategoryCounts = activeProfileCategoryCounts,
                 totalRecipeCount = totalRecipeCount,
                 languageMode = languageMode,
+
                 onSelectFavorites = { viewModel.onlyFavorites.value = true },
                 onSelectCategory = { cat ->
                     viewModel.onlyFavorites.value = false
                     viewModel.selectedCategory.value = cat
                 },
+                selectedDietaryFilter = selectedDietaryFilter,
+                activeProfileDietaryCounts = activeProfileDietaryCounts,
+                onSelectDietaryFilter = { viewModel.setDietaryFilter(it) },
                 onExportCompleteCookbookPdf = { viewModel.exportFullCookbookPdf(context) },
                 onOpenCategoryManager = { showCategoryManagerDialog = true }
             )
@@ -547,6 +555,7 @@ fun BookshelfScreen(
                             RecipeBookCard(
                                 recipe = recipe,
                                 languageMode = languageMode,
+
                                 activeProfile = activeProfile,
                                 onClick = { onRecipeClick(recipe) },
                                 onToggleFavorite = { viewModel.toggleFavorite(recipe) },
@@ -590,6 +599,7 @@ fun BookshelfScreen(
                 recipe = promptRecipe,
                 isGenerating = isGeneratingCover,
                 languageMode = languageMode,
+
                 onDismiss = { viewModel.closeCustomPromptDialog() },
                 onGenerate = { customPrompt ->
                     viewModel.generateRecipeCoverArt(
@@ -938,6 +948,7 @@ fun BookshelfScreen(
                 recipe = targetRecipe,
                 categories = categories,
                 languageMode = languageMode,
+
                 onAssign = { selectedCat ->
                     viewModel.quickAssignCategory(targetRecipe, selectedCat)
                     recipeForQuickCategoryAssign = null
@@ -1473,6 +1484,70 @@ fun RecipeBookCard(
                             }
                         }
                     }
+                }
+
+                // Dietary Suitability Badges
+                val dietaryAnalysis = remember(recipe.ingredients, recipe.tags) {
+                    recipe.dietaryAnalysis
+                }
+                val dietaryBadges = remember(dietaryAnalysis) {
+                    val list = mutableListOf<Pair<String, Color>>()
+                    if (dietaryAnalysis.isCeliacSafe) {
+                        list.add("🛡️ Celiac" to Color(0xFF047857))
+                    } else if (dietaryAnalysis.isGlutenFree) {
+                        list.add("🌾 GF" to Color(0xFFB45309))
+                    }
+                    if (dietaryAnalysis.isVegan) {
+                        list.add("🌱 Vegan" to Color(0xFF059669))
+                    } else if (dietaryAnalysis.isVegetarian) {
+                        list.add("🥬 Veg" to Color(0xFF16A34A))
+                    }
+                    if (dietaryAnalysis.isDairyFree) {
+                        list.add("🥛 DF" to Color(0xFF0284C7))
+                    }
+                    if (dietaryAnalysis.isNutFree) {
+                        list.add("🥜 Nut-Free" to Color(0xFFD97706))
+                    }
+                    list
+                }
+
+                if (dietaryBadges.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        dietaryBadges.take(3).forEach { (label, color) ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = color.copy(alpha = 0.10f),
+                                border = BorderStroke(0.6.dp, color.copy(alpha = 0.35f))
+                            ) {
+                                Text(
+                                    text = label,
+                                    modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = color,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                        if (dietaryBadges.size > 3) {
+                            Text(
+                                text = "+${dietaryBadges.size - 3}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF8C7A6B),
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 // Bottom Metadata Row: Cook Time, Difficulty & Servings

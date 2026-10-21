@@ -23,6 +23,8 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.RecipeEntity
 import com.example.data.local.ShoppingItemEntity
 import com.example.data.model.CoverTheme
+import com.example.data.model.DietaryClassifier
+import com.example.data.model.DietaryFilter
 import com.example.data.model.LanguageMode
 import com.example.data.model.UnitSystem
 import com.example.data.repository.RecipeRepository
@@ -36,6 +38,10 @@ import com.example.ai.ChatMessage
 import com.example.ai.GeminiModelConfig
 import com.example.ai.SousChefActionEngine
 import com.example.ai.SousChefIntent
+import com.example.data.model.RecipeIngredient
+import com.example.data.model.RecipeStep
+import com.example.ai.GeminiClient
+import com.example.ai.OfflineRecipeParser
 import com.example.ai.VideoRecipeExtractor
 import com.example.data.web.UrlRecipeExtractor
 import com.example.util.AppLogger
@@ -137,8 +143,8 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                 refreshSavedBackups()
                 // Instant pull delta sync on app launch if sync is enabled
                 syncManager?.triggerImmediateSync()
-            } catch (e: Exception) {
-                // Ignore initialization errors
+            } catch (t: Throwable) {
+                android.util.Log.e("RecipeViewModel", "Error during background initialization", t)
             }
 
             // Periodic real-time background sync loop (every 20s) while app is active
@@ -156,6 +162,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     val searchQuery = MutableStateFlow("")
     val selectedCategory = MutableStateFlow("All")
     val onlyFavorites = MutableStateFlow(false)
+    val selectedDietaryFilter = MutableStateFlow<DietaryFilter>(DietaryFilter.ALL)
 
     // ==========================================
     // FAMILY PROFILES ("WHO'S COOKING?")
@@ -470,6 +477,182 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                             sousChefMessages.value = sousChefMessages.value + errorMsg
                         }
                     }
+                    is SousChefIntent.ImportTextRecipe -> {
+                        val targetProfile = intent.targetProfile ?: activeProfile.value
+                        val resolvedProfile = if (targetProfile == "All Family" || targetProfile == "All") "Wife" else targetProfile
+                        val initialAiMsg = ChatMessage(
+                            isUser = false,
+                            text = "Parsing and extracting recipe text for $resolvedProfile's cookbook... 📝"
+                        )
+                        sousChefMessages.value = sousChefMessages.value + initialAiMsg
+
+                        val parsedResult = GeminiClient.parseRecipeWithAi(emptyList(), intent.text)
+                        val dto = if (parsedResult.isSuccess) {
+                            parsedResult.getOrThrow()
+                        } else {
+                            AppLogger.w("SousChef", "Gemini parsing text recipe failed, falling back to OfflineRecipeParser: ${parsedResult.exceptionOrNull()?.message}")
+                            OfflineRecipeParser.parse(intent.text)
+                        }
+
+                        val title = dto.titleEnglish?.takeIf { it.isNotBlank() }
+                            ?: dto.title?.takeIf { it.isNotBlank() }
+                            ?: dto.name?.takeIf { it.isNotBlank() }
+                            ?: "Imported Recipe"
+
+                        val ingredientsList = (dto.ingredients ?: emptyList()).map { ingDto ->
+                            RecipeIngredient(
+                                name = ingDto.nameEnglish ?: ingDto.name ?: "Ingredient",
+                                amount = ingDto.amount ?: "",
+                                unit = ingDto.unit ?: "",
+                                nameGerman = ingDto.nameGerman,
+                                nameEnglish = ingDto.nameEnglish,
+                                isOptional = ingDto.isOptional ?: false,
+                                group = ingDto.group
+                            )
+                        }
+
+                        val stepsList = (dto.steps ?: emptyList()).mapIndexed { idx, stepDto ->
+                            RecipeStep(
+                                stepNumber = stepDto.stepNumber ?: (idx + 1),
+                                instructionEnglish = stepDto.instructionEnglish ?: stepDto.instruction ?: "",
+                                instructionGerman = stepDto.instructionGerman ?: stepDto.instruction ?: "",
+                                timerMinutes = stepDto.timerMinutes ?: 0,
+                                tip = stepDto.tip
+                            )
+                        }
+
+                        val newRecipe = RecipeEntity(
+                            id = 0,
+                            title = title,
+                            titleGerman = dto.titleGerman ?: title,
+                            titleEnglish = title,
+                            category = dto.category ?: "Family Classics",
+                            servings = dto.servings ?: "4 servings",
+                            prepTimeMinutes = dto.prepTimeMinutes ?: 15,
+                            cookTimeMinutes = dto.cookTimeMinutes ?: 30,
+                            difficulty = dto.difficulty ?: "Medium",
+                            ingredients = ingredientsList,
+                            steps = stepsList,
+                            notes = dto.notesEnglish ?: "Imported recipe text.",
+                            notesGerman = dto.notesGerman ?: "",
+                            sourceLanguage = dto.detectedSourceLanguage ?: "en",
+                            coverTheme = "VINTAGE_LEATHER",
+                            profileName = resolvedProfile,
+                            isFavorite = false,
+                            rating = 5,
+                            timesCooked = 0,
+                            originStory = "Recipe imported from text via Sous-Chef.",
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis(),
+                            isDeleted = false,
+                            syncStatus = "PENDING"
+                        )
+
+                        repository.insertRecipe(newRecipe)
+                        AppLogger.i("SousChef", "Imported text recipe #${newRecipe.id} '$title' saved to $resolvedProfile's cookbook.")
+
+                        if (isCloudSyncEnabled.value) {
+                            viewModelScope.launch(Dispatchers.IO) { syncManager?.performSync() }
+                        }
+
+                        val successMsg = ChatMessage(
+                            isUser = false,
+                            text = "🎉 Successfully imported '$title' (${newRecipe.ingredients.size} ingredients, ${newRecipe.steps.size} steps) and saved into $resolvedProfile's cookbook!",
+                            matchingRecipes = listOf(newRecipe)
+                        )
+                        sousChefMessages.value = sousChefMessages.value + successMsg
+                        navigateToRecipeEvent.value = newRecipe
+                    }
+                    is SousChefIntent.CreateRecipe -> {
+                        val targetProfile = intent.targetProfile ?: activeProfile.value
+                        val resolvedProfile = if (targetProfile == "All Family" || targetProfile == "All") "Wife" else targetProfile
+                        val dish = intent.dishQuery
+                        val initialAiMsg = ChatMessage(
+                            isUser = false,
+                            text = "👨‍🍳 Putting together a complete culinary recipe for '$dish' for $resolvedProfile's cookbook..."
+                        )
+                        sousChefMessages.value = sousChefMessages.value + initialAiMsg
+
+                        val result = GeminiClient.formulateRecipeWithAi(dish)
+                        if (result.isSuccess) {
+                            val dto = result.getOrThrow()
+                            val title = dto.titleEnglish?.takeIf { it.isNotBlank() }
+                                ?: dto.title?.takeIf { it.isNotBlank() }
+                                ?: dish.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+
+                            val ingredientsList = (dto.ingredients ?: emptyList()).map { ingDto ->
+                                RecipeIngredient(
+                                    name = ingDto.nameEnglish ?: ingDto.name ?: "Ingredient",
+                                    amount = ingDto.amount ?: "",
+                                    unit = ingDto.unit ?: "",
+                                    nameGerman = ingDto.nameGerman,
+                                    nameEnglish = ingDto.nameEnglish,
+                                    isOptional = ingDto.isOptional ?: false,
+                                    group = ingDto.group
+                                )
+                            }
+
+                            val stepsList = (dto.steps ?: emptyList()).mapIndexed { idx, stepDto ->
+                                RecipeStep(
+                                    stepNumber = stepDto.stepNumber ?: (idx + 1),
+                                    instructionEnglish = stepDto.instructionEnglish ?: stepDto.instruction ?: "",
+                                    instructionGerman = stepDto.instructionGerman ?: stepDto.instruction ?: "",
+                                    timerMinutes = stepDto.timerMinutes ?: 0,
+                                    tip = stepDto.tip
+                                )
+                            }
+
+                            val newRecipe = RecipeEntity(
+                                id = 0,
+                                title = title,
+                                titleGerman = dto.titleGerman ?: title,
+                                titleEnglish = title,
+                                category = dto.category ?: "Family Classics",
+                                servings = dto.servings ?: "4 servings",
+                                prepTimeMinutes = dto.prepTimeMinutes ?: 15,
+                                cookTimeMinutes = dto.cookTimeMinutes ?: 25,
+                                difficulty = dto.difficulty ?: "Easy",
+                                ingredients = ingredientsList,
+                                steps = stepsList,
+                                notes = dto.notesEnglish ?: "Formulated by Sous-Chef AI.",
+                                notesGerman = dto.notesGerman ?: "",
+                                sourceLanguage = dto.detectedSourceLanguage ?: "en",
+                                coverTheme = "VINTAGE_LEATHER",
+                                profileName = resolvedProfile,
+                                isFavorite = false,
+                                rating = 5,
+                                timesCooked = 0,
+                                originStory = "Culinary creation formulated by Sous-Chef AI.",
+                                createdAt = System.currentTimeMillis(),
+                                updatedAt = System.currentTimeMillis(),
+                                isDeleted = false,
+                                syncStatus = "PENDING"
+                            )
+
+                            repository.insertRecipe(newRecipe)
+                            AppLogger.i("SousChef", "Formulated recipe #${newRecipe.id} '$title' saved to $resolvedProfile's cookbook.")
+
+                            if (isCloudSyncEnabled.value) {
+                                viewModelScope.launch(Dispatchers.IO) { syncManager?.performSync() }
+                            }
+
+                            val successMsg = ChatMessage(
+                                isUser = false,
+                                text = "🎉 Here is your complete recipe for '$title'!\n\n• ${newRecipe.ingredients.size} ingredients\n• ${newRecipe.steps.size} steps\n• Prep: ${newRecipe.prepTimeMinutes}m | Cook: ${newRecipe.cookTimeMinutes}m\n\nSaved directly to $resolvedProfile's Cookbook! Tap below to open:",
+                                matchingRecipes = listOf(newRecipe)
+                            )
+                            sousChefMessages.value = sousChefMessages.value + successMsg
+                            navigateToRecipeEvent.value = newRecipe
+                        } else {
+                            val err = result.exceptionOrNull()?.message ?: "AI formulation unavailable."
+                            AppLogger.e("SousChef", "Recipe creation failed: $err", result.exceptionOrNull())
+                            val errorMsg = ChatMessage(
+                                isUser = false,
+                                text = "⚠️ Could not formulate recipe for '$dish':\n$err"
+                            )
+                            sousChefMessages.value = sousChefMessages.value + errorMsg
+                        }
+                    }
                     is SousChefIntent.SwitchProfile -> {
                         setActiveProfile(intent.targetProfile)
                         val aiMsg = ChatMessage(
@@ -658,7 +841,6 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         categories.value = defaultCategories
         saveCategories(defaultCategories)
     }
-
 
     private fun saveCategories(list: List<String>) {
         prefs.edit().putString("pref_custom_categories", list.joinToString("|||")).apply()
@@ -1138,20 +1320,32 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = emptyMap()
     )
 
+    val activeProfileDietaryCounts: StateFlow<Map<DietaryFilter, Int>> = activeProfileRecipes.map { list ->
+        val counts = mutableMapOf<DietaryFilter, Int>()
+        counts[DietaryFilter.ALL] = list.size
+        for (filter in DietaryFilter.values()) {
+            if (filter != DietaryFilter.ALL) {
+                counts[filter] = list.count { DietaryClassifier.matchesFilter(it, filter) }
+            }
+        }
+        counts
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyMap()
+    )
+
+    fun setDietaryFilter(filter: DietaryFilter) {
+        selectedDietaryFilter.value = filter
+    }
+
     // Filtered recipes
     val recipes: StateFlow<List<RecipeEntity>> = combine(
-        repository.allRecipes,
-        searchQuery,
-        selectedCategory,
+        combine(activeProfileRecipes, searchQuery, selectedCategory) { all, q, c -> Triple(all, q, c) },
         onlyFavorites,
-        activeProfile
-    ) { all, query, category, favOnly, profile ->
+        selectedDietaryFilter
+    ) { (all, query, category), favOnly, dietaryFilter ->
         val filtered = all.filter { recipe ->
-            val matchesProfile = if (profile == "All" || profile == "All Family") {
-                true
-            } else {
-                recipe.profileName.equals(profile, ignoreCase = true)
-            }
             val matchesCategory = if (category == "All") {
                 true
             } else {
@@ -1160,8 +1354,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                         .any { it.equals(category, ignoreCase = true) }
             }
             val matchesFav = !favOnly || recipe.isFavorite
+            val matchesDietary = DietaryClassifier.matchesFilter(recipe, dietaryFilter)
             val matchesQuery = com.example.ui.util.FuzzySearchHelper.matches(recipe, query)
-            matchesProfile && matchesCategory && matchesFav && matchesQuery
+            matchesCategory && matchesFav && matchesDietary && matchesQuery
         }
 
         if (query.isNotBlank()) {
@@ -1283,6 +1478,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             isTtsSpeaking.value = true
 
             tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                override fun提高(utteranceId: String?) {}
                 override fun onStart(utteranceId: String?) {
                     isTtsSpeaking.value = true
                 }
@@ -2056,12 +2252,16 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     fun checkAndPerformAutoWeeklyBackup() {
         if (!autoWeeklyBackupEnabled.value) return
         viewModelScope.launch(Dispatchers.IO) {
-            val all = repository.getAllRecipesDirect()
-            if (all.isNotEmpty()) {
-                val created = BackupManager.performWeeklyBackupIfDue(getApplication(), all)
-                if (created) {
-                    refreshSavedBackups()
+            try {
+                val all = repository.getAllRecipesDirect()
+                if (all.isNotEmpty()) {
+                    val created = BackupManager.performWeeklyBackupIfDue(getApplication(), all)
+                    if (created) {
+                        refreshSavedBackups()
+                    }
                 }
+            } catch (t: Throwable) {
+                android.util.Log.e("RecipeViewModel", "Error in checkAndPerformAutoWeeklyBackup", t)
             }
         }
     }
@@ -2201,20 +2401,23 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
     fun shareBackup(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
-            val all = repository.getAllRecipesDirect()
-            val json = BackupManager.exportToJson(all, getApplication())
-            if (all.isNotEmpty()) {
-                BackupManager.createLocalBackup(getApplication(), all, "Shared Backup")
-            }
-            val uri = BackupManager.createShareableBackupUri(context, json)
-            withContext(Dispatchers.Main) {
-                refreshSavedBackups()
-                if (uri != null) {
-                    BackupManager.shareBackup(context, uri, all.size)
-                    onBackupExportSuccess(all.size)
-                } else {
-                    backupStatusMessage.value = "Unable to create shareable backup file."
+            try {
+                val all = repository.getAllRecipesDirect()
+                if (all.isNotEmpty()) {
+                    BackupManager.createLocalBackup(getApplication(), all, "Shared Backup")
                 }
+                val uri = BackupManager.createShareableBackupUri(context, all)
+                withContext(Dispatchers.Main) {
+                    refreshSavedBackups()
+                    if (uri != null) {
+                        BackupManager.shareBackup(context, uri, all.size)
+                        onBackupExportSuccess(all.size)
+                    } else {
+                        backupStatusMessage.value = "Unable to create shareable backup file."
+                    }
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("RecipeViewModel", "Error sharing backup", t)
             }
         }
     }

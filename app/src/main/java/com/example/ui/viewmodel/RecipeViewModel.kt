@@ -981,7 +981,11 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         }
     )
 
-    val comfyUiUrl = MutableStateFlow(prefs.getString("pref_comfy_ui_url", "http://192.168.1.54:8188") ?: "http://192.168.1.54:8188")
+    val comfyUiUrl = MutableStateFlow(
+        prefs.getString("pref_comfy_ui_url", null)?.let { saved ->
+            if (saved == "http://192.168.1.54:8188" || saved.isBlank()) "https://api.cosmowhisper.com/comfyui" else saved
+        } ?: "https://api.cosmowhisper.com/comfyui"
+    )
     val comfyUiCheckpoint = MutableStateFlow(getSanitizedComfyCheckpoint())
     val comfyUiCustomWorkflow = MutableStateFlow(prefs.getString("pref_comfy_ui_custom_workflow", "") ?: "")
     val comfyUiTestStatus = MutableStateFlow<String?>(null)

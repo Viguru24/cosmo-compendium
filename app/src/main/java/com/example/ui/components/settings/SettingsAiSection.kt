@@ -1081,7 +1081,7 @@ fun SettingsAiSection(
                         OutlinedTextField(
                             value = comfyUiUrl,
                             onValueChange = onComfyUiUrlChange,
-                            placeholder = { Text("http://192.168.1.54:8188", fontSize = 11.5.sp, color = textMuted) },
+                            placeholder = { Text("https://api.cosmowhisper.com/comfyui", fontSize = 11.5.sp, color = textMuted) },
                             modifier = Modifier.fillMaxWidth().testTag("comfyui_url_input"),
                             shape = RoundedCornerShape(8.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1094,6 +1094,35 @@ fun SettingsAiSection(
                             ),
                             singleLine = true
                         )
+
+                        // Quick URL Presets
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(
+                                "https://api.cosmowhisper.com/comfyui" to "Cloud VPS (Anywhere)",
+                                "http://192.168.1.55:8188" to "Wi-Fi LAN"
+                            ).forEach { (presetUrl, label) ->
+                                val isSelected = comfyUiUrl == presetUrl
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isSelected) TerracottaPrimary.copy(alpha = 0.12f) else Color(0xFFF1F5F9),
+                                    border = BorderStroke(0.5.dp, if (isSelected) TerracottaPrimary else cardBorder),
+                                    modifier = Modifier.clickable { onComfyUiUrlChange(presetUrl) }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 10.5.sp,
+                                            color = if (isSelected) TerracottaPrimary else headerDark,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Checkpoint Model Dropdown

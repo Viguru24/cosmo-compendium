@@ -1,5 +1,5 @@
 # publish-update.ps1
-# Automates compiling and publishing OTA builds to the Sovereign VPS update server for Cosmo Compendium (Heirloom Recipes).
+# Automates compiling and publishing OTA builds to the Sovereign VPS update server for Cosmo Cookbook (Heirloom Recipes).
 
 param(
     [string]$Notes = ""
@@ -13,7 +13,7 @@ Set-Location $PSScriptRoot
 
 Write-Host ""
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "  Cosmo Compendium - Sovereign OTA Publisher" -ForegroundColor Cyan
+Write-Host "  Cosmo Cookbook - Sovereign OTA Publisher" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -61,10 +61,10 @@ if (Test-Path $BuildOutputsJson) {
 
 if ([string]::IsNullOrWhiteSpace($Notes)) {
     Write-Host ""
-    Write-Host "Release Notes (or press Enter for default 'Cosmo Compendium culinary enhancements and updates'):" -ForegroundColor Cyan
+    Write-Host "Release Notes (or press Enter for default 'Cosmo Cookbook culinary enhancements and updates'):" -ForegroundColor Cyan
     $InputNotes = Read-Host
     if ([string]::IsNullOrWhiteSpace($InputNotes)) {
-        $ReleaseNotes = "Cosmo Compendium culinary enhancements and updates."
+        $ReleaseNotes = "Cosmo Cookbook culinary enhancements and updates."
     } else {
         $ReleaseNotes = $InputNotes
     }

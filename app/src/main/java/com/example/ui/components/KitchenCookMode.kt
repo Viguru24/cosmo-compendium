@@ -42,6 +42,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -78,7 +79,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -151,6 +154,7 @@ fun KitchenCookModeScreen(
     var keepScreenOn by remember { mutableStateOf(true) }
     var extraLargeFont by remember { mutableStateOf(false) }
     var currentUnitSystem by remember(unitSystem) { mutableStateOf(unitSystem) }
+    val coroutineScope = rememberCoroutineScope()
 
     KeepScreenAwakeEffect(keepAwake = keepScreenOn)
 
@@ -451,18 +455,34 @@ fun KitchenCookModeScreen(
                                             }
 
                                             // TTS Audio Reader Button
-                                            IconButton(
-                                                onClick = {
-                                                    onSpeak(step.getInstruction(languageMode, currentUnitSystem), false)
-                                                },
-                                                modifier = Modifier.size(36.dp)
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = Color(0xFFF3ECE0),
+                                                border = BorderStroke(1.dp, Color(0xFFDFD1BF)),
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        onSpeak(step.getInstruction(languageMode, currentUnitSystem), false)
+                                                    }
                                             ) {
-                                                Icon(
-                                                    Icons.Default.VolumeUp,
-                                                    contentDescription = "Read Step Aloud",
-                                                    tint = TerracottaPrimary,
-                                                    modifier = Modifier.size(22.dp)
-                                                )
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.VolumeUp,
+                                                        contentDescription = "Read Step Aloud",
+                                                        tint = TerracottaPrimary,
+                                                        modifier = Modifier.size(17.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(5.dp))
+                                                    Text(
+                                                        text = "Read Aloud",
+                                                        fontSize = 11.5.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF451A03)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -806,6 +826,49 @@ val showTimerWidget = effectiveTimerMinutes > 0 || (timerSecondsRemaining > 0 &&
                                                 fontSize = 15.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
+                                        }
+
+                                        // EXPLICIT STEP NAVIGATION CONTROLS (Swipe or Tap)
+                                        if (totalSteps > 1) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        if (pageIndex > 0) {
+                                                            coroutineScope.launch {
+                                                                pagerState.animateScrollToPage(pageIndex - 1)
+                                                            }
+                                                        }
+                                                    },
+                                                    enabled = pageIndex > 0,
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    modifier = Modifier.weight(1f).height(46.dp)
+                                                ) {
+                                                    Icon(Icons.Default.ArrowBack, contentDescription = "Previous Step", modifier = Modifier.size(16.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Previous", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                                }
+
+                                                if (pageIndex < totalSteps - 1) {
+                                                    Button(
+                                                        onClick = {
+                                                            coroutineScope.launch {
+                                                                pagerState.animateScrollToPage(pageIndex + 1)
+                                                            }
+                                                        },
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                                                        modifier = Modifier.weight(1f).height(46.dp)
+                                                    ) {
+                                                        Text("Next Step", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Icon(Icons.Default.ArrowForward, contentDescription = "Next Step", modifier = Modifier.size(16.dp))
+                                                    }
+                                                }
+                                            }
                                         }
 
                                         if (pageIndex == totalSteps - 1) {

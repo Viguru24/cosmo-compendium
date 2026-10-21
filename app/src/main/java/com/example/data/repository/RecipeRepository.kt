@@ -484,12 +484,20 @@ class RecipeRepository(
                     notesGerman = if (duplicate.notesGerman.isNotBlank()) duplicate.notesGerman else recipe.notesGerman,
                     originStory = if (duplicate.originStory.isNotBlank()) duplicate.originStory else recipe.originStory,
                     isFavorite = duplicate.isFavorite || recipe.isFavorite,
-                    timesCooked = maxOf(duplicate.timesCooked, recipe.timesCooked)
+                    timesCooked = maxOf(duplicate.timesCooked, recipe.timesCooked),
+                    servings = com.example.ui.util.AppLocalization.normalizeServings(duplicate.servings)
                 )
                 recipeDao.updateRecipe(merged)
                 recipeDao.hardDeleteRecipe(recipe.id)
             } else {
-                seen.add(recipe)
+                val cleanServings = com.example.ui.util.AppLocalization.normalizeServings(recipe.servings)
+                if (cleanServings != recipe.servings) {
+                    val fixed = recipe.copy(servings = cleanServings)
+                    recipeDao.updateRecipe(fixed)
+                    seen.add(fixed)
+                } else {
+                    seen.add(recipe)
+                }
             }
         }
     }

@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Cosmo Compendium</string>
+	<string>Cookbook</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.viguru24.cosmocompendium</string>
+	<string>com.louisdesouza.cookbook</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Cookbook</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -23,9 +23,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Cosmo Compendium requires camera access to scan recipe cards, family journals, and handwritten culinary notes.</string>
+	<string>Cookbook requires camera access to scan recipe cards, family journals, and handwritten culinary notes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Cosmo Compendium requires photo library access to select recipe cards and food photographs.</string>
+	<string>Cookbook requires photo library access to select recipe cards and food photographs.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cookbook requires microphone access to listen to your culinary questions for your AI Sous Chef.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cookbook uses speech recognition to convert your spoken cooking questions into text.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

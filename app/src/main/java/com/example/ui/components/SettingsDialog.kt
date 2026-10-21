@@ -19,9 +19,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,9 +32,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +59,7 @@ import com.example.ui.components.settings.SettingsStorageSection
 import com.example.ui.components.settings.SettingsSyncSection
 import com.example.ui.theme.TerracottaPrimary
 import com.example.ui.util.AppLocalization
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsDialog(
@@ -127,6 +137,7 @@ fun SettingsDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val cardBackground = Color(0xFFFDFBF7)
     val cardBorder = Color(0xFFE8DFD5)
     val headerDark = Color(0xFF2C1E14)
@@ -175,18 +186,21 @@ fun SettingsDialog(
                             Text(
                                 text = AppLocalization.getSettingsTitle(currentLanguage),
                                 style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Serif,
+                                    fontWeight = FontWeight.Bold,
                                     color = headerDark
                                 )
                             )
                             Text(
-                                text = AppLocalization.getSettingsSubtitle(currentLanguage),
-                                style = MaterialTheme.typography.labelSmall.copy(color = textMuted, fontSize = 11.5.sp)
+                                text = "Preferences & Integrations",
+                                style = MaterialTheme.typography.labelSmall.copy(color = textMuted)
                             )
                         }
                     }
-                    IconButton(onClick = onDismiss) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("close_settings_icon_button")
+                    ) {
                         Icon(Icons.Default.Close, contentDescription = "Close", tint = headerDark)
                     }
                 }
@@ -310,6 +324,72 @@ fun SettingsDialog(
                         headerDark = headerDark,
                         textMuted = textMuted
                     )
+
+                    // 6. Sovereign Over-The-Air (OTA) Updates
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFF0FDF4),
+                        border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+                        modifier = Modifier.fillMaxWidth().testTag("settings_ota_updates_section")
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CloudSync, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Sovereign Over-The-Air (OTA) Updates",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                                )
+                            }
+                            Text(
+                                text = "Updates are served directly from your sovereign VPS (api.cosmowhisper.com). Current build: v${com.example.data.AppUpdateManager(context).currentVersionName} (code ${com.example.data.AppUpdateManager(context).currentVersionCode}).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF166534)
+                            )
+                            var updateCheckStatus by remember { mutableStateOf<String?>(null) }
+                            var isCheckingUpdate by remember { mutableStateOf(false) }
+                            val otaScope = rememberCoroutineScope()
+
+                            if (updateCheckStatus != null) {
+                                Text(
+                                    text = updateCheckStatus!!,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color(0xFF15803D)
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    isCheckingUpdate = true
+                                    updateCheckStatus = "Connecting to sovereign VPS..."
+                                    otaScope.launch {
+                                        val mgr = com.example.data.AppUpdateManager(context)
+                                        val info = mgr.checkForUpdates()
+                                        isCheckingUpdate = false
+                                        if (info != null) {
+                                            updateCheckStatus = "New version ${info.versionName} available! Reopen the app or trigger update."
+                                        } else {
+                                            updateCheckStatus = "You are running the latest sovereign build (v${mgr.currentVersionName})."
+                                        }
+                                    }
+                                },
+                                enabled = !isCheckingUpdate,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (isCheckingUpdate) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Checking Sovereign VPS...", color = Color.White, fontSize = 12.sp)
+                                } else {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Check for Updates Now", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 HorizontalDivider(color = cardBorder, modifier = Modifier.padding(top = 12.dp, bottom = 12.dp))

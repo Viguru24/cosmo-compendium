@@ -17,7 +17,7 @@ android {
     applicationId = "com.aistudio.heirloomrecipes.xkvp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
+    versionCode = 4
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -32,7 +32,9 @@ android {
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
+      val localKeystore = file("${rootDir}/debug.keystore")
+      val defaultKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+      storeFile = if (localKeystore.exists()) localKeystore else defaultKeystore
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"

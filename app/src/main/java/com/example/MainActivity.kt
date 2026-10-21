@@ -27,7 +27,26 @@ import com.example.ui.components.AppErrorBoundary
 import com.example.ui.screens.BookletScreen
 import com.example.ui.screens.BookshelfScreen
 import com.example.ui.theme.MyApplicationTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
+import com.example.data.AppUpdateManager
+import com.example.data.UpdateInfo
 import com.example.ui.viewmodel.RecipeViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -70,6 +89,20 @@ class MainActivity : ComponentActivity() {
 fun CompendiumApp(viewModel: RecipeViewModel) {
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    val updateManager = remember { AppUpdateManager(context) }
+    var availableUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
+    var isDownloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(0f) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val info = updateManager.checkForUpdates()
+        if (info != null) {
+            availableUpdate = info
+        }
+    }
+
     DisposableEffect(keepScreenOn) {
         val window = (context as? Activity)?.window
         if (keepScreenOn) {
@@ -127,5 +160,68 @@ fun CompendiumApp(viewModel: RecipeViewModel) {
                 )
             }
         }
+    }
+
+    availableUpdate?.let { update ->
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDownloading) availableUpdate = null
+            },
+            title = {
+                Text(text = "App Update Available", style = MaterialTheme.typography.titleLarge)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "A new version (${update.versionName}) is available on Sovereign VPS.\nCurrent version: ${updateManager.currentVersionName}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (update.releaseNotes.isNotBlank()) {
+                        Text(
+                            text = "Release Notes:\n${update.releaseNotes}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isDownloading) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { downloadProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Downloading: ${(downloadProgress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isDownloading = true
+                        scope.launch {
+                            val success = updateManager.downloadAndInstallUpdate(update.apkUrl) { progress ->
+                                downloadProgress = progress
+                            }
+                            isDownloading = false
+                            if (success) {
+                                availableUpdate = null
+                            }
+                        }
+                    },
+                    enabled = !isDownloading
+                ) {
+                    Text(if (isDownloading) "Downloading..." else "Download & Install")
+                }
+            },
+            dismissButton = {
+                if (!isDownloading) {
+                    TextButton(onClick = { availableUpdate = null }) {
+                        Text("Later")
+                    }
+                }
+            }
+        )
     }
 }

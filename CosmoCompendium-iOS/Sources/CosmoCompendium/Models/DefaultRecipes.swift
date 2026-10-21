@@ -2,6 +2,10 @@ import Foundation
 
 public enum DefaultRecipes {
     public static func initialRecipes() -> [Recipe] {
+        return HeirloomDatabaseSeed.loadRecipes()
+    }
+
+    public static func fallbackHardcodedRecipes() -> [Recipe] {
         return [
             Recipe(
                 id: "1",
@@ -76,7 +80,7 @@ public enum DefaultRecipes {
                 isFavorite: true,
                 rating: 5,
                 timesCooked: 18,
-                originStory: "Heirloom family Sunday dinner ritual."
+                originStory: "Classic family Sunday dinner ritual."
             ),
             Recipe(
                 id: "3",

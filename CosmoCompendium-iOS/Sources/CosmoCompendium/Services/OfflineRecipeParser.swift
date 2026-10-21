@@ -36,7 +36,7 @@ public enum OfflineRecipeParser {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
 
-        var title = "Scanned Heirloom Recipe"
+        var title = "Scanned Recipe"
         var ingredients: [RecipeIngredient] = []
         var steps: [RecipeStep] = []
         var currentGroup: String? = nil

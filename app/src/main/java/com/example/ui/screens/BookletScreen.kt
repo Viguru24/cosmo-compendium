@@ -302,6 +302,25 @@ fun BookletScreen(
                         }
                     },
                     actions = {
+                        // Start Kitchen Cook Mode Button (Top Action)
+                        FilledTonalButton(
+                            onClick = { viewModel.isCookMode.value = true },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = TerracottaPrimary,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp),
+                            modifier = Modifier
+                                .height(28.dp)
+                                .padding(horizontal = 1.dp)
+                                .testTag("start_cook_mode_top_button")
+                        ) {
+                            Text("🔥", fontSize = 11.sp)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("Cook Mode", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+
                         // Compact Edit Recipe Button
                         FilledTonalButton(
                             onClick = {
@@ -419,6 +438,14 @@ fun BookletScreen(
                                 onDismissRequest = { showMoreMenu = false }
                             ) {
                                 DropdownMenuItem(
+                                    text = { Text("👨‍🍳 Start Kitchen Cook Mode", fontWeight = FontWeight.Bold) },
+                                    leadingIcon = { Icon(Icons.Default.RestaurantMenu, contentDescription = null, tint = TerracottaPrimary) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        viewModel.isCookMode.value = true
+                                    }
+                                )
+                                DropdownMenuItem(
                                     text = {
                                         Column {
                                             Text(if (!recipe.imageUri.isNullOrBlank()) "✨ Regenerate AI Food Photo" else "✨ Generate AI Food Photo")
@@ -510,6 +537,51 @@ fun BookletScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFFAF7F2))
                 )
+            },
+            bottomBar = {
+                // Floating Kitchen Cook Mode Bar (Matching iOS cookModeFloatingBar)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.88f),
+                    shadowElevation = 12.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = { viewModel.isCookMode.value = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent
+                        ),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    listOf(
+                                        Color(0xFF9A3412),
+                                        Color(0xFF78350F)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text("🔥", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Start Kitchen Cook Mode",
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
             }
         ) { innerPadding ->
             BoxWithConstraints(
@@ -556,7 +628,8 @@ fun BookletScreen(
                             viewModel.markRecipeCooked()},
                         onPlayTurnSound = { viewModel.playPageTurnSound() 
                             Toast.makeText(context, "Times cooked updated: ${recipe.timesCooked + 1}", Toast.LENGTH_SHORT).show()
-                        }
+                        },
+                        onStartCookingMode = { viewModel.isCookMode.value = true }
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -649,6 +722,9 @@ fun BookletScreen(
                                     },
                                     onRotateOriginalPhoto = {
                                         viewModel.rotateOriginalCardPhoto(activeRecipe)
+                                    },
+                                    onStartCookingMode = {
+                                        viewModel.isCookMode.value = true
                                     }
                                 )
                             }
@@ -682,6 +758,9 @@ fun BookletScreen(
                                             unitSystem = unitSystem
                                         )
                                         Toast.makeText(context, "Added ${activeRecipe.ingredients.size} ingredients to shopping list!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onStartCooking = {
+                                        viewModel.isCookMode.value = true
                                     }
                                 )
                             }
@@ -692,7 +771,8 @@ fun BookletScreen(
                                     onSaveJournal = { notes, rating ->
                                         viewModel.saveRecipeJournal(activeRecipe.id, notes, rating)
                                     },
-                                    onIncrementCooked = { viewModel.markRecipeCooked() }
+                                    onIncrementCooked = { viewModel.markRecipeCooked() },
+                                    onStartCookingMode = { viewModel.isCookMode.value = true }
                                 )
                             }
                             else -> {

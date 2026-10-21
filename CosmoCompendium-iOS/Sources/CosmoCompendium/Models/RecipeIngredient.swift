@@ -30,6 +30,34 @@ public struct RecipeIngredient: Identifiable, Codable, Hashable {
         self.group = group
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, name, amount, unit, nameGerman, nameEnglish, isOptional, group
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? container.decodeIfPresent(String.self, forKey: .id)) ?? UUID().uuidString
+        self.name = (try? container.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        if let s = try? container.decodeIfPresent(String.self, forKey: .amount) {
+            self.amount = s
+        } else if let d = try? container.decodeIfPresent(Double.self, forKey: .amount) {
+            self.amount = d.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(d))" : "\(d)"
+        } else if let i = try? container.decodeIfPresent(Int.self, forKey: .amount) {
+            self.amount = "\(i)"
+        } else {
+            self.amount = ""
+        }
+        self.unit = (try? container.decodeIfPresent(String.self, forKey: .unit)) ?? ""
+        self.nameGerman = try? container.decodeIfPresent(String.self, forKey: .nameGerman)
+        self.nameEnglish = try? container.decodeIfPresent(String.self, forKey: .nameEnglish)
+        self.isOptional = (try? container.decodeIfPresent(Bool.self, forKey: .isOptional)) ?? false
+        if let g = try? container.decodeIfPresent(String.self, forKey: .group), g != "null", !g.isEmpty {
+            self.group = g
+        } else {
+            self.group = nil
+        }
+    }
+
     public func displayName(language: LanguageMode = .english) -> String {
         let raw: String
         switch language {

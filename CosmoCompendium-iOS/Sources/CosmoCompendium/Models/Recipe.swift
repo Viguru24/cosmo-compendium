@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 
 @Model
 public final class Recipe {
@@ -27,6 +28,30 @@ public final class Recipe {
     public var updatedAt: Date
     public var isDeleted: Bool
     public var coverPhotoName: String?
+    public var profileName: String = "Louis"
+
+    /// Dynamically resolves the cover image path from either imagePath, the bundle (SyncedImages), or local Documents
+    public var resolvedCoverImage: UIImage? {
+        if let path = imagePath, !path.isEmpty, FileManager.default.fileExists(atPath: path), let img = UIImage(contentsOfFile: path) {
+            return img
+        }
+        if let name = coverPhotoName, !name.isEmpty {
+            // Check Documents directory
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let docPath = docs.appendingPathComponent(name).path
+            if FileManager.default.fileExists(atPath: docPath), let img = UIImage(contentsOfFile: docPath) {
+                return img
+            }
+            // Check SyncedImages bundle or main bundle
+            let baseName = (name as NSString).deletingPathExtension
+            let ext = (name as NSString).pathExtension
+            if let bundleUrl = Bundle.main.url(forResource: baseName, withExtension: ext, subdirectory: "SyncedImages") ?? Bundle.main.url(forResource: name, withExtension: nil),
+               let img = UIImage(contentsOfFile: bundleUrl.path) {
+                return img
+            }
+        }
+        return nil
+    }
 
     // Craft / Formula fields (Soap, Balms, Maker notes)
     public var craftType: String?
@@ -61,6 +86,7 @@ public final class Recipe {
         updatedAt: Date = Date(),
         isDeleted: Bool = false,
         coverPhotoName: String? = nil,
+        profileName: String = "Louis",
         craftType: String? = nil,
         lyeRatio: String? = nil,
         waterDiscount: String? = nil,
@@ -92,6 +118,7 @@ public final class Recipe {
         self.updatedAt = updatedAt
         self.isDeleted = isDeleted
         self.coverPhotoName = coverPhotoName
+        self.profileName = profileName
         self.craftType = craftType
         self.lyeRatio = lyeRatio
         self.waterDiscount = waterDiscount
@@ -143,5 +170,56 @@ public final class Recipe {
         case .english, .both:
             return !notes.isEmpty ? notes : notesGerman
         }
+    }
+
+    public var characteristicBadge: String? {
+        let textComponents: [String] = [title, titleGerman, titleEnglish, notes, notesGerman, originStory]
+        let fullText = textComponents.joined(separator: " ").lowercased()
+
+        var ingNames: [String] = []
+        for ing in ingredients {
+            ingNames.append(ing.name.lowercased())
+            if let en = ing.nameEnglish, !en.isEmpty { ingNames.append(en.lowercased()) }
+            if let de = ing.nameGerman, !de.isEmpty { ingNames.append(de.lowercased()) }
+        }
+        let allIngredients = ingNames.joined(separator: " ")
+
+        var stepTexts: [String] = []
+        for s in steps {
+            stepTexts.append(s.instructionEnglish.lowercased())
+            stepTexts.append(s.instructionGerman.lowercased())
+        }
+        let allSteps = stepTexts.joined(separator: " ")
+
+        let hasFlour = allIngredients.contains("flour") || allIngredients.contains("mehl") || allIngredients.contains("farine") || allIngredients.contains("farina") || allIngredients.contains("harina")
+        if (category.localizedCaseInsensitiveContains("Baking") || category.localizedCaseInsensitiveContains("Dessert") || fullText.contains("cake") || fullText.contains("kuchen") || fullText.contains("torte")) && !hasFlour && !ingredients.isEmpty {
+            return "Flourless"
+        }
+        if fullText.contains("bundt") || fullText.contains("gugelhupf") || fullText.contains("napfkuchen") || allSteps.contains("bundt") || allSteps.contains("gugelhupf") {
+            return "Bundt"
+        }
+        if fullText.contains("lava") || fullText.contains("molten") || fullText.contains("fondant") || fullText.contains("flüssiger kern") {
+            return "Molten Lava"
+        }
+        if fullText.contains("sourdough") || fullText.contains("sauerteig") || allIngredients.contains("sourdough") || allIngredients.contains("sauerteig") {
+            return "Sourdough"
+        }
+        if totalTimeMinutes > 0 && totalTimeMinutes <= 35 {
+            return "Quick 30-Min"
+        }
+        if totalTimeMinutes >= 180 || fullText.contains("slow cook") || fullText.contains("schmoren") || fullText.contains("overnight") {
+            return "Slow-Cooked"
+        }
+        if let yearMatch = try? NSRegularExpression(pattern: "\\b(18\\d{2}|19\\d{2})\\b").firstMatch(in: originStory + " " + notes, range: NSRange(location: 0, length: (originStory + " " + notes).utf16.count)),
+           let range = Range(yearMatch.range(at: 1), in: originStory + " " + notes) {
+            return "Vintage \(originStory + " " + notes)[range]"
+        }
+        if fullText.contains("one bowl") || fullText.contains("one-bowl") || fullText.contains("one pot") || fullText.contains("one-pot") || fullText.contains("eintopf") {
+            return "One-Bowl"
+        }
+        if fullText.contains("gluten-free") || fullText.contains("glutenfrei") || fullText.contains("sans gluten") {
+            return "Gluten-Free"
+        }
+        return nil
     }
 }

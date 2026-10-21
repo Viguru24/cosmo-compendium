@@ -181,10 +181,16 @@ class SyncManager(
                     put("prepTimeMinutes", entity.prepTimeMinutes)
                     put("cookTimeMinutes", entity.cookTimeMinutes)
 
-                    // Extract servings numeric count or string
-                    val numericServings = entity.servings.filter { it.isDigit() }.toIntOrNull() ?: 4
+                    // Extract servings numeric count safely without concatenating ranges (e.g. "4-6" -> 4 or 6, not 46)
+                    val rangeMatch = Regex("""(\d+)\s*(?:-|to)\s*(\d+)""").find(entity.servings)
+                    val numericServings = if (rangeMatch != null) {
+                        rangeMatch.groupValues[1].toIntOrNull() ?: 4
+                    } else {
+                        Regex("""\d+""").find(entity.servings)?.value?.toIntOrNull() ?: 4
+                    }
+                    val normalizedServings = com.example.ui.util.AppLocalization.normalizeServings(entity.servings)
                     put("servings", numericServings)
-                    put("servingsText", entity.servings)
+                    put("servingsText", normalizedServings)
 
                     put("difficulty", entity.difficulty)
                     put("coverPhotoName", coverName ?: "")
@@ -308,10 +314,11 @@ class SyncManager(
 
                     val prepTime = itemObj.optInt("prepTime", itemObj.optInt("prepTimeMinutes", 20))
                     val cookTime = itemObj.optInt("cookTime", itemObj.optInt("cookTimeMinutes", 40))
-                    val servingsStr = itemObj.optString("servingsText").ifBlank {
+                    val rawServings = itemObj.optString("servingsText").ifBlank {
                         val servingsInt = itemObj.optInt("servings", 4)
                         "$servingsInt servings"
                     }
+                    val servingsStr = com.example.ui.util.AppLocalization.normalizeServings(rawServings)
                     val category = itemObj.optString("category", "Family Classics")
                     val difficulty = itemObj.optString("difficulty", "Medium")
                     val notes = itemObj.optString("notes", "")

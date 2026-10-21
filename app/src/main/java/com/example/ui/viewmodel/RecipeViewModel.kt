@@ -965,10 +965,10 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun getSanitizedComfyCheckpoint(): String {
-        val stored = prefs.getString("pref_comfy_ui_ckpt", "z_image_turbo_bf16.safetensors") ?: "z_image_turbo_bf16.safetensors"
-        if (stored.contains("qwen-image-lightning", ignoreCase = true) || stored.contains("dr34m", ignoreCase = true) || stored.contains("ltx", ignoreCase = true)) {
-            prefs.edit().putString("pref_comfy_ui_ckpt", "z_image_turbo_bf16.safetensors").commit()
-            return "z_image_turbo_bf16.safetensors"
+        val stored = prefs.getString("pref_comfy_ui_ckpt", "qwen_image_fp8_e4m3fn.safetensors") ?: "qwen_image_fp8_e4m3fn.safetensors"
+        if (stored.contains("z_image", ignoreCase = true) || stored.contains("z-image", ignoreCase = true) || stored.contains("dr34m", ignoreCase = true) || stored.contains("ltx", ignoreCase = true)) {
+            prefs.edit().putString("pref_comfy_ui_ckpt", "qwen_image_fp8_e4m3fn.safetensors").commit()
+            return "qwen_image_fp8_e4m3fn.safetensors"
         }
         return stored
     }

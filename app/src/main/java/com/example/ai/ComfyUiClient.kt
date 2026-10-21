@@ -85,7 +85,7 @@ object ComfyUiClient {
                     if (namesArr != null) {
                         for (i in 0 until namesArr.length()) {
                             val name = namesArr.getString(i)
-                            if ((name.contains("z_image", ignoreCase = true) || name.contains("turbo", ignoreCase = true)) && !resultList.contains(name)) {
+                            if ((name.contains("qwen", ignoreCase = true) || name.contains("turbo", ignoreCase = true)) && !resultList.contains(name)) {
                                 resultList.add(name)
                             }
                         }
@@ -177,7 +177,7 @@ object ComfyUiClient {
         positivePrompt: String,
         negativePrompt: String,
         uploadedImageName: String? = null,
-        ckptName: String = "z_image_turbo_bf16.safetensors",
+        ckptName: String = "qwen_image_fp8_e4m3fn.safetensors",
         customWorkflowJson: String? = null,
         width: Int = 768,
         height: Int = 768
@@ -245,46 +245,56 @@ object ComfyUiClient {
         }
 
         val promptObj = JSONObject()
-        val isZImage = ckptName.contains("z_image", ignoreCase = true) || ckptName.contains("z-image", ignoreCase = true) || ckptName.contains("turbo", ignoreCase = true) && !ckptName.contains("sd_xl", ignoreCase = true)
+        val isQwenImage = ckptName.contains("qwen", ignoreCase = true) || !ckptName.contains("sd_xl", ignoreCase = true) && !ckptName.contains("v1-5", ignoreCase = true)
 
-        if (isZImage) {
-            // Official Z-Image-Turbo ComfyUI Workflow Template
+        if (isQwenImage) {
+            // Official Qwen Image 2.1 ComfyUI Workflow Template
+            val unetName = if (ckptName.contains("qwen", ignoreCase = true)) ckptName else "qwen_image_fp8_e4m3fn.safetensors"
             val unetLoader = JSONObject().apply {
                 put("class_type", "UNETLoader")
                 put("inputs", JSONObject().apply {
-                    put("unet_name", ckptName)
+                    put("unet_name", unetName)
                     put("weight_dtype", "default")
                 })
             }
-            val clipLoader = JSONObject().apply {
-                put("class_type", "CLIPLoader")
+            val loraLoader = JSONObject().apply {
+                put("class_type", "LoraLoaderModelOnly")
                 put("inputs", JSONObject().apply {
-                    put("clip_name", "qwen_3_4b_fp8_mixed.safetensors")
-                    put("type", "lumina2")
-                })
-            }
-            val vaeLoader = JSONObject().apply {
-                put("class_type", "VAELoader")
-                put("inputs", JSONObject().put("vae_name", "ae.safetensors"))
-            }
-            val posClip = JSONObject().apply {
-                put("class_type", "CLIPTextEncode")
-                put("inputs", JSONObject().apply {
-                    put("text", positivePrompt)
-                    put("clip", JSONArray().put("2").put(0))
-                })
-            }
-            val zeroOut = JSONObject().apply {
-                put("class_type", "ConditioningZeroOut")
-                put("inputs", JSONObject().apply {
-                    put("conditioning", JSONArray().put("4").put(0))
+                    put("lora_name", "Qwen-Image-Lightning-8steps-V2.0-bf16.safetensors")
+                    put("strength_model", 1.0)
+                    put("model", JSONArray().put("37").put(0))
                 })
             }
             val auraFlow = JSONObject().apply {
                 put("class_type", "ModelSamplingAuraFlow")
                 put("inputs", JSONObject().apply {
-                    put("model", JSONArray().put("1").put(0))
-                    put("shift", 3.0)
+                    put("model", JSONArray().put("73").put(0))
+                    put("shift", 3.1)
+                })
+            }
+            val clipLoader = JSONObject().apply {
+                put("class_type", "CLIPLoader")
+                put("inputs", JSONObject().apply {
+                    put("clip_name", "qwen_2.5_vl_7b_fp8_scaled.safetensors")
+                    put("type", "qwen_image")
+                })
+            }
+            val vaeLoader = JSONObject().apply {
+                put("class_type", "VAELoader")
+                put("inputs", JSONObject().put("vae_name", "qwen_image_vae.safetensors"))
+            }
+            val posClip = JSONObject().apply {
+                put("class_type", "CLIPTextEncode")
+                put("inputs", JSONObject().apply {
+                    put("text", positivePrompt)
+                    put("clip", JSONArray().put("38").put(0))
+                })
+            }
+            val negClip = JSONObject().apply {
+                put("class_type", "CLIPTextEncode")
+                put("inputs", JSONObject().apply {
+                    put("text", negativePrompt)
+                    put("clip", JSONArray().put("38").put(0))
                 })
             }
 
@@ -296,8 +306,8 @@ object ComfyUiClient {
                 val vaeEncode = JSONObject().apply {
                     put("class_type", "VAEEncode")
                     put("inputs", JSONObject().apply {
-                        put("pixels", JSONArray().put("7").put(0))
-                        put("vae", JSONArray().put("3").put(0))
+                        put("pixels", JSONArray().put("70").put(0))
+                        put("vae", JSONArray().put("39").put(0))
                     })
                 }
                 val sampler = JSONObject().apply {
@@ -306,41 +316,42 @@ object ComfyUiClient {
                         put("seed", seed)
                         put("steps", 8)
                         put("cfg", 1.0)
-                        put("sampler_name", "res_multistep")
+                        put("sampler_name", "euler")
                         put("scheduler", "simple")
-                        put("denoise", 0.50)
-                        put("model", JSONArray().put("6").put(0))
-                        put("positive", JSONArray().put("4").put(0))
-                        put("negative", JSONArray().put("5").put(0))
-                        put("latent_image", JSONArray().put("8").put(0))
+                        put("denoise", 0.65)
+                        put("model", JSONArray().put("66").put(0))
+                        put("positive", JSONArray().put("6").put(0))
+                        put("negative", JSONArray().put("7").put(0))
+                        put("latent_image", JSONArray().put("71").put(0))
                     })
                 }
                 val vaeDecode = JSONObject().apply {
                     put("class_type", "VAEDecode")
                     put("inputs", JSONObject().apply {
-                        put("samples", JSONArray().put("9").put(0))
-                        put("vae", JSONArray().put("3").put(0))
+                        put("samples", JSONArray().put("3").put(0))
+                        put("vae", JSONArray().put("39").put(0))
                     })
                 }
                 val saveImage = JSONObject().apply {
                     put("class_type", "SaveImage")
                     put("inputs", JSONObject().apply {
-                        put("filename_prefix", "z-image-turbo")
-                        put("images", JSONArray().put("10").put(0))
+                        put("filename_prefix", "qwen-recipe")
+                        put("images", JSONArray().put("8").put(0))
                     })
                 }
 
-                promptObj.put("1", unetLoader)
-                promptObj.put("2", clipLoader)
-                promptObj.put("3", vaeLoader)
-                promptObj.put("4", posClip)
-                promptObj.put("5", zeroOut)
-                promptObj.put("6", auraFlow)
-                promptObj.put("7", loadImg)
-                promptObj.put("8", vaeEncode)
-                promptObj.put("9", sampler)
-                promptObj.put("10", vaeDecode)
-                promptObj.put("11", saveImage)
+                promptObj.put("37", unetLoader)
+                promptObj.put("73", loraLoader)
+                promptObj.put("66", auraFlow)
+                promptObj.put("38", clipLoader)
+                promptObj.put("39", vaeLoader)
+                promptObj.put("6", posClip)
+                promptObj.put("7", negClip)
+                promptObj.put("70", loadImg)
+                promptObj.put("71", vaeEncode)
+                promptObj.put("3", sampler)
+                promptObj.put("8", vaeDecode)
+                promptObj.put("9", saveImage)
             } else {
                 val emptyLatent = JSONObject().apply {
                     put("class_type", "EmptySD3LatentImage")
@@ -356,40 +367,41 @@ object ComfyUiClient {
                         put("seed", seed)
                         put("steps", 8)
                         put("cfg", 1.0)
-                        put("sampler_name", "res_multistep")
+                        put("sampler_name", "euler")
                         put("scheduler", "simple")
                         put("denoise", 1.0)
-                        put("model", JSONArray().put("6").put(0))
-                        put("positive", JSONArray().put("4").put(0))
-                        put("negative", JSONArray().put("5").put(0))
-                        put("latent_image", JSONArray().put("7").put(0))
+                        put("model", JSONArray().put("66").put(0))
+                        put("positive", JSONArray().put("6").put(0))
+                        put("negative", JSONArray().put("7").put(0))
+                        put("latent_image", JSONArray().put("58").put(0))
                     })
                 }
                 val vaeDecode = JSONObject().apply {
                     put("class_type", "VAEDecode")
                     put("inputs", JSONObject().apply {
-                        put("samples", JSONArray().put("8").put(0))
-                        put("vae", JSONArray().put("3").put(0))
+                        put("samples", JSONArray().put("3").put(0))
+                        put("vae", JSONArray().put("39").put(0))
                     })
                 }
                 val saveImage = JSONObject().apply {
                     put("class_type", "SaveImage")
                     put("inputs", JSONObject().apply {
-                        put("filename_prefix", "z-image-turbo")
-                        put("images", JSONArray().put("9").put(0))
+                        put("filename_prefix", "qwen-recipe")
+                        put("images", JSONArray().put("8").put(0))
                     })
                 }
 
-                promptObj.put("1", unetLoader)
-                promptObj.put("2", clipLoader)
-                promptObj.put("3", vaeLoader)
-                promptObj.put("4", posClip)
-                promptObj.put("5", zeroOut)
-                promptObj.put("6", auraFlow)
-                promptObj.put("7", emptyLatent)
-                promptObj.put("8", sampler)
-                promptObj.put("9", vaeDecode)
-                promptObj.put("10", saveImage)
+                promptObj.put("37", unetLoader)
+                promptObj.put("73", loraLoader)
+                promptObj.put("66", auraFlow)
+                promptObj.put("38", clipLoader)
+                promptObj.put("39", vaeLoader)
+                promptObj.put("6", posClip)
+                promptObj.put("7", negClip)
+                promptObj.put("58", emptyLatent)
+                promptObj.put("3", sampler)
+                promptObj.put("8", vaeDecode)
+                promptObj.put("9", saveImage)
             }
         } else {
             // Standard CheckpointLoaderSimple (SDXL Turbo, SD1.5, DreamLay)
@@ -598,11 +610,10 @@ object ComfyUiClient {
                         ckpt = fuzzyMatch
                     } else {
                         // Pick the best available image checkpoint from the server (preferring sdxl, turbo, lightning, sd, or first non-audio model)
-                        val bestModel = availableModels.firstOrNull { it.contains("sd_xl_turbo", ignoreCase = true) }
+                        val bestModel = availableModels.firstOrNull { it.contains("qwen", ignoreCase = true) }
+                            ?: availableModels.firstOrNull { it.contains("sd_xl_turbo", ignoreCase = true) }
                             ?: availableModels.firstOrNull { it.contains("turbo", ignoreCase = true) }
-                            ?: availableModels.firstOrNull { it.contains("sd_xl", ignoreCase = true) || it.contains("sdxl", ignoreCase = true) }
-                            ?: availableModels.firstOrNull { it.contains("v1-5", ignoreCase = true) }
-                            ?: availableModels.firstOrNull { !it.lowercase().contains("audio") && !it.lowercase().contains("ltx") && !it.lowercase().contains("qwen") }
+                            ?: availableModels.firstOrNull { !it.lowercase().contains("audio") && !it.lowercase().contains("ltx") }
                             ?: availableModels.first()
 
                         AppLogger.i(TAG, "Configured checkpoint '$customCheckPoint' not found on ComfyUI server. Auto-selected available model: '$bestModel' from server models: $availableModels")

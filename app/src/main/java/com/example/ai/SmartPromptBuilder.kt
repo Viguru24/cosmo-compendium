@@ -6,7 +6,7 @@ object SmartPromptBuilder {
 
     fun buildRecipeExtractionPrompt(recipeText: String? = null): String {
         val base = """
-            You are an expert master chef, archivist, and formulation specialist specializing in recipe cards, craft formulas (such as soap making, balms, cosmetics, and household preparations), printed recipes, and handwritten compendiums.
+            You are an expert master chef, archivist, and formulation specialist specializing in recipe cards, craft formulas (such as soap making, balms, cosmetics, and household preparations), printed recipes, and handwritten recipe collections.
 
             TASK:
             Analyze the provided recipe or formula card photo(s) and/or text. Accurately transcribe and translate the entire entry into clear, structured JSON.

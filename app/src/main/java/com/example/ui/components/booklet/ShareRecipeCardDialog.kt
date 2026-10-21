@@ -152,7 +152,7 @@ fun ShareRecipeCardDialog(
             if (includeNotes && recipe.notes.isNotBlank()) {
                 appendLine("\nFAMILY NOTES:\n${recipe.notes}")
             }
-            appendLine("\nShared from Cosmo Compendium")
+            appendLine("\nShared from Cosmo Cookbook")
         }
     }
 

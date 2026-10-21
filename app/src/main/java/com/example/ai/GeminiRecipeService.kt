@@ -340,7 +340,7 @@ object GeminiClient {
 
         try {
             val systemPrompt = """
-                You are an expert master chef, archivist, and formulation specialist specializing in recipe cards, craft formulas (such as soap making, balms, cosmetics, and household preparations), printed recipes, and handwritten compendiums.
+                You are an expert master chef, archivist, and formulation specialist specializing in recipe cards, craft formulas (such as soap making, balms, cosmetics, and household preparations), printed recipes, and handwritten recipe collections.
 
                 TASK:
                 Analyze the provided recipe or formula card photo(s) and/or text. Accurately transcribe and translate the entire entry into clear, structured JSON.
@@ -777,7 +777,7 @@ object GeminiClient {
                 if (stepsSummary.isNotBlank()) append("$stepsSummary ")
                 if (!notes.isNullOrBlank()) append("Culinary style: $notes. ")
                 if (referenceBitmap != null) {
-                    append("Inspect the attached reference image carefully. Accurately capture the subject's visual characteristics, colors, textures, crust, garnishes, and style, elevating it into a clean, professionally lit compendium cover photograph.")
+                    append("Inspect the attached reference image carefully. Accurately capture the subject's visual characteristics, colors, textures, crust, garnishes, and style, elevating it into a clean, professionally lit cookbook cover photograph.")
                 } else {
                     append("Render the dish served fresh and beautifully plated in a warm, rustic kitchen setting with soft natural window lighting, gentle steam, appetizing texture, shallow depth of field, 4k culinary studio detail. No watermarks or overlaid text.")
                 }
@@ -999,13 +999,13 @@ object GeminiClient {
         }
         try {
             val systemPrompt = """
-                You are the warm, highly skilled, and friendly culinary & crafting assistant in the Cosmo Compendium app.
+                You are the warm, highly skilled, and friendly culinary & crafting assistant in the Cosmo Cookbook app.
                 Give a concise, helpful, and clear answer (2 to 4 sentences maximum) to the user's cooking, baking, crafting (such as soap making or balms), substitution, or project question.
                 Be practical, encouraging, and accurate with weights, measurements, ratios, and temperatures.
 
                 IMPORTANT APP CAPABILITIES & BEHAVIOR:
-                - Cosmo Compendium CAN import recipes directly from YouTube, Instagram Reels, TikTok, food blogs, and web links. When the user pastes any link into the chat, the app automatically extracts the recipe, ingredients, steps, and cover photo and saves it into their cookbook.
-                - Cosmo Compendium CAN also extract recipes from cooking video files and screen recordings via Multimodal Vision (the 📹 Video button in the chat).
+                - Cosmo Cookbook CAN import recipes directly from YouTube, Instagram Reels, TikTok, food blogs, and web links. When the user pastes any link into the chat, the app automatically extracts the recipe, ingredients, steps, and cover photo and saves it into their cookbook.
+                - Cosmo Cookbook CAN also extract recipes from cooking video files and screen recordings via Multimodal Vision (the 📹 Video button in the chat).
                 - NEVER say or output canned refusals such as: "As a text-based AI assistant, I cannot watch videos or access external websites".
                 - If the user provides a video or website link, or asks about bringing in YouTube videos, enthusiastically confirm that the app can import it, explain that they can paste the link directly or tap the 📹 Video button, and invite them to paste their link!
             """.trimIndent()

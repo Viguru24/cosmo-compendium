@@ -79,7 +79,7 @@ fun VintageHandwrittenCardView(
                         )
                     )
                     Text(
-                        text = "Compendium Collection",
+                        text = "Heirloom Collection",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontStyle = FontStyle.Italic,
                             color = Color(0xFF6B5B4E)
@@ -94,7 +94,7 @@ fun VintageHandwrittenCardView(
                     modifier = Modifier.padding(4.dp)
                 ) {
                     Text(
-                        text = "COMPENDIUM",
+                        text = "HEIRLOOM",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF5A4535),

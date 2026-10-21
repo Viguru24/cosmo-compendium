@@ -1,6 +1,6 @@
 {
-  "name": "Cosmo Compendium: Recipe & Formula Keeper",
-  "description": "Smart compendium for recipes, craft formulas, and maker notes with AI scanning, multi-language translation, tactile journal view, cook and craft mode, and instant search.",
+  "name": "Cosmo Cookbook: Recipe & Formula Keeper",
+  "description": "Smart cookbook for recipes, craft formulas, and maker notes with AI scanning, multi-language translation, tactile journal view, cook and craft mode, and instant search.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

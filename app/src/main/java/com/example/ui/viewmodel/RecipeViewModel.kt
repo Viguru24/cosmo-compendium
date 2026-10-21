@@ -2160,7 +2160,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     return@launch
                 }
-                val title = if (activeProfile.value == "All" || activeProfile.value == "All Family") "Family Compendium" else "${activeProfile.value}'s Compendium"
+                val title = if (activeProfile.value == "All" || activeProfile.value == "All Family") "Family Cookbook" else "${activeProfile.value}'s Cookbook"
                 val uri = com.example.util.pdf.RecipePdfGenerator.createShareableFullCookbookPdfUri(
                     context = context,
                     recipes = allRecipes,
@@ -2599,7 +2599,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
 
         val text = buildString {
             appendLine("🛒 SUPPLIES & GROCERY LIST")
-            appendLine("Cosmo Compendium")
+            appendLine("Cosmo Cookbook")
             appendLine("-------------------------")
 
             val grouped = items.groupBy { it.category }
@@ -2613,12 +2613,12 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             appendLine("\n-------------------------")
-            appendLine("Shared from Cosmo Compendium")
+            appendLine("Shared from Cosmo Cookbook")
         }
 
         val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(android.content.Intent.EXTRA_SUBJECT, "Compendium Supplies & Ingredients")
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "Supplies & Ingredients")
             putExtra(android.content.Intent.EXTRA_TEXT, text)
         }
         context.startActivity(android.content.Intent.createChooser(intent, "Share Grocery List via..."))

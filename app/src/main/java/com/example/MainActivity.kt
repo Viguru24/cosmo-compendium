@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        CompendiumApp(viewModel = recipeViewModel)
+                        CookbookApp(viewModel = recipeViewModel)
                     }
                 }
             }
@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun CompendiumApp(viewModel: RecipeViewModel) {
+fun CookbookApp(viewModel: RecipeViewModel) {
     val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
 

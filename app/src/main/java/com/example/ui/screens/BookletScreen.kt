@@ -1287,7 +1287,7 @@ fun BookletScreen(
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to permanently delete '${activeRecipe.getDisplayTitle()}' from your compendium? This action cannot be undone."
+                        text = "Are you sure you want to permanently delete '${activeRecipe.getDisplayTitle()}' from your cookbook? This action cannot be undone."
                     )
                 },
                 confirmButton = {

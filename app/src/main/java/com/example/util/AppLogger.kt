@@ -70,7 +70,7 @@ object AppLogger {
     fun getFormattedLogs(): String {
         val sb = StringBuilder()
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        sb.append("=== COSMO COMPENDIUM - SYSTEM & DIAGNOSTIC LOG ===\n")
+        sb.append("=== COSMO COOKBOOK - SYSTEM & DIAGNOSTIC LOG ===\n")
         sb.append("Generated at: $now\n")
         sb.append("Total entries: ${_logs.value.size}\n\n")
 

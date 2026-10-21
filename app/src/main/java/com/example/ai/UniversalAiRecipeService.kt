@@ -211,7 +211,7 @@ object UniversalAiRecipeService {
         }
         if (provider == AiProvider.OPENROUTER) {
             requestBuilder.addHeader("HTTP-Referer", "https://github.com/Viguru24/cosmo-compendium")
-            requestBuilder.addHeader("X-Title", "Cosmo Compendium")
+            requestBuilder.addHeader("X-Title", "Cosmo Cookbook")
         }
 
         val response = httpClient.newCall(requestBuilder.build()).execute()
@@ -366,7 +366,7 @@ object UniversalAiRecipeService {
         }
         if (provider == AiProvider.OPENROUTER) {
             requestBuilder.addHeader("HTTP-Referer", "https://github.com/Viguru24/cosmo-compendium")
-            requestBuilder.addHeader("X-Title", "Cosmo Compendium")
+            requestBuilder.addHeader("X-Title", "Cosmo Cookbook")
         }
 
         val response = httpClient.newCall(requestBuilder.build()).execute()

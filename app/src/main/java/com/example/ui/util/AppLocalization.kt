@@ -7,12 +7,12 @@ object AppLocalization {
 
     // Main App
     fun getAppTitle(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "Kompendium"
-        LanguageMode.FRENCH -> "Compendium"
-        LanguageMode.ITALIAN -> "Compendio"
-        LanguageMode.SPANISH -> "Compendio"
-        LanguageMode.DUTCH -> "Compendium"
-        else -> "Compendium"
+        LanguageMode.GERMAN -> "Kochbuch"
+        LanguageMode.FRENCH -> "Livre de recettes"
+        LanguageMode.ITALIAN -> "Ricettario"
+        LanguageMode.SPANISH -> "Recetario"
+        LanguageMode.DUTCH -> "Kookboek"
+        else -> "Cookbook"
     }
 
     fun getAppSubtitle(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
@@ -228,12 +228,12 @@ object AppLocalization {
     }
 
     fun getEmptyProfileTitle(name: String, lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "$name's Kompendium ist leer"
-        LanguageMode.FRENCH -> "Le compendium de $name est vide"
-        LanguageMode.ITALIAN -> "Il compendio di $name è vuoto"
-        LanguageMode.SPANISH -> "El compendio de $name está vacío"
-        LanguageMode.DUTCH -> "$name's compendium is leeg"
-        else -> "$name's Compendium is Empty"
+        LanguageMode.GERMAN -> "$name's Kochbuch ist leer"
+        LanguageMode.FRENCH -> "Le livre de recettes de $name est vide"
+        LanguageMode.ITALIAN -> "Il ricettario di $name è vuoto"
+        LanguageMode.SPANISH -> "El recetario de $name está vacío"
+        LanguageMode.DUTCH -> "$name's kookboek is leeg"
+        else -> "$name's Cookbook is Empty"
     }
 
     fun getEmptyStateSubtitle(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
@@ -401,12 +401,12 @@ object AppLocalization {
 
     // Profiles
     fun getProfileCookbookTitle(name: String, lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "${name}s Kompendium"
-        LanguageMode.FRENCH -> "Compendium de $name"
-        LanguageMode.ITALIAN -> "Compendio di $name"
-        LanguageMode.SPANISH -> "Compendio de $name"
-        LanguageMode.DUTCH -> "${name}'s Compendium"
-        else -> "$name's Compendium"
+        LanguageMode.GERMAN -> "${name}s Kochbuch"
+        LanguageMode.FRENCH -> "Livre de recettes de $name"
+        LanguageMode.ITALIAN -> "Ricettario di $name"
+        LanguageMode.SPANISH -> "Recetario de $name"
+        LanguageMode.DUTCH -> "${name}'s Kookboek"
+        else -> "$name's Cookbook"
     }
 
     fun getProfileSwitcherHeader(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
@@ -419,12 +419,12 @@ object AppLocalization {
     }
 
     fun getProfileSwitcherSubtitle(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "Wähle das persönliche Kompendium eines Mitglieds"
-        LanguageMode.FRENCH -> "Choisissez le compendium personnel d'un membre"
-        LanguageMode.ITALIAN -> "Scegli il compendio personale di un membro"
-        LanguageMode.SPANISH -> "Elige el compendio personal de un miembro"
-        LanguageMode.DUTCH -> "Kies het persoonlijke compendium van een lid"
-        else -> "Switch to a member's personal compendium"
+        LanguageMode.GERMAN -> "Wähle das persönliche Kochbuch eines Mitglieds"
+        LanguageMode.FRENCH -> "Choisissez le livre de recettes personnel d'un membre"
+        LanguageMode.ITALIAN -> "Scegli il ricettario personale di un membro"
+        LanguageMode.SPANISH -> "Elige el recetario personal de un miembro"
+        LanguageMode.DUTCH -> "Kies het persoonlijke kookboek van een lid"
+        else -> "Switch to a member's personal cookbook"
     }
 
     fun getAddProfileButton(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
@@ -657,12 +657,12 @@ object AppLocalization {
     }
 
     fun getCollectionOverviewTitle(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "Kompendium-Sammlung Übersicht"
-        LanguageMode.FRENCH -> "Aperçu de la Collection du Compendium"
-        LanguageMode.ITALIAN -> "Panoramica della Collezione del Compendio"
-        LanguageMode.SPANISH -> "Resumen de la Colección del Compendio"
-        LanguageMode.DUTCH -> "Overzicht Compendiumcollectie"
-        else -> "Compendium Collection Overview"
+        LanguageMode.GERMAN -> "Rezeptsammlung Übersicht"
+        LanguageMode.FRENCH -> "Aperçu de la Collection"
+        LanguageMode.ITALIAN -> "Panoramica della Collezione"
+        LanguageMode.SPANISH -> "Resumen de la Colección"
+        LanguageMode.DUTCH -> "Overzicht Receptcollectie"
+        else -> "Cookbook Collection Overview"
     }
 
     fun getBatchGeneratePhotosButton(count: Int, lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
@@ -702,12 +702,12 @@ object AppLocalization {
     }
 
     fun getCloudSyncDescription(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "Synchronisiere Kompendien, Rezepte, Formeln & Fotos automatisch über dein privates Cloud-VPS oder Nextcloud-Konto."
-        LanguageMode.FRENCH -> "Synchronisez automatiquement vos compendiums, formules et photos sur votre serveur privé."
-        LanguageMode.ITALIAN -> "Sincronizza automaticamente compendi, formule e foto tramite il tuo server privato."
-        LanguageMode.SPANISH -> "Sincroniza automáticamente compendios, fórmulas y fotos a través de tu servidor privado."
-        LanguageMode.DUTCH -> "Synchroniseer compendiums, formules en foto's automatisch via je privéserver."
-        else -> "Auto-sync compendiums, formulas & photos across family tablets via your private VPS or Nextcloud server."
+        LanguageMode.GERMAN -> "Synchronisiere Kochbücher, Rezepte, Formeln & Fotos automatisch über dein privates Cloud-VPS oder Nextcloud-Konto."
+        LanguageMode.FRENCH -> "Synchronisez automatiquement vos recettes, formules et photos sur votre serveur privé."
+        LanguageMode.ITALIAN -> "Sincronizza automaticamente ricettari, formule e foto tramite il tuo server privato."
+        LanguageMode.SPANISH -> "Sincroniza automáticamente recetas, fórmulas y fotos a través de tu servidor privado."
+        LanguageMode.DUTCH -> "Synchroniseer kookboeken, formules en foto's automatisch via je privéserver."
+        else -> "Auto-sync cookbooks, formulas & photos across family tablets via your private VPS or Nextcloud server."
     }
 
     fun getServerUrlLabel(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
@@ -797,7 +797,7 @@ object AppLocalization {
         LanguageMode.ITALIAN -> "Crea automaticamente ogni domenica un archivio ZIP completo delle tue ricette su questo dispositivo."
         LanguageMode.SPANISH -> "Crea automáticamente cada domingo un archivo ZIP completo de tus recetas en este dispositivo."
         LanguageMode.DUTCH -> "Maakt elke zondag automatisch een compleet ZIP-archief van je recepten op dit apparaat."
-        else -> "Creates a full ZIP snapshot archive of your compendium database every Sunday and keeps it saved on this device."
+        else -> "Creates a full ZIP snapshot archive of your cookbook database every Sunday and keeps it saved on this device."
     }
 
     fun getOpenBackupManagerButton(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {

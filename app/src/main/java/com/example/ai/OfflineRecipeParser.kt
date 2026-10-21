@@ -189,7 +189,7 @@ object OfflineRecipeParser {
             isGerman = true
         }
 
-        val firstLine = lines.firstOrNull() ?: "Compendium Entry"
+        val firstLine = lines.firstOrNull() ?: "Recipe Entry"
         if (isGerman) {
             titleDe = firstLine.replace(Regex("^[-*#]+\\s*"), "")
             titleEn = translateSimpleTitle(titleDe, toEnglish = true)

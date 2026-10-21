@@ -82,7 +82,7 @@ fun ProfilePill(
     modifier: Modifier = Modifier
 ) {
     val isAll = activeProfile.equals("All", ignoreCase = true) || activeProfile.equals("All Family", ignoreCase = true)
-    val displayLabel = if (isAll) com.example.ui.util.AppLocalization.getFilterAllFamily(languageMode) else com.example.ui.util.AppLocalization.getProfileCookbookTitle(activeProfile, languageMode)
+    val displayLabel = if (isAll) com.example.ui.util.AppLocalization.getFilterAllFamily(languageMode) else activeProfile
     val iconEmoji = getProfileEmoji(activeProfile)
 
     Surface(

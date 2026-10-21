@@ -143,7 +143,7 @@ fun AppErrorBoundary(
                     OutlinedButton(
                         onClick = {
                             val logs = AppLogger.getFormattedLogs()
-                            val clip = ClipData.newPlainText("Cosmo Compendium Diagnostic Log", logs)
+                            val clip = ClipData.newPlainText("Cosmo Cookbook Diagnostic Log", logs)
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, "📋 Diagnostic logs copied to clipboard", Toast.LENGTH_SHORT).show()

@@ -366,7 +366,7 @@ object SousChefActionEngine {
             (q.contains("bring in") || q.contains("into recipe") || q.contains("into recipes") || 
              q.contains("thought you said") || q.contains("watch") || q.contains("how") || 
              q.contains("can you") || q.contains("import") || q.contains("rezept")) ->
-                "Yes, absolutely! Cosmo Compendium can bring recipes from YouTube videos into your cookbook in two easy ways:\n\n" +
+                "Yes, absolutely! Cosmo Cookbook can bring recipes from YouTube videos into your cookbook in two easy ways:\n\n" +
                 "1. 🌐 **Paste any YouTube link**: Simply paste the YouTube URL (or an Instagram Reel / TikTok link) directly into this chat. I will automatically extract the recipe, ingredients, cooking steps, and cover photo into your cookbook!\n" +
                 "2. 📹 **Import Cooking Video files**: Tap the 📹 Video button at the top of the chat to select any cooking video or screen recording from your phone, and our AI vision will analyze the video frames to build the recipe card.\n\n" +
                 "Try pasting a YouTube link right here in the chat!"

@@ -138,7 +138,7 @@ object RecipePdfGenerator {
             c.drawRect(MARGIN - 10, MARGIN - 10, PAGE_WIDTH - MARGIN + 10, PAGE_HEIGHT - MARGIN + 10, borderPaint)
             c.drawRect(MARGIN - 6, MARGIN - 6, PAGE_WIDTH - MARGIN + 6, PAGE_HEIGHT - MARGIN + 6, innerBorderPaint)
 
-            val footerText = if (isMaster) "Master Compendium Archive • Page $pNum" else "Compendium Card • Page $pNum"
+            val footerText = if (isMaster) "Master Recipe Archive • Page $pNum" else "Recipe Card • Page $pNum"
             val footerPaint = TextPaint().apply {
                 color = Color.parseColor("#9C8673")
                 textSize = 8.5f
@@ -161,7 +161,7 @@ object RecipePdfGenerator {
         var curY = MARGIN + 15f
 
         // Top Banner Title
-        canvas.drawText("COMPENDIUM CARD", MARGIN, curY, smallMetaPaint)
+        canvas.drawText("RECIPE CARD", MARGIN, curY, smallMetaPaint)
         curY += 18f
 
         // Title
@@ -427,7 +427,7 @@ object RecipePdfGenerator {
     fun generateFullCookbookPdf(
         context: Context,
         recipes: List<RecipeEntity>,
-        cookbookTitle: String = "Compendium Collection",
+        cookbookTitle: String = "Cookbook Collection",
         profileName: String = "Louis",
         unitSystem: UnitSystem = UnitSystem.METRIC_GRAMS
     ): File {
@@ -554,7 +554,7 @@ object RecipePdfGenerator {
         canvas.drawRect(MARGIN - 8, MARGIN - 8, PAGE_WIDTH - MARGIN + 8, PAGE_HEIGHT - MARGIN + 8, innerBorderPaint)
 
         var coverY = PAGE_HEIGHT * 0.28f
-        val emblemStr = "✦  COMPENDIUM ARCHIVE  ✦"
+        val emblemStr = "✦  HEIRLOOM RECIPE ARCHIVE  ✦"
         val emblemWidth = smallMetaPaint.measureText(emblemStr)
         canvas.drawText(emblemStr, (PAGE_WIDTH - emblemWidth) / 2f, coverY, smallMetaPaint)
         coverY += 34f
@@ -563,7 +563,7 @@ object RecipePdfGenerator {
         canvas.drawText(cookbookTitle, (PAGE_WIDTH - titleWidth) / 2f, coverY, coverTitlePaint)
         coverY += 24f
 
-        val subtitle = "A Master Compendium of Formulas, Recipes & Maker's Notes"
+        val subtitle = "A Master Collection of Formulas, Recipes & Maker's Notes"
         val subtitleWidth = coverSubtitlePaint.measureText(subtitle)
         canvas.drawText(subtitle, (PAGE_WIDTH - subtitleWidth) / 2f, coverY, coverSubtitlePaint)
         coverY += 50f
@@ -680,7 +680,7 @@ object RecipePdfGenerator {
             var curY = MARGIN + 15f
 
             // Banner & Title
-            canvas.drawText("COMPENDIUM CARD", MARGIN, curY, smallMetaPaint)
+            canvas.drawText("RECIPE CARD", MARGIN, curY, smallMetaPaint)
             curY += 16f
 
             val mainTitle = recipe.getDisplayTitle()
@@ -903,7 +903,7 @@ object RecipePdfGenerator {
     fun createShareableFullCookbookPdfUri(
         context: Context,
         recipes: List<RecipeEntity>,
-        cookbookTitle: String = "Compendium Collection",
+        cookbookTitle: String = "Cookbook Collection",
         profileName: String = "Louis",
         unitSystem: UnitSystem = UnitSystem.METRIC_GRAMS
     ): Uri? {
@@ -921,7 +921,7 @@ object RecipePdfGenerator {
             type = "application/pdf"
             putExtra(Intent.EXTRA_STREAM, pdfUri)
             putExtra(Intent.EXTRA_SUBJECT, "Recipe / Formula: $recipeTitle")
-            putExtra(Intent.EXTRA_TEXT, "Here is the card for '$recipeTitle' from my Compendium!")
+            putExtra(Intent.EXTRA_TEXT, "Here is the card for '$recipeTitle' from my Cookbook!")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "Share Recipe / Formula PDF via..."))
@@ -935,7 +935,7 @@ object RecipePdfGenerator {
             putExtra(Intent.EXTRA_TEXT, "Here is the complete Master PDF for '$cookbookTitle' ($totalRecipes formulas & recipes with photos and instructions)!")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share Complete Compendium PDF via..."))
+        context.startActivity(Intent.createChooser(intent, "Share Complete Cookbook PDF via..."))
     }
 
     fun savePdfToUri(context: Context, targetUri: Uri, pdfFile: File): Boolean {

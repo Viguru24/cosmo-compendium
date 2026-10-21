@@ -14,7 +14,7 @@ public struct ProfilePill: View {
                 Text(ProfileManager.getProfileEmoji(name: profileManager.activeProfile))
                     .font(.system(size: 14))
 
-                Text(profileManager.activeProfile == "All Family" ? "All Family" : "\(profileManager.activeProfile)'s Cookbook")
+                Text(profileManager.activeProfile == "All Family" ? "All Family" : profileManager.activeProfile)
                     .font(.system(size: 12.5, weight: .bold))
                     .foregroundStyle(Color(red: 0xCC / 255.0, green: 0x55 / 255.0, blue: 0x00 / 255.0))
                     .lineLimit(1)

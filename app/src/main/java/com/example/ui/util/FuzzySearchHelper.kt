@@ -14,7 +14,11 @@ object FuzzySearchHelper {
     // Excluded false-positive prefix collisions where a short culinary word happens to be
     // an orthographic prefix of completely unrelated words (e.g. "pie" matching "piece" or "pierce").
     private val EXCLUDED_PREFIX_MATCHES = mapOf(
-        "pie" to setOf("piece", "pieces", "piecemeal", "piecework", "pierce", "pierced", "pierces", "piercing", "pierogi", "pierogis", "pier", "piers", "piety", "pietism"),
+        "pie" to setOf(
+            "piece", "pieces", "piecemeal", "piecework", "pierce", "pierced", "pierces", "piercing",
+            "pierogi", "pierogis", "pierogie", "pierogies", "pier", "piers", "piety", "pietism",
+            "pipe", "pipes", "piping", "pipeline"
+        ),
         "pea" to setOf("pear", "pears", "pearl", "pearls", "peace", "peasant"),
         "gin" to setOf("ginger", "gingersnap", "gingersnaps", "gingery"),
         "bar" to setOf("bare", "bark", "barks", "barley"),

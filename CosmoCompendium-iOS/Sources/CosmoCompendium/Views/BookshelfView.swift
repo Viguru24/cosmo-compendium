@@ -353,15 +353,6 @@ public struct BookshelfView: View {
 
             Spacer()
 
-            // Sous-Chef Copilot icon button
-            Button {
-                isShowingSousChef = true
-            } label: {
-                Text("👨‍🍳")
-                    .font(.system(size: 18))
-                    .frame(width: 32, height: 32)
-            }
-
             // Shopping List with Badge
             Button {
                 isShowingShoppingList = true
@@ -659,7 +650,7 @@ public struct BookshelfView: View {
 
     // MARK: - Search Matching Logic (Aligned with FuzzySearchHelper.kt)
     private static let searchExcludedPrefixMatches: [String: Set<String>] = [
-        "pie": ["piece", "pieces", "piecemeal", "piecework", "pierce", "pierced", "pierces", "piercing", "pierogi", "pierogis", "pier", "piers", "piety", "pietism"],
+        "pie": ["piece", "pieces", "piecemeal", "piecework", "pierce", "pierced", "pierces", "piercing", "pierogi", "pierogis", "pierogie", "pierogies", "pier", "piers", "piety", "pietism", "pipe", "pipes", "piping", "pipeline"],
         "pea": ["pear", "pears", "pearl", "pearls", "peace", "peasant"],
         "gin": ["ginger", "gingersnap", "gingersnaps", "gingery"],
         "bar": ["bare", "bark", "barks", "barley"],

@@ -79,9 +79,9 @@ class FuzzySearchHelperTest {
         val roastChicken = createRecipe(
             id = 101L,
             title = "Herb Roasted Chicken",
-            steps = listOf("Pierce chicken with a fork to test doneness.")
+            steps = listOf("Pierce chicken with a fork to test doneness. Serve piping hot.")
         )
-        assertFalse("Roast chicken with 'pierce' should not match 'pie'", FuzzySearchHelper.matches(roastChicken, "pie"))
+        assertFalse("Roast chicken with 'pierce' and 'piping' should not match 'pie'", FuzzySearchHelper.matches(roastChicken, "pie"))
         assertEquals(0, FuzzySearchHelper.score(roastChicken, "pie"))
     }
 

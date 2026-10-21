@@ -92,9 +92,10 @@ fun BookshelfTopBar(
                         Text("👨‍🍳", fontSize = 14.sp)
                         Text(
                             AppLocalization.getSousChefButtonLabel(languageMode),
-                            fontSize = 11.5.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TerracottaPrimary
+                            color = TerracottaPrimary,
+                            maxLines = 1
                         )
                     }
                 }

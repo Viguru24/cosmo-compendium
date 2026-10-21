@@ -46,7 +46,7 @@ object UrlRecipeExtractor {
     suspend fun extractRecipeFromUrl(
         context: Context,
         urlStr: String,
-        targetProfile: String = "Wife"
+        targetProfile: String = "Annette"
     ): Result<RecipeEntity> = withContext(Dispatchers.IO) {
         val timedResult = withTimeoutOrNull(25000) {
             try {

@@ -22,7 +22,7 @@ object VideoRecipeExtractor {
     suspend fun extractRecipeFromVideoUri(
         context: Context,
         videoUri: Uri,
-        targetProfile: String = "Wife"
+        targetProfile: String = "Annette"
     ): Result<RecipeEntity> = withContext(Dispatchers.IO) {
         val timedResult = withTimeoutOrNull(45000) {
             val retriever = MediaMetadataRetriever()

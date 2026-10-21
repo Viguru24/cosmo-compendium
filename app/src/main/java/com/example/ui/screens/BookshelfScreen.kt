@@ -298,7 +298,8 @@ fun BookshelfScreen(
                 },
                 onOpenGuide = { viewModel.openGuide() },
                 onOpenSettings = { viewModel.openSettings() },
-                onCheckOtaUpdate = { showOtaUpdateDialog = true }
+                onCheckOtaUpdate = { showOtaUpdateDialog = true },
+                onSyncRecipes = { viewModel.triggerSyncNow() }
             )
         },
         floatingActionButton = {
@@ -1631,7 +1632,7 @@ fun QuickAssignCategoryDialog(
     onDismiss: () -> Unit
 ) {
     var customCategory by remember { mutableStateOf("") }
-    val allOptions = (listOf("Wife's Recipes", "Daughter's Recipes") + categories).distinct()
+    val allOptions = (listOf("Annette's Recipes", "Isabel's Recipes") + categories).distinct()
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -129,6 +129,48 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
+        // Real-time observer to auto-discover profiles and auto-migrate legacy "Wife" records
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.allRecipes.collect { recipeList ->
+                if (recipeList.isEmpty()) return@collect
+
+                // Auto-migrate any recipes stored with legacy profile aliases "Wife" -> "Annette"
+                val wifeRecipes = recipeList.filter { it.profileName.equals("Wife", ignoreCase = true) }
+                if (wifeRecipes.isNotEmpty()) {
+                    wifeRecipes.forEach { r ->
+                        repository.updateRecipeProfile(r.id, "Annette")
+                    }
+                }
+                val daughterRecipes = recipeList.filter { it.profileName.equals("Daughter", ignoreCase = true) }
+                if (daughterRecipes.isNotEmpty()) {
+                    daughterRecipes.forEach { r ->
+                        repository.updateRecipeProfile(r.id, "Isabel")
+                    }
+                }
+
+                // Collect all distinct profiles present in database recipes
+                val dbProfiles = recipeList.map { it.profileName.trim() }
+                    .map { name ->
+                        when {
+                            name.equals("Wife", ignoreCase = true) -> "Annette"
+                            name.equals("Daughter", ignoreCase = true) -> "Isabel"
+                            else -> name
+                        }
+                    }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+
+                val current = familyProfiles.value
+                val combined = (current + dbProfiles).distinct()
+                if (combined != current) {
+                    withContext(Dispatchers.Main) {
+                        familyProfiles.value = combined
+                        saveProfiles(combined)
+                    }
+                }
+            }
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Never auto-seed demo recipes on launch/update once user deletes or manages them
@@ -167,27 +209,58 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     // ==========================================
     // FAMILY PROFILES ("WHO'S COOKING?")
     // ==========================================
-    val defaultProfiles = listOf("Louis", "Wife", "Daughter")
+    val defaultProfiles = listOf("Louis", "Annette", "Isabel")
 
     private fun loadProfilesFromPrefs(): List<String> {
-        val stored = prefs.getString("pref_family_profiles", null) ?: return defaultProfiles
-        return try {
-            val list = stored.split("|||").map { it.trim() }.filter { it.isNotBlank() }
-            if (list.isNotEmpty()) list else defaultProfiles
-        } catch (e: Exception) {
+        val stored = prefs.getString("pref_family_profiles", null)
+        val rawList = if (stored != null) {
+            try {
+                stored.split("|||").map { it.trim() }.filter { it.isNotBlank() }
+            } catch (e: Exception) {
+                defaultProfiles
+            }
+        } else {
             defaultProfiles
         }
+        val migrated = rawList.map { name ->
+            when {
+                name.equals("Wife", ignoreCase = true) -> "Annette"
+                name.equals("Daughter", ignoreCase = true) -> "Isabel"
+                else -> name
+            }
+        }.distinct()
+        val finalList = if (migrated.isNotEmpty()) migrated else defaultProfiles
+        if (finalList != rawList) {
+            saveProfiles(finalList)
+        }
+        return finalList
     }
 
     val familyProfiles = MutableStateFlow<List<String>>(loadProfilesFromPrefs())
-    val defaultProfile = MutableStateFlow<String>(prefs.getString("pref_device_default_profile", "Louis") ?: "Louis")
+    val defaultProfile = MutableStateFlow<String>(
+        run {
+            val raw = prefs.getString("pref_device_default_profile", "Louis") ?: "Louis"
+            when {
+                raw.equals("Wife", ignoreCase = true) -> "Annette"
+                raw.equals("Daughter", ignoreCase = true) -> "Isabel"
+                else -> raw
+            }
+        }
+    )
     val alwaysStartOnDefault = MutableStateFlow<Boolean>(prefs.getBoolean("pref_always_start_on_default", true))
 
     val activeProfile = MutableStateFlow<String>(
-        if (prefs.getBoolean("pref_always_start_on_default", true)) {
-            prefs.getString("pref_device_default_profile", "Louis") ?: "Louis"
-        } else {
-            prefs.getString("pref_active_profile", "Louis") ?: "Louis"
+        run {
+            val raw = if (prefs.getBoolean("pref_always_start_on_default", true)) {
+                prefs.getString("pref_device_default_profile", "Louis") ?: "Louis"
+            } else {
+                prefs.getString("pref_active_profile", "Louis") ?: "Louis"
+            }
+            when {
+                raw.equals("Wife", ignoreCase = true) -> "Annette"
+                raw.equals("Daughter", ignoreCase = true) -> "Isabel"
+                else -> raw
+            }
         }
     )
     val isProfileSwitcherOpen = MutableStateFlow(false)
@@ -359,7 +432,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 isVideoAnalyzing.value = true
                 isSousChefProcessing.value = true
-                val profile = if (targetProfile == "All Family" || targetProfile == "All") "Wife" else targetProfile
+                val profile = if (targetProfile == "All Family" || targetProfile == "All") "Annette" else targetProfile
                 AppLogger.i("RecipeViewModel", "Starting AI video extraction for profile '$profile' from URI: $videoUri")
 
                 val statusMsg = ChatMessage(
@@ -446,7 +519,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                         val result = UrlRecipeExtractor.extractRecipeFromUrl(
                             context = getApplication(),
                             urlStr = intent.url,
-                            targetProfile = if (targetProfile == "All Family") "Wife" else targetProfile
+                            targetProfile = if (targetProfile == "All Family") "Annette" else targetProfile
                         )
 
                         if (result.isSuccess) {
@@ -479,7 +552,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     is SousChefIntent.ImportTextRecipe -> {
                         val targetProfile = intent.targetProfile ?: activeProfile.value
-                        val resolvedProfile = if (targetProfile == "All Family" || targetProfile == "All") "Wife" else targetProfile
+                        val resolvedProfile = if (targetProfile == "All Family" || targetProfile == "All") "Annette" else targetProfile
                         val initialAiMsg = ChatMessage(
                             isUser = false,
                             text = "Parsing and extracting recipe text for $resolvedProfile's cookbook... 📝"
@@ -565,7 +638,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     is SousChefIntent.CreateRecipe -> {
                         val targetProfile = intent.targetProfile ?: activeProfile.value
-                        val resolvedProfile = if (targetProfile == "All Family" || targetProfile == "All") "Wife" else targetProfile
+                        val resolvedProfile = if (targetProfile == "All Family" || targetProfile == "All") "Annette" else targetProfile
                         val dish = intent.dishQuery
                         val initialAiMsg = ChatMessage(
                             isUser = false,

@@ -287,7 +287,7 @@ fun SettingsProfileSection(
                                 .background(Color(0xFFFFFDF9))
                                 .border(1.dp, Color(0xFFE5DDD3), RoundedCornerShape(12.dp))
                         ) {
-                            val allAvailableProfiles = if (familyProfiles.isNotEmpty()) familyProfiles else listOf("Louis", "Wife", "Daughter")
+                            val allAvailableProfiles = if (familyProfiles.isNotEmpty()) familyProfiles else listOf("Louis", "Annette", "Isabel")
                             allAvailableProfiles.forEach { prof ->
                                 val isSelected = defaultProfile.equals(prof, ignoreCase = true)
                                 DropdownMenuItem(
@@ -298,7 +298,7 @@ fun SettingsProfileSection(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(if (prof.contains("wife", true)) "👩‍🍳" else if (prof.contains("daughter", true)) "👧" else "👨‍🍳", fontSize = 16.sp)
+                                                Text(com.example.ui.components.getProfileEmoji(prof), fontSize = 16.sp)
                                                 Spacer(modifier = Modifier.width(10.dp))
                                                 Text(
                                                     text = "$prof's Cookbook",

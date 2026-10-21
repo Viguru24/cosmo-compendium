@@ -73,7 +73,7 @@ object SousChefActionEngine {
         // 4. Move / Reassign Recipes Intent
         if (lower.contains("move") || lower.contains("transfer") || lower.contains("assign") || lower.contains("reassign") || lower.contains("put into") || lower.contains("put in") || lower.contains("verschieben")) {
             val isAll = lower.contains("all") || lower.contains("everything") || lower.contains("whole") || lower.contains("alle")
-            val targetProfile = extractTargetProfileFromMove(lower, knownProfiles) ?: "Wife"
+            val targetProfile = extractTargetProfileFromMove(lower, knownProfiles) ?: "Annette"
 
             val specificRecipe = if (!isAll) {
                 lower
@@ -86,6 +86,8 @@ object SousChefActionEngine {
                     .replace("verschieben", "")
                     .replace("to $targetProfile", "")
                     .replace("to ${targetProfile.lowercase()}", "")
+                    .replace("to annette's cookbook", "")
+                    .replace("to annette", "")
                     .replace("to wife's cookbook", "")
                     .replace("to wife", "")
                     .replace("to louis", "")

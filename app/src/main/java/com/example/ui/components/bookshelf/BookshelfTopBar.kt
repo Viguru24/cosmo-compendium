@@ -59,6 +59,7 @@ fun BookshelfTopBar(
     onOpenGuide: () -> Unit,
     onOpenSettings: () -> Unit,
     onCheckOtaUpdate: (() -> Unit)? = null,
+    onSyncRecipes: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -181,6 +182,17 @@ fun BookshelfTopBar(
                             onToggleSoundEffects()
                             val message = if (!soundEffectsEnabled) "🔊 Sound Effects Enabled" else "🔇 Sound Effects Muted"
                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text(if (languageMode == LanguageMode.GERMAN) "Rezepte synchronisieren" else "Sync Recipes with Cloud Hub") },
+                        leadingIcon = { Icon(Icons.Default.CloudSync, contentDescription = null, tint = TerracottaPrimary) },
+                        onClick = {
+                            showMoreMenu = false
+                            onSyncRecipes?.invoke()
+                            val msg = if (languageMode == LanguageMode.GERMAN) "Synchronisiere Rezepte mit Cloud..." else "Synchronizing recipes with Cloud Hub..."
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }
                     )
 

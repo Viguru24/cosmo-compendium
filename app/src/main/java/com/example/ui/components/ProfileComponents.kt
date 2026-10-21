@@ -350,7 +350,7 @@ fun ProfileSwitcherSheet(
                 item {
                     var showBulkMoveDialog by remember { mutableStateOf(false) }
                     var sourceProf by remember { mutableStateOf("All Family") }
-                    var targetProf by remember { mutableStateOf(profiles.firstOrNull { !it.equals("Louis", ignoreCase = true) } ?: "Wife") }
+                    var targetProf by remember { mutableStateOf(profiles.firstOrNull { !it.equals("Louis", ignoreCase = true) } ?: "Annette") }
 
                     Surface(
                         shape = RoundedCornerShape(14.dp),

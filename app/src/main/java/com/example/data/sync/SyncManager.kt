@@ -330,8 +330,13 @@ class SyncManager(
                     val isFavorite = itemObj.optBoolean("isFavorite", false)
                     val rating = itemObj.optInt("rating", 5)
                     val timesCooked = itemObj.optInt("timesCooked", 0)
-                    val profileName = itemObj.optString("profileName").ifBlank {
+                    val rawProfile = itemObj.optString("profileName").ifBlank {
                         itemObj.optString("profile_name").ifBlank { "Louis" }
+                    }
+                    val profileName = when {
+                        rawProfile.equals("Wife", ignoreCase = true) -> "Annette"
+                        rawProfile.equals("Daughter", ignoreCase = true) -> "Isabel"
+                        else -> rawProfile
                     }
                     val createdAt = itemObj.optLong("createdAt", updatedAt)
 

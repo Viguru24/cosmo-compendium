@@ -119,10 +119,30 @@ object SmartPromptBuilder {
         // 3. Beverages, Cocktails, Teas & Smoothies
         if (lowerCat.contains("beverage") || lowerCat.contains("drink") || lowerCat.contains("cocktail") || lowerCat.contains("getränk") || lowerCat.contains("tea") || lowerCat.contains("tee") || lowerTitle.contains("punch") || lowerTitle.contains("bowle") || lowerTitle.contains("spritz") || lowerTitle.contains("smoothie") || lowerTitle.contains("limonade") || lowerTitle.contains("lemonade")) {
             return "Stunning culinary portrait of refreshing $dishName, served in an elegant crystal glass with clear ice cubes, fresh botanical garnish and citrus wheel on the rim, backlit by warm golden hour sunlight, droplets of condensation on the cold glass, rustic wooden bar surface, cinematic shallow depth of field, gourmet drink photography"
+        }        // 4. Chilled & Frozen Desserts, Mousses, Ice Creams, Parfaits, Custards & Puddings
+        if (lowerTitle.contains("mousse") || lowerTitle.contains("ice cream") || lowerTitle.contains("eis") || 
+            lowerTitle.contains("sorbet") || lowerTitle.contains("gelato") || lowerTitle.contains("parfait") || 
+            lowerTitle.contains("panna cotta") || lowerTitle.contains("pudding") || lowerTitle.contains("creme") || 
+            lowerTitle.contains("crème") || lowerTitle.contains("custard") || lowerTitle.contains("tiramisu") || 
+            lowerTitle.contains("flan") || lowerTitle.contains("zabaglione") || lowerTitle.contains("souffle") ||
+            lowerTitle.contains("soufflé")) {
+            val servingContainer = when {
+                lowerTitle.contains("ice cream") || lowerTitle.contains("eis") || lowerTitle.contains("sorbet") || lowerTitle.contains("gelato") ->
+                    "perfect artisanal rounded scoops served in an elegant chilled crystal coupe or handcrafted ceramic dessert bowl, accompanied by a glossy drizzle, fresh mint sprig, vintage dessert spoon resting beside"
+                lowerTitle.contains("mousse") || lowerTitle.contains("parfait") || lowerTitle.contains("panna cotta") ->
+                    "delicately piped into an elegant clear glass dessert glass showing velvety airy texture, garnished with dark chocolate shavings and fresh berries, antique silver dessert spoon beside"
+                else ->
+                    "beautifully plated on an artisanal fine dessert plate, delicate gourmet garnish, velvety glossy finish, antique dessert spoon"
+            }
+            return "Exquisite gourmet culinary photograph of freshly made $dishName, $servingContainer, soft natural window daylight, warm ambient restaurant atmosphere, shallow depth of field, 4k fine dining editorial food photography, no text"
         }
 
-        // 4. Baking, Cakes, Tarts, Pastries & Pies
-        if (lowerCat.contains("baking") || lowerCat.contains("backen") || lowerCat.contains("dessert") || lowerTitle.contains("cake") || lowerTitle.contains("kuchen") || lowerTitle.contains("torte") || lowerTitle.contains("pie") || lowerTitle.contains("tart") || lowerTitle.contains("cookie") || lowerTitle.contains("plätzchen") || lowerTitle.contains("muffin") || lowerTitle.contains("croissant")) {
+        // 5. Baking, Cakes, Tarts, Pastries & Pies (True Baked Desserts & Pastries)
+        if (lowerTitle.contains("cake") || lowerTitle.contains("kuchen") || lowerTitle.contains("torte") || 
+            lowerTitle.contains("pie") || lowerTitle.contains("tart") || lowerTitle.contains("cookie") || 
+            lowerTitle.contains("plätzchen") || lowerTitle.contains("muffin") || lowerTitle.contains("croissant") ||
+            lowerTitle.contains("strudel") || lowerTitle.contains("pastry") || lowerTitle.contains("gebäck") ||
+            (lowerCat.contains("baking") && !lowerTitle.contains("mousse") && !lowerTitle.contains("ice cream"))) {
             val cakeServing = if (lowerTitle.contains("cookie") || lowerTitle.contains("plätzchen")) "artisanal stack on parchment paper" else "on an elegant vintage ceramic cake pedestal stand, one perfect slice cut revealing internal textures"
             return "Mouth-watering culinary photograph of freshly baked $dishName, $cakeServing, dusting of powdered sugar, warm natural bakery lighting, crisp crumb and golden-brown crust, rustic farmhouse wooden table, gourmet pastry photography, shallow depth of field"
         }

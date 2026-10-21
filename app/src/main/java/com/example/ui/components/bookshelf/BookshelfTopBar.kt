@@ -11,11 +11,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +62,7 @@ fun BookshelfTopBar(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var showMoreMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
         modifier = modifier,
@@ -94,25 +102,15 @@ fun BookshelfTopBar(
         },
         actions = {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(end = 4.dp)
             ) {
-                // Sous-Chef AI Copilot button
-                IconButton(
-                    onClick = onOpenSousChef,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .testTag("open_sous_chef_button")
-                ) {
-                    Text("👨‍🍳", fontSize = 20.sp)
-                }
-
                 // Shopping List button with badge
                 IconButton(
                     onClick = onOpenShoppingList,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .testTag("open_shopping_list_button")
                 ) {
                     BadgedBox(
@@ -131,65 +129,86 @@ fun BookshelfTopBar(
                             Icons.Default.ShoppingCart,
                             contentDescription = AppLocalization.getShoppingListTitle(languageMode),
                             tint = TerracottaPrimary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(21.dp)
                         )
                     }
                 }
 
-                // Over-The-Air (OTA) Sovereign Updates button
+                // Over-The-Air (OTA) Sovereign Updates button (Always Visible)
                 IconButton(
                     onClick = { onCheckOtaUpdate?.invoke() },
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .testTag("open_ota_update_button")
                 ) {
                     Icon(
                         Icons.Default.CloudSync,
                         contentDescription = "Check for Over-The-Air Updates",
                         tint = Color(0xFF16A34A),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Quick Sound Toggle (Mute / Unmute)
+                // More Options (Sound toggle, Guide, Settings)
                 IconButton(
-                    onClick = {
-                        onToggleSoundEffects()
-                        val message = if (!soundEffectsEnabled) "🔊 Sound Effects Enabled" else "🔇 Sound Effects Muted"
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        if (soundEffectsEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                        contentDescription = if (soundEffectsEnabled) "Mute Sound" else "Unmute Sound",
-                        tint = if (soundEffectsEnabled) TerracottaPrimary else Color(0xFF9E8E81),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // Cookbook Guide Button
-                IconButton(
-                    onClick = onOpenGuide,
+                    onClick = { showMoreMenu = true },
                     modifier = Modifier
-                        .size(36.dp)
-                        .testTag("open_guide_button")
-                ) {
-                    Text("❓", fontSize = 17.sp)
-                }
-
-                // Settings & Actions (3 Vertical Dots)
-                IconButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .testTag("open_settings_button")
                 ) {
                     Icon(
                         Icons.Default.MoreVert,
-                        contentDescription = "Settings & More",
+                        contentDescription = "More Options",
                         tint = TerracottaPrimary,
                         modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMoreMenu,
+                    onDismissRequest = { showMoreMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (soundEffectsEnabled) {
+                                    if (languageMode == LanguageMode.GERMAN) "Ton stummschalten" else "Mute Sound Effects"
+                                } else {
+                                    if (languageMode == LanguageMode.GERMAN) "Ton aktivieren" else "Enable Sound Effects"
+                                }
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (soundEffectsEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                                contentDescription = null,
+                                tint = if (soundEffectsEnabled) TerracottaPrimary else Color(0xFF9E8E81)
+                            )
+                        },
+                        onClick = {
+                            showMoreMenu = false
+                            onToggleSoundEffects()
+                            val message = if (!soundEffectsEnabled) "🔊 Sound Effects Enabled" else "🔇 Sound Effects Muted"
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text(if (languageMode == LanguageMode.GERMAN) "Anleitung & Hilfe" else "Cookbook Guide") },
+                        leadingIcon = { Text("❓", fontSize = 16.sp) },
+                        onClick = {
+                            showMoreMenu = false
+                            onOpenGuide()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text(if (languageMode == LanguageMode.GERMAN) "Einstellungen" else "Settings & Preferences") },
+                        leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = TerracottaPrimary) },
+                        onClick = {
+                            showMoreMenu = false
+                            onOpenSettings()
+                        }
                     )
                 }
             }

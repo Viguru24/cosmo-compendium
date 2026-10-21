@@ -264,8 +264,9 @@ object RecipePdfGenerator {
         val grouped = recipe.ingredients.groupBy { it.group ?: "Main" }
         grouped.forEach { (groupName, items) ->
             if (groupName.isNotBlank() && grouped.size > 1 && groupName != "Main") {
-                canvas.drawText("• $groupName", MARGIN + 4f, leftY + 8f, boldBodyPaint)
-                leftY += 15f
+                leftY += 6f
+                canvas.drawText("• $groupName", MARGIN + 2f, leftY + 9f, boldBodyPaint)
+                leftY += 19f
             }
 
             items.forEach { ing ->
@@ -343,18 +344,21 @@ object RecipePdfGenerator {
             stepLayout.draw(canvas)
             canvas.restore()
 
-            var stepAddedHeight = stepLayout.height + 5f
+            var stepAddedHeight = stepLayout.height + 6f
 
             // Step Timer badge
             if (step.timerMinutes > 0) {
                 val timerStr = "⏱ ${step.timerMinutes} min timer"
-                canvas.drawText(timerStr, rightColLeft + 15f, rightY - 8f + stepAddedHeight + 2f, smallMetaPaint)
-                stepAddedHeight += 13f
+                canvas.drawText(timerStr, rightColLeft + 15f, rightY - 8f + stepAddedHeight + 10f, smallMetaPaint)
+                stepAddedHeight += 18f
             }
 
             // Step tip
-            if (includeTips && !step.tip.isNullOrBlank()) {
-                val tipStr = "💡 Secret: ${step.getLocalizedTip(LanguageMode.ENGLISH) ?: step.tip}"
+            val cleanTip = (step.getLocalizedTip(LanguageMode.ENGLISH) ?: step.tip)?.takeIf { 
+                it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) 
+            }
+            if (includeTips && cleanTip != null) {
+                val tipStr = "💡 Secret: $cleanTip"
                 val tipLayout = StaticLayout.Builder.obtain(
                     tipStr, 0, tipStr.length, tipPaint, (rightColWidth - 18).toInt()
                 ).setAlignment(Layout.Alignment.ALIGN_NORMAL).build()
@@ -385,13 +389,14 @@ object RecipePdfGenerator {
 
         // Family Notes Section (at bottom of tallest column)
         val finalContentY = maxOf(leftY, rightY)
-        if (includeNotes && recipe.notes.isNotBlank() && finalContentY < PAGE_HEIGHT - MARGIN - 65f) {
+        val cleanNotes = recipe.notes.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) }
+        if (includeNotes && cleanNotes != null && finalContentY < PAGE_HEIGHT - MARGIN - 65f) {
             val notesBoxY = finalContentY + 10f
             canvas.drawLine(MARGIN, notesBoxY, PAGE_WIDTH - MARGIN, notesBoxY, dividerPaint)
             canvas.drawText("FAMILY CHEF NOTES", MARGIN, notesBoxY + 13f, sectionHeaderPaint)
 
             val notesLayout = StaticLayout.Builder.obtain(
-                recipe.notes, 0, recipe.notes.length, tipPaint, (PAGE_WIDTH - 2 * MARGIN).toInt()
+                cleanNotes, 0, cleanNotes.length, tipPaint, (PAGE_WIDTH - 2 * MARGIN).toInt()
             ).setAlignment(Layout.Alignment.ALIGN_NORMAL).build()
 
             canvas.save()
@@ -814,16 +819,19 @@ object RecipePdfGenerator {
                 stepLayout.draw(canvas)
                 canvas.restore()
 
-                var stepAddedHeight = stepLayout.height + 5f
+                var stepAddedHeight = stepLayout.height + 6f
 
                 if (step.timerMinutes > 0) {
                     val timerStr = "⏱ ${step.timerMinutes} min timer"
-                    canvas.drawText(timerStr, rightColLeft + 15f, rightY - 8f + stepAddedHeight + 2f, smallMetaPaint)
-                    stepAddedHeight += 13f
+                    canvas.drawText(timerStr, rightColLeft + 15f, rightY - 8f + stepAddedHeight + 10f, smallMetaPaint)
+                    stepAddedHeight += 18f
                 }
 
-                if (!step.tip.isNullOrBlank()) {
-                    val tipStr = "💡 Secret: ${step.getLocalizedTip(LanguageMode.ENGLISH) ?: step.tip}"
+                val cleanTip = (step.getLocalizedTip(LanguageMode.ENGLISH) ?: step.tip)?.takeIf { 
+                    it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) 
+                }
+                if (cleanTip != null) {
+                    val tipStr = "💡 Secret: $cleanTip"
                     val tipLayout = StaticLayout.Builder.obtain(
                         tipStr, 0, tipStr.length, tipPaint, (rightColWidth - 18).toInt()
                     ).setAlignment(Layout.Alignment.ALIGN_NORMAL).build()
@@ -841,13 +849,14 @@ object RecipePdfGenerator {
 
             // Notes
             val finalContentY = maxOf(leftY, rightY)
-            if (recipe.notes.isNotBlank() && finalContentY < PAGE_HEIGHT - MARGIN - 65f) {
+            val cleanNotes = recipe.notes.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) }
+            if (cleanNotes != null && finalContentY < PAGE_HEIGHT - MARGIN - 65f) {
                 val notesBoxY = finalContentY + 10f
                 canvas.drawLine(MARGIN, notesBoxY, PAGE_WIDTH - MARGIN, notesBoxY, dividerPaint)
                 canvas.drawText("FAMILY CHEF NOTES", MARGIN, notesBoxY + 13f, sectionHeaderPaint)
 
                 val notesLayout = StaticLayout.Builder.obtain(
-                    recipe.notes, 0, recipe.notes.length, tipPaint, (PAGE_WIDTH - 2 * MARGIN).toInt()
+                    cleanNotes, 0, cleanNotes.length, tipPaint, (PAGE_WIDTH - 2 * MARGIN).toInt()
                 ).setAlignment(Layout.Alignment.ALIGN_NORMAL).build()
 
                 canvas.save()

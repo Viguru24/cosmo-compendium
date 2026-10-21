@@ -581,8 +581,10 @@ object GeminiClient {
             val prepTimeMinutes = if (root.has("prepTimeMinutes")) root.optInt("prepTimeMinutes") else null
             val cookTimeMinutes = if (root.has("cookTimeMinutes")) root.optInt("cookTimeMinutes") else null
             val difficulty = root.optString("difficulty", "").takeIf { it.isNotBlank() }
-            val notesEnglish = root.optString("notesEnglish", "").ifBlank { root.optString("notes", "") }.takeIf { it.isNotBlank() }
-            val notesGerman = root.optString("notesGerman", "").takeIf { it.isNotBlank() }
+            val notesEnglish = root.optString("notesEnglish", "").ifBlank { root.optString("notes", "") }
+                .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) }
+            val notesGerman = root.optString("notesGerman", "")
+                .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) }
             val detectedSourceLanguage = root.optString("detectedSourceLanguage", "en")
             val hasFoodPhoto = root.optBoolean("hasFoodPhoto", false)
 
@@ -664,7 +666,8 @@ object GeminiClient {
                         val instDe = item.optString("instructionGerman", "")
                         val stepNum = item.optInt("stepNumber", i + 1)
                         val timerMin = item.optInt("timerMinutes", 0)
-                        val tip = item.optString("tip", "").takeIf { it.isNotBlank() }
+                        val tip = item.optString("tip", "")
+                            .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) && !it.equals("none", ignoreCase = true) }
 
                         if (instEn.isNotBlank() || instDe.isNotBlank()) {
                             stepsList.add(

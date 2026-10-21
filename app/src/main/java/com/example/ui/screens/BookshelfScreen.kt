@@ -1497,7 +1497,7 @@ fun RecipeBookCard(
                 }
 
                 // Dietary Suitability Badges
-                val dietaryAnalysis = remember(recipe.ingredients, recipe.tags) {
+                val dietaryAnalysis = remember(recipe.ingredients) {
                     recipe.dietaryAnalysis
                 }
                 val dietaryBadges = remember(dietaryAnalysis) {

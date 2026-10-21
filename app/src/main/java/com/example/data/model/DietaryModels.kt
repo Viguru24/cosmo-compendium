@@ -28,6 +28,8 @@ enum class Allergen(
     SULFITES("sulfites", "🍷", "Sulphites", "Sulfite", false),
     LUPIN("lupin", "🌸", "Lupin", "Lupinen", false);
 
+    val emoji: String get() = icon
+    fun getLabel(language: LanguageMode = LanguageMode.ENGLISH): String = getDisplayName(language)
     fun getDisplayName(language: LanguageMode = LanguageMode.ENGLISH): String {
         return when (language) {
             LanguageMode.GERMAN -> labelGerman
@@ -121,6 +123,8 @@ enum class DietaryTag(
         descriptionGerman = "Kohlenhydratarm, ohne Getreide und raffinierten Zucker"
     );
 
+    val emoji: String get() = icon
+    fun getLabel(language: LanguageMode = LanguageMode.ENGLISH): String = getDisplayName(language)
     fun getDisplayName(language: LanguageMode = LanguageMode.ENGLISH): String {
         return when (language) {
             LanguageMode.GERMAN -> labelGerman
@@ -146,6 +150,10 @@ enum class DietaryFilter(
     DAIRY_FREE("dairy_free", "🥛", "Dairy-Free", "Milchfrei"),
     NUT_FREE("nut_free", "🥜", "Nut-Free", "Nussfrei");
 
+    fun matches(recipe: RecipeEntity): Boolean = DietaryClassifier.matchesFilter(recipe, this)
+
+    val emoji: String get() = icon
+    fun getLabel(language: LanguageMode = LanguageMode.ENGLISH): String = getDisplayName(language)
     fun getDisplayName(language: LanguageMode = LanguageMode.ENGLISH): String {
         return when (language) {
             LanguageMode.GERMAN -> labelGerman
@@ -167,7 +175,9 @@ data class RecipeDietaryAnalysis(
     val isVegetarian: Boolean = dietaryTags.contains(DietaryTag.VEGETARIAN),
     val isVegan: Boolean = dietaryTags.contains(DietaryTag.VEGAN),
     val isDairyFree: Boolean = dietaryTags.contains(DietaryTag.DAIRY_FREE),
-    val isNutFree: Boolean = dietaryTags.contains(DietaryTag.NUT_FREE)
+    val isNutFree: Boolean = dietaryTags.contains(DietaryTag.NUT_FREE),
+    val suitableDiets: Set<DietaryTag> = dietaryTags,
+    val celiacCautions: List<String> = celiacWarnings
 )
 
 /**

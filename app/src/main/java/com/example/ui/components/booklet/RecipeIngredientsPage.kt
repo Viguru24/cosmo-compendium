@@ -219,6 +219,7 @@ fun RecipeIngredientsPage(
     onNextPage: (() -> Unit)? = null,
     onEditIngredients: (() -> Unit)? = null,
     onAddToShoppingList: (() -> Unit)? = null,
+    onStartCooking: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -274,7 +275,7 @@ fun RecipeIngredientsPage(
             )
 
             // Dietary & Allergen Safety Banner
-            val dietaryAnalysis = remember(recipe.ingredients, recipe.tags) {
+            val dietaryAnalysis = remember(recipe.ingredients) {
                 recipe.dietaryAnalysis
             }
 
@@ -297,7 +298,7 @@ fun RecipeIngredientsPage(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            dietaryAnalysis.suitableDiets.forEach { tag ->
+                            for (tag in dietaryAnalysis.suitableDiets) {
                                 val tagColor = when (tag) {
                                     DietaryTag.CELIAC_SAFE -> Color(0xFF047857)
                                     DietaryTag.GLUTEN_FREE -> Color(0xFFB45309)

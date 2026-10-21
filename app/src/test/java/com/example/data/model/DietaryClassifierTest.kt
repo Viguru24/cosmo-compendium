@@ -10,17 +10,15 @@ class DietaryClassifierTest {
 
     private fun createRecipe(
         title: String = "Test Recipe",
-        ingredients: List<RecipeIngredient>,
-        tags: List<String> = emptyList()
+        ingredients: List<RecipeIngredient>
     ): RecipeEntity {
         return RecipeEntity(
             title = title,
             category = "Main Course",
             ingredients = ingredients,
-            instructions = listOf(RecipeStep(stepNumber = 1, text = "Cook thoroughly")),
+            steps = listOf(RecipeStep(stepNumber = 1, instructionEnglish = "Cook thoroughly")),
             servings = "4",
-            cookTimeMinutes = 30,
-            tags = tags
+            cookTimeMinutes = 30
         )
     }
 

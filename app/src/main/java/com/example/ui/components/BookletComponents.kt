@@ -79,6 +79,7 @@ fun RecipeIngredientsPage(
     onNextPage: (() -> Unit)? = null,
     onEditIngredients: (() -> Unit)? = null,
     onAddToShoppingList: (() -> Unit)? = null,
+    onStartCooking: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) = com.example.ui.components.booklet.RecipeIngredientsPage(
     recipe = recipe,
@@ -94,27 +95,42 @@ fun RecipeIngredientsPage(
     onNextPage = onNextPage,
     onEditIngredients = onEditIngredients,
     onAddToShoppingList = onAddToShoppingList,
+    onStartCooking = onStartCooking,
     modifier = modifier
 )
 
 @Composable
 fun RecipeStepPage(
     step: RecipeStep,
-    stepIndex: Int,
     totalSteps: Int,
+    recipe: RecipeEntity? = null,
+    unitSystem: UnitSystem = UnitSystem.METRIC_GRAMS,
+    onUnitSystemChange: ((UnitSystem) -> Unit)? = null,
+    onOpenConverter: ((String?, String, String) -> Unit)? = null,
+    servingMultiplier: Float = 1.0f,
     languageMode: LanguageMode,
     isCompleted: Boolean,
     onToggleCompleted: () -> Unit,
     onStartTimer: (Int) -> Unit,
+    onSpeak: (String, Boolean) -> Unit,
+    onNextPage: (() -> Unit)? = null,
+    onEditStep: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) = com.example.ui.components.booklet.RecipeStepPage(
     step = step,
-    stepIndex = stepIndex,
     totalSteps = totalSteps,
+    recipe = recipe,
+    unitSystem = unitSystem,
+    onUnitSystemChange = onUnitSystemChange,
+    onOpenConverter = onOpenConverter,
+    servingMultiplier = servingMultiplier,
     languageMode = languageMode,
     isCompleted = isCompleted,
     onToggleCompleted = onToggleCompleted,
     onStartTimer = onStartTimer,
+    onSpeak = onSpeak,
+    onNextPage = onNextPage,
+    onEditStep = onEditStep,
     modifier = modifier
 )
 

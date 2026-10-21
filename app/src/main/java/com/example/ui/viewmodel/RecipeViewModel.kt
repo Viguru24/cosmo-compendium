@@ -1482,7 +1482,6 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
             isTtsSpeaking.value = true
 
             tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
-                override fun提高(utteranceId: String?) {}
                 override fun onStart(utteranceId: String?) {
                     isTtsSpeaking.value = true
                 }

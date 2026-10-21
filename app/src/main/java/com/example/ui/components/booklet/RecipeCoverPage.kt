@@ -235,7 +235,7 @@ fun RecipeCoverPage(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        val dietaryAnalysis = remember(recipe.ingredients, recipe.tags) {
+                        val dietaryAnalysis = remember(recipe.ingredients) {
                             recipe.dietaryAnalysis
                         }
                         val coverBadges = remember(dietaryAnalysis) {

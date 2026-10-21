@@ -77,26 +77,16 @@ fun BookshelfTopBar(
                 )
 
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = androidx.compose.foundation.shape.CircleShape,
                     color = TerracottaPrimary.copy(alpha = 0.12f),
                     border = BorderStroke(1.dp, TerracottaPrimary.copy(alpha = 0.4f)),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .size(36.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
                         .clickable { onOpenSousChef() }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("👨‍🍳", fontSize = 14.sp)
-                        Text(
-                            AppLocalization.getSousChefButtonLabel(languageMode),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TerracottaPrimary,
-                            maxLines = 1
-                        )
+                    androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                        Text("👨‍🍳", fontSize = 18.sp)
                     }
                 }
             }

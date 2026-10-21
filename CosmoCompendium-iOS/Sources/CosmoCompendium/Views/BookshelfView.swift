@@ -331,23 +331,17 @@ public struct BookshelfView: View {
                 isShowingProfileSwitcher = true
             })
 
-            // Sous-Chef Pill Badge
+            // Sous-Chef Button (Just the picture)
             Button {
                 isShowingSousChef = true
             } label: {
-                HStack(spacing: 4) {
-                    Text("👨‍🍳")
-                        .font(.system(size: 13))
-                    Text("Sous-Chef")
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(CookbookTheme.terracottaPrimary)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(CookbookTheme.terracottaPrimary.opacity(0.12), in: Capsule())
-                .overlay(
-                    Capsule().stroke(CookbookTheme.terracottaPrimary.opacity(0.4), lineWidth: 1)
-                )
+                Text("👨‍🍳")
+                    .font(.system(size: 18))
+                    .frame(width: 36, height: 36)
+                    .background(CookbookTheme.terracottaPrimary.opacity(0.12), in: Circle())
+                    .overlay(
+                        Circle().stroke(CookbookTheme.terracottaPrimary.opacity(0.4), lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
 
@@ -544,19 +538,14 @@ public struct BookshelfView: View {
     // MARK: - Floating Bottom Dock (Matching Android BookshelfScreen.kt)
     private var floatingBottomDock: some View {
         HStack(spacing: 0) {
-            // Sous-Chef Copilot
+            // Sous-Chef Copilot (Just the picture)
             Button {
                 isShowingSousChef = true
             } label: {
-                HStack(spacing: 6) {
-                    Text("👨‍🍳")
-                        .font(.system(size: 14))
-                    Text("Sous-Chef")
-                        .font(.system(size: 12.5, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                Text("👨‍🍳")
+                    .font(.system(size: 16))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
             }
             .buttonStyle(.plain)
 

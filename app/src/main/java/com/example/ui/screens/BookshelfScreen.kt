@@ -316,22 +316,15 @@ fun BookshelfScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 ) {
-                    // Sous-Chef AI Segment
-                    Row(
+                    // Sous-Chef AI Segment (Just the picture)
+                    Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .clickable { viewModel.openSousChef() }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("👨‍🍳", fontSize = 14.sp)
-                        Text(
-                            "Sous-Chef",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Text("👨‍🍳", fontSize = 16.sp)
                     }
 
                     // Subtle Divider

@@ -4,7 +4,7 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class RecipeIngredient(
-    val name: String,
+    val name: String = "",
     val amount: String = "",
     val unit: String = "",
     val nameGerman: String? = null,

@@ -163,9 +163,10 @@ class DietaryClassifierTest {
         )
 
         val meatRecipe = createRecipe(
-            title = "Beef Steak",
+            title = "Beef Steak with Pan Gravy",
             ingredients = listOf(
                 RecipeIngredient(name = "beef ribeye", amount = "300", unit = "g"),
+                RecipeIngredient(name = "wheat flour", amount = "20", unit = "g"),
                 RecipeIngredient(name = "butter", amount = "20", unit = "g")
             )
         )
@@ -174,7 +175,7 @@ class DietaryClassifierTest {
         assertTrue("ALL matches meat", DietaryFilter.ALL.matches(meatRecipe))
 
         assertTrue("CELIAC_SAFE matches gfRecipe", DietaryFilter.CELIAC_SAFE.matches(gfRecipe))
-        assertFalse("CELIAC_SAFE rejects meat with dairy butter or unverified items if caution, wait butter is GF", DietaryFilter.CELIAC_SAFE.matches(meatRecipe))
+        assertFalse("CELIAC_SAFE rejects meat with wheat flour", DietaryFilter.CELIAC_SAFE.matches(meatRecipe))
 
         assertTrue("VEGETARIAN matches gfRecipe", DietaryFilter.VEGETARIAN.matches(gfRecipe))
         assertFalse("VEGETARIAN rejects meatRecipe", DietaryFilter.VEGETARIAN.matches(meatRecipe))

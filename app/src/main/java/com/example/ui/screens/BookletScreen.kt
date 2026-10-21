@@ -125,6 +125,10 @@ import com.example.ui.components.SettingsDialog
 import com.example.ui.components.ShareRecipeCardDialog
 import com.example.ui.components.ShoppingListDialog
 import com.example.ui.components.SmartConverterBottomSheet
+import com.example.ui.components.dietary.RecipeAdaptationDialog
+import com.example.ui.components.costing.RecipeCostingDialog
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.AttachMoney
 import android.widget.Toast
 import com.example.ui.components.VintageHandwrittenCardView
 import com.example.ui.theme.CreamBackgroundLight
@@ -209,6 +213,8 @@ fun BookletScreen(
     var showCoverThemeDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
+    var showDietaryAdaptationDialog by remember { mutableStateOf(false) }
+    var showRecipeCostingDialog by remember { mutableStateOf(false) }
 
     // Play subtle audio/haptic click on page turn
     LaunchedEffect(pagerState.currentPage) {
@@ -509,6 +515,22 @@ fun BookletScreen(
                                     }
                                 )
                                 DropdownMenuItem(
+                                    text = { Text("🌿 Dietary Adaptations (Celiac / Veg)") },
+                                    leadingIcon = { Icon(Icons.Default.Spa, contentDescription = null, tint = Color(0xFF16A34A)) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showDietaryAdaptationDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("💰 Restaurant Costing & Margins") },
+                                    leadingIcon = { Icon(Icons.Default.AttachMoney, contentDescription = null, tint = Color(0xFFD97706)) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showRecipeCostingDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Vintage Card View") },
                                     leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = TerracottaPrimary) },
                                     onClick = {
@@ -629,7 +651,9 @@ fun BookletScreen(
                         onPlayTurnSound = { viewModel.playPageTurnSound() 
                             Toast.makeText(context, "Times cooked updated: ${recipe.timesCooked + 1}", Toast.LENGTH_SHORT).show()
                         },
-                        onStartCookingMode = { viewModel.isCookMode.value = true }
+                        onStartCookingMode = { viewModel.isCookMode.value = true },
+                        onOpenDietaryAdaptation = { showDietaryAdaptationDialog = true },
+                        onOpenRecipeCosting = { showRecipeCostingDialog = true }
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -761,6 +785,12 @@ fun BookletScreen(
                                     },
                                     onStartCooking = {
                                         viewModel.isCookMode.value = true
+                                    },
+                                    onOpenDietaryAdaptation = {
+                                        showDietaryAdaptationDialog = true
+                                    },
+                                    onOpenRecipeCosting = {
+                                        showRecipeCostingDialog = true
                                     }
                                 )
                             }
@@ -1283,6 +1313,30 @@ fun BookletScreen(
                 }
             )
         }
+
+        if (showDietaryAdaptationDialog) {
+            RecipeAdaptationDialog(
+                recipe = activeRecipe,
+                languageMode = languageMode,
+                onDismiss = { showDietaryAdaptationDialog = false },
+                onSaveAsVariation = { adapted ->
+                    showDietaryAdaptationDialog = false
+                    viewModel.saveDraftRecipe(adapted)
+                    Toast.makeText(context, "Saved variation: ${adapted.title}", Toast.LENGTH_SHORT).show()
+                },
+                onApplyToCurrent = { adapted ->
+                    showDietaryAdaptationDialog = false
+                    viewModel.saveDraftRecipe(adapted)
+                }
+            )
+        }
+
+        if (showRecipeCostingDialog) {
+            RecipeCostingDialog(
+                recipe = activeRecipe,
+                onDismiss = { showRecipeCostingDialog = false }
+            )
+        }
     }
 }
 
@@ -1315,6 +1369,8 @@ fun TabletBookletSpreadView(
     onIncrementCooked: () -> Unit,
     onStartCookingMode: (() -> Unit)? = null,
     onRotateOriginalPhoto: (() -> Unit)? = null,
+    onOpenDietaryAdaptation: (() -> Unit)? = null,
+    onOpenRecipeCosting: (() -> Unit)? = null,
     onPlayTurnSound: () -> Unit = {},
     soundEffectsEnabled: Boolean = true,
     onToggleSound: () -> Unit = {},
@@ -1525,7 +1581,9 @@ fun TabletBookletSpreadView(
                                     onToggleCheck = onToggleIngredient,
                                     onNextPage = { changeSpread(2) },
                                     onEditIngredients = { onEditRecipe(1) },
-                                    onAddToShoppingList = onAddToShoppingList
+                                    onAddToShoppingList = onAddToShoppingList,
+                                    onOpenDietaryAdaptation = onOpenDietaryAdaptation,
+                                    onOpenRecipeCosting = onOpenRecipeCosting
                                 )
                             }
                             2 -> {

@@ -176,6 +176,7 @@ data class RecipeDietaryAnalysis(
     val isVegan: Boolean = dietaryTags.contains(DietaryTag.VEGAN),
     val isDairyFree: Boolean = dietaryTags.contains(DietaryTag.DAIRY_FREE),
     val isNutFree: Boolean = dietaryTags.contains(DietaryTag.NUT_FREE),
+    val isEggFree: Boolean = dietaryTags.contains(DietaryTag.EGG_FREE),
     val suitableDiets: Set<DietaryTag> = dietaryTags,
     val celiacCautions: List<String> = celiacWarnings
 )

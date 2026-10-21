@@ -220,6 +220,8 @@ fun RecipeIngredientsPage(
     onEditIngredients: (() -> Unit)? = null,
     onAddToShoppingList: (() -> Unit)? = null,
     onStartCooking: (() -> Unit)? = null,
+    onOpenDietaryAdaptation: (() -> Unit)? = null,
+    onOpenRecipeCosting: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -387,6 +389,72 @@ fun RecipeIngredientsPage(
                                     fontStyle = FontStyle.Italic
                                 )
                             )
+                        }
+                    }
+                }
+            }
+
+            // Quick Tools Bar: Dietary Adaptations & Restaurant Costing
+            if (onOpenDietaryAdaptation != null || onOpenRecipeCosting != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (onOpenDietaryAdaptation != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF3ECE0),
+                            border = BorderStroke(1.dp, Color(0xFFD6C7B2)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onOpenDietaryAdaptation() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("🌿", fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = if (languageMode == LanguageMode.GERMAN) "Diät anpassen" else "Adapt for Diet",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF443425),
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    if (onOpenRecipeCosting != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF3ECE0),
+                            border = BorderStroke(1.dp, Color(0xFFD6C7B2)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onOpenRecipeCosting() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("💰", fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = if (languageMode == LanguageMode.GERMAN) "Kalkulation & Marge" else "Restaurant Costing",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF443425),
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
                         }
                     }
                 }

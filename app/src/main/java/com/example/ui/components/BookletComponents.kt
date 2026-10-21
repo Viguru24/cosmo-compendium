@@ -80,6 +80,8 @@ fun RecipeIngredientsPage(
     onEditIngredients: (() -> Unit)? = null,
     onAddToShoppingList: (() -> Unit)? = null,
     onStartCooking: (() -> Unit)? = null,
+    onOpenDietaryAdaptation: (() -> Unit)? = null,
+    onOpenRecipeCosting: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) = com.example.ui.components.booklet.RecipeIngredientsPage(
     recipe = recipe,
@@ -96,6 +98,8 @@ fun RecipeIngredientsPage(
     onEditIngredients = onEditIngredients,
     onAddToShoppingList = onAddToShoppingList,
     onStartCooking = onStartCooking,
+    onOpenDietaryAdaptation = onOpenDietaryAdaptation,
+    onOpenRecipeCosting = onOpenRecipeCosting,
     modifier = modifier
 )
 

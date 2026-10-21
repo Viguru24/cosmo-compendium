@@ -135,6 +135,7 @@ import com.example.ui.components.SettingsDialog
 import com.example.ui.components.ShareRecipeCardDialog
 import com.example.ui.components.ShoppingListDialog
 import com.example.ui.components.SmartConverterBottomSheet
+import com.example.ui.components.OtaUpdateDialog
 import android.net.Uri
 import android.widget.Toast
 import com.example.ui.theme.CreamBackgroundLight
@@ -259,6 +260,7 @@ fun BookshelfScreen(
     var showCategoryManagerDialog by remember { mutableStateOf(false) }
     var recipeForQuickCategoryAssign by remember { mutableStateOf<RecipeEntity?>(null) }
     var recipeForProfileAssign by remember { mutableStateOf<RecipeEntity?>(null) }
+    var showOtaUpdateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(triggerScanFromSousChef) {
         if (triggerScanFromSousChef) {
@@ -295,7 +297,8 @@ fun BookshelfScreen(
                     viewModel.setSoundEffectsEnabled(!soundEffectsEnabled)
                 },
                 onOpenGuide = { viewModel.openGuide() },
-                onOpenSettings = { viewModel.openSettings() }
+                onOpenSettings = { viewModel.openSettings() },
+                onCheckOtaUpdate = { showOtaUpdateDialog = true }
             )
         },
         floatingActionButton = {
@@ -970,6 +973,13 @@ fun BookshelfScreen(
                 onMoveDown = { index -> viewModel.moveCategoryDown(index) },
                 onResetDefaults = { viewModel.resetCategoriesToDefault() },
                 languageMode = languageMode
+            )
+        }
+
+        // Over-The-Air (OTA) Updates Dialog
+        if (showOtaUpdateDialog) {
+            OtaUpdateDialog(
+                onDismiss = { showOtaUpdateDialog = false }
             )
         }
 

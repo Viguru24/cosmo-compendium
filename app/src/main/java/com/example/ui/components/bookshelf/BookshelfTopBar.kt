@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.VolumeOff
@@ -50,6 +51,7 @@ fun BookshelfTopBar(
     onToggleSoundEffects: () -> Unit,
     onOpenGuide: () -> Unit,
     onOpenSettings: () -> Unit,
+    onCheckOtaUpdate: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -132,6 +134,21 @@ fun BookshelfTopBar(
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                }
+
+                // Over-The-Air (OTA) Sovereign Updates button
+                IconButton(
+                    onClick = { onCheckOtaUpdate?.invoke() },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .testTag("open_ota_update_button")
+                ) {
+                    Icon(
+                        Icons.Default.CloudSync,
+                        contentDescription = "Check for Over-The-Air Updates",
+                        tint = Color(0xFF16A34A),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
 
                 // Quick Sound Toggle (Mute / Unmute)

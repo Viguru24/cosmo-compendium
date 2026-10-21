@@ -849,6 +849,145 @@ object GeminiClient {
             Result.failure(Exception(t.localizedMessage ?: "Failed to generate recipe cover image"))
         }
     }
+    suspend fun formulateRecipeWithAi(dishOrRequest: String): Result<ParsedRecipeDto> = withContext(Dispatchers.IO) {
+        val apiKey = getEffectiveApiKey()
+        if (apiKey.isBlank()) {
+            return@withContext Result.failure(
+                Exception("Google Gemini API key is missing. Please enter your Gemini API key in App Settings -> AI Engine.")
+            )
+        }
+
+        try {
+            val systemPrompt = """
+                You are a world-class executive chef, baker, and recipe developer.
+                TASK:
+                The user wants you to create, draft, formulate, or put together a complete, delicious, reliable recipe from scratch based on their request: "$dishOrRequest".
+
+                CRITICAL INSTRUCTIONS:
+                1. Return a COMPLETE, tested-quality recipe:
+                   - Accurate ingredients with specific amounts and units (do not omit staples, seasonings, or liquids).
+                   - Detailed sequential steps with timing in minutes.
+                   - Clear recipe title, category, servings, prep and cook time.
+                   - A friendly chef tip or culinary note.
+                2. If the user mentions crafting (e.g. soap, salve, lotion), formulate an authentic formulation with accurate components, ratios, and precautions.
+                3. OUTPUT FORMAT: Return ONLY valid JSON adhering strictly to this schema:
+                {
+                  "titleEnglish": "Creamy Homemade Oat Milk",
+                  "category": "Beverages",
+                  "servings": "4 cups",
+                  "prepTimeMinutes": 10,
+                  "cookTimeMinutes": 0,
+                  "difficulty": "Easy",
+                  "ingredients": [
+                    {
+                      "nameEnglish": "Rolled Oats",
+                      "amount": "1",
+                      "unit": "cup",
+                      "isOptional": false,
+                      "group": "Base"
+                    },
+                    {
+                      "nameEnglish": "Cold Water",
+                      "amount": "4",
+                      "unit": "cups",
+                      "isOptional": false,
+                      "group": "Base"
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "stepNumber": 1,
+                      "instructionEnglish": "Add the rolled oats and ice-cold water to a high-speed blender...",
+                      "timerMinutes": 1,
+                      "tip": "Do not over-blend (keep under 30 seconds) to keep oat milk creamy without becoming slimy."
+                    }
+                  ],
+                  "notesEnglish": "Fresh homemade oat milk keeps chilled in the refrigerator for up to 5 days. Shake well before pouring.",
+                  "detectedSourceLanguage": "en",
+                  "hasFoodPhoto": false,
+                  "foodPhotoBox": null,
+                  "cardRotationNeededDegrees": 0
+                }
+            """.trimIndent()
+
+            val request = GeminiRequest(
+                contents = listOf(
+                    GeminiContent(
+                        parts = listOf(GeminiPart(text = systemPrompt))
+                    )
+                ),
+                generationConfig = GeminiGenerationConfig(
+                    temperature = 0.4f,
+                    topP = 0.95f,
+                    topK = 40,
+                    responseMimeType = "application/json"
+                )
+            )
+
+            val modelsToTry = getEffectiveModels()
+            var lastException: Throwable? = null
+            var response: GeminiResponse? = null
+
+            for (modelName in modelsToTry) {
+                try {
+                    AppLogger.i("GeminiRecipeService", "Formulating recipe with model: $modelName for '$dishOrRequest'")
+                    response = api.generateContent(
+                        model = modelName,
+                        apiKeyHeader = apiKey,
+                        apiKey = apiKey,
+                        request = request
+                    )
+                    if (response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text != null) {
+                        break
+                    }
+                } catch (err: Throwable) {
+                    lastException = err
+                    val errMsg = err.message ?: ""
+                    val isRetiredOr404 = (err is retrofit2.HttpException && err.code() == 404) ||
+                            errMsg.contains("no longer available", ignoreCase = true) ||
+                            errMsg.contains("404", ignoreCase = true)
+                    if (isRetiredOr404) {
+                        markModelRetired(modelName)
+                    }
+                    AppLogger.w("GeminiRecipeService", "SousChef formulation model $modelName failed: ${err.message}")
+                }
+            }
+
+            val jsonText = response?.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+            if (jsonText.isNullOrBlank()) {
+                val err = lastException?.message ?: "AI recipe formulation service unavailable."
+                return@withContext Result.failure(Exception(err))
+            }
+
+            val cleanedJson = jsonText
+                .replace("```json", "")
+                .replace("```", "")
+                .trim()
+
+            val adapter = moshi.adapter(ParsedRecipeDto::class.java)
+            val parsedFromMoshi = try {
+                adapter.fromJson(cleanedJson)
+            } catch (t: Throwable) {
+                null
+            }
+
+            val parsed = if (parsedFromMoshi != null && !parsedFromMoshi.ingredients.isNullOrEmpty()) {
+                parsedFromMoshi
+            } else {
+                parseLenientJson(cleanedJson) ?: parsedFromMoshi
+            }
+
+            if (parsed != null && !parsed.ingredients.isNullOrEmpty()) {
+                Result.success(parsed)
+            } else {
+                Result.failure(Exception("Could not parse formulated recipe from AI response."))
+            }
+        } catch (e: Throwable) {
+            AppLogger.e("GeminiRecipeService", "Error in formulateRecipeWithAi: ${e.message}", e)
+            Result.failure(Exception(e.localizedMessage ?: "Failed to formulate recipe"))
+        }
+    }
+
     suspend fun askSousChefAssistant(question: String): String = withContext(Dispatchers.IO) {
         val apiKey = getEffectiveApiKey()
         if (apiKey.isBlank()) {
@@ -860,6 +999,12 @@ object GeminiClient {
                 You are the warm, highly skilled, and friendly culinary & crafting assistant in the Cosmo Compendium app.
                 Give a concise, helpful, and clear answer (2 to 4 sentences maximum) to the user's cooking, baking, crafting (such as soap making or balms), substitution, or project question.
                 Be practical, encouraging, and accurate with weights, measurements, ratios, and temperatures.
+
+                IMPORTANT APP CAPABILITIES & BEHAVIOR:
+                - Cosmo Compendium CAN import recipes directly from YouTube, Instagram Reels, TikTok, food blogs, and web links. When the user pastes any link into the chat, the app automatically extracts the recipe, ingredients, steps, and cover photo and saves it into their cookbook.
+                - Cosmo Compendium CAN also extract recipes from cooking video files and screen recordings via Multimodal Vision (the 📹 Video button in the chat).
+                - NEVER say or output canned refusals such as: "As a text-based AI assistant, I cannot watch videos or access external websites".
+                - If the user provides a video or website link, or asks about bringing in YouTube videos, enthusiastically confirm that the app can import it, explain that they can paste the link directly or tap the 📹 Video button, and invite them to paste their link!
             """.trimIndent()
 
             val request = GeminiRequest(

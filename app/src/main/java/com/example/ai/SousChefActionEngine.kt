@@ -8,6 +8,8 @@ import java.util.regex.Pattern
 sealed class SousChefIntent {
     data class ScanCamera(val targetProfile: String?) : SousChefIntent()
     data class ImportUrl(val url: String, val targetProfile: String?) : SousChefIntent()
+    data class ImportTextRecipe(val text: String, val targetProfile: String?) : SousChefIntent()
+    data class CreateRecipe(val dishQuery: String, val targetProfile: String?) : SousChefIntent()
     data class SwitchProfile(val targetProfile: String) : SousChefIntent()
     data class SearchRecipes(val query: String) : SousChefIntent()
     data class MoveRecipes(val sourceQuery: String?, val targetProfile: String, val isAll: Boolean) : SousChefIntent()
@@ -29,17 +31,26 @@ object SousChefActionEngine {
      * Parses the user's prompt (text or voice) and resolves the intent
      */
     fun parseIntent(prompt: String, currentActiveProfile: String, knownProfiles: List<String>): SousChefIntent {
-        val lower = prompt.lowercase().trim()
+        val trimmed = prompt.trim()
+        val lower = trimmed.lowercase()
 
-        // 1. Detect URL inside prompt
-        val urlMatcher = Pattern.compile("https?://[\\w\\d:#@%/;$()~_?\\+-=\\\\.&]+").matcher(prompt)
-        if (urlMatcher.find()) {
-            val url = urlMatcher.group(0) ?: ""
+        // 1. Detect URL inside prompt (supports http/https, www., and video/social links without scheme)
+        val detectedUrl = extractUrlFromPrompt(prompt)
+        if (!detectedUrl.isNullOrBlank()) {
             val targetProfile = extractMentionedProfile(lower, knownProfiles) ?: currentActiveProfile
-            return SousChefIntent.ImportUrl(url, targetProfile)
+            return SousChefIntent.ImportUrl(detectedUrl, targetProfile)
         }
 
-        // 2. Camera / Scanning Intent
+        // 2. Inquiries about YouTube, video, or external website importing capabilities
+        if ((lower.contains("youtube") || lower.contains("video") || lower.contains("external website")) &&
+            (lower.contains("bring in") || lower.contains("into recipe") || lower.contains("into recipes") || 
+             lower.contains("thought you said") || lower.contains("can you") || lower.contains("how do i") || 
+             lower.contains("how to") || lower.contains("watch") || lower.contains("import"))
+        ) {
+            return SousChefIntent.KitchenAdvice(prompt)
+        }
+
+        // 3. Camera / Scanning Intent
         if (lower.contains("scan") || lower.contains("camera") || lower.contains("picture") || 
             lower.contains("photo") || lower.contains("snap") || lower.contains("card") ||
             lower.contains("scannen") || lower.contains("scanner")) {
@@ -93,14 +104,53 @@ object SousChefActionEngine {
             )
         }
 
-        // 5. Search Recipes Intent (Explicit keywords or recipe search phrases)
+        // 5. Detect Pasted Recipe Text (Structured or multiline recipe text)
+        if (isPastedRecipeText(trimmed)) {
+            val targetProfile = extractMentionedProfile(lower, knownProfiles) ?: currentActiveProfile
+            return SousChefIntent.ImportTextRecipe(trimmed, targetProfile)
+        }
+
+        // 6. Detect AI Recipe Creation / Formulation Intent (e.g. "put together a recipe for Oat milk")
+        val formulationKeywords = listOf(
+            "put together a recipe for", "put together recipe for", "put together a recipe of", "put together recipe of",
+            "put together a formulation for", "put together formulation for", "put together a formula for",
+            "create a recipe for", "create recipe for", "create a formulation for", "create a formula for",
+            "make a recipe for", "make recipe for", "make me a recipe for", "make us a recipe for",
+            "formulate a recipe for", "formulate recipe for", "formulate a formula for", "formulate a formulation for",
+            "generate a recipe for", "generate recipe for",
+            "write a recipe for", "write me a recipe for", "write recipe for",
+            "develop a recipe for", "develop recipe for",
+            "build a recipe for", "build recipe for",
+            "come up with a recipe for", "come up with recipe for",
+            "give me a recipe for", "give us a recipe for", "give me a recipe to make", "give me a recipe on how to make",
+            "how to make a recipe for", "how do i make a recipe for",
+            "erstelle ein rezept für", "mach mir ein rezept für", "rezept erstellen für", "rezept zusammenstellen für",
+            "formuliere ein rezept für", "schreib ein rezept für"
+        )
+
+        for (phrase in formulationKeywords) {
+            if (lower.startsWith(phrase) || lower.contains(phrase)) {
+                var dish = lower.substring(lower.indexOf(phrase) + phrase.length).trim()
+                dish = dish
+                    .replace(Regex("^a\\s+"), "")
+                    .replace(Regex("^an\\s+"), "")
+                    .replace(Regex("^the\\s+"), "")
+                    .replace(Regex("\\b(for|für)\\s+[a-zA-Z]+'s\\s+cookbook\\b"), "")
+                    .trim()
+                val targetProfile = extractMentionedProfile(lower, knownProfiles) ?: currentActiveProfile
+                if (dish.isNotBlank()) {
+                    return SousChefIntent.CreateRecipe(dish, targetProfile)
+                }
+            }
+        }
+
+        // 7. Search Recipes Intent (Explicit keywords or recipe search phrases)
         val searchPrefixes = listOf(
             "bring up my recipes for", "bring up recipes for", "bring up my recipe for", "bring up recipe for", "bring up my", "bring up",
             "pull up my recipes for", "pull up recipes for", "pull up my recipe for", "pull up recipe for", "pull up my", "pull up",
             "get my recipes for", "get recipes for", "get my recipe for", "get recipe for", "get my", "get me", "get",
             "open my recipes for", "open recipes for", "open my recipe for", "open recipe for", "open my", "open recipe", "open",
             "show me my recipes for", "show me recipes for", "show me my recipe for", "show me recipes with", "show me recipe for", "show me my", "show me", "show my", "show",
-            "give me my recipes for", "give me recipes for", "give me my recipe for", "give me recipe for", "give me",
             "find me my recipes for", "find me recipes for", "find my recipes for", "find recipes for", "find my recipe for", "find recipe for", "find me", "find my", "find",
             "search for my recipes for", "search for recipes for", "search for recipe for", "search for my", "search for", "search",
             "look up my recipes for", "look up recipes for", "look up recipe for", "look up", "look for",
@@ -134,7 +184,10 @@ object SousChefActionEngine {
         }
 
         if (detectedSearchQuery == null) {
-            if (lower.endsWith(" recipes") || lower.endsWith(" recipe") || lower.endsWith(" rezepte") || lower.endsWith(" rezept")) {
+            val isQuestion = lower.startsWith("i thought") || lower.startsWith("thought you") ||
+                    lower.startsWith("can you") || lower.startsWith("how do") || lower.startsWith("how to") ||
+                    lower.startsWith("why") || lower.startsWith("is it") || lower.contains("bring in")
+            if (!isQuestion && (lower.endsWith(" recipes") || lower.endsWith(" recipe") || lower.endsWith(" rezepte") || lower.endsWith(" rezept"))) {
                 var query = lower
                     .replace(Regex("\\b(recipes|recipe|rezepte|rezept)\\b"), "")
                     .replace(Regex("^my\\s+"), "")
@@ -151,8 +204,50 @@ object SousChefActionEngine {
             return SousChefIntent.SearchRecipes(detectedSearchQuery)
         }
 
-        // 6. Check if query is asking for culinary substitution/technique vs recipe advice
+        // 8. Check if query is asking for culinary substitution/technique vs recipe advice
         return SousChefIntent.KitchenAdvice(prompt)
+    }
+
+    /**
+     * Determines whether the provided input looks like a pasted text recipe
+     */
+    fun isPastedRecipeText(text: String): Boolean {
+        val trimmed = text.trim()
+        val lower = trimmed.lowercase()
+
+        // Explicit import directive (e.g. "Import recipe: ..." or "Add recipe: ...")
+        if (lower.startsWith("import recipe") || lower.startsWith("import this recipe") ||
+            lower.startsWith("add recipe:") || lower.startsWith("save recipe:")) {
+            return true
+        }
+
+        // Recipe structural headers
+        val hasIngredientsHeader = lower.contains("ingredients:") || lower.contains("zutaten:") ||
+                lower.contains("ingredient list") || lower.contains("\ningredients\n") || lower.contains("\nzutaten\n")
+        val hasDirectionsHeader = lower.contains("directions:") || lower.contains("instructions:") ||
+                lower.contains("method:") || lower.contains("steps:") || lower.contains("zubereitung:") ||
+                lower.contains("\ninstructions\n") || lower.contains("\ndirections\n")
+
+        if (hasIngredientsHeader || (hasIngredientsHeader && hasDirectionsHeader)) {
+            return true
+        }
+
+        // Multi-line pasted block checks
+        val lines = trimmed.lines().map { it.trim() }.filter { it.isNotBlank() }
+        if (lines.size >= 4) {
+            val measurementsPattern = Pattern.compile("(?i)\\b(\\d+([/.,]\\d+)?)\\s*(cup|cups|tbsp|tsp|g|kg|oz|lbs?|ml|l|pinch|pkg|can|cans|teaspoon|tablespoon|prise|el|tl|gramm|liter|ml)\\b")
+            val measurementMatches = lines.count { measurementsPattern.matcher(it).find() }
+            if (measurementMatches >= 2) {
+                return true
+            }
+
+            val numberedStepsCount = lines.count { it.matches(Regex("^(\\d+[.)]|step\\s+\\d+:?).*", RegexOption.IGNORE_CASE)) }
+            if (numberedStepsCount >= 2 && measurementMatches >= 1) {
+                return true
+            }
+        }
+
+        return false
     }
 
     private fun extractTargetProfileFromMove(text: String, knownProfiles: List<String>): String? {
@@ -203,6 +298,8 @@ object SousChefActionEngine {
         }
         return@withContext getOfflineKitchenAdvice(question)
     }
+
+    fun getOfflineAdviceForTesting(question: String): String = getOfflineKitchenAdvice(question)
 
     private fun getOfflineKitchenAdvice(question: String): String {
         val q = question.lowercase().trim()
@@ -264,9 +361,60 @@ object SousChefActionEngine {
             q.contains("sugar") && (q.contains("gram") || q.contains("cup")) ->
                 "🍚 1 cup of granulated white sugar is 200 grams, while 1 cup of powdered sugar is 120 grams."
 
+            // YouTube & Video Recipe Capabilities
+            (q.contains("youtube") || q.contains("video") || q.contains("external website")) &&
+            (q.contains("bring in") || q.contains("into recipe") || q.contains("into recipes") || 
+             q.contains("thought you said") || q.contains("watch") || q.contains("how") || 
+             q.contains("can you") || q.contains("import") || q.contains("rezept")) ->
+                "Yes, absolutely! Cosmo Compendium can bring recipes from YouTube videos into your cookbook in two easy ways:\n\n" +
+                "1. 🌐 **Paste any YouTube link**: Simply paste the YouTube URL (or an Instagram Reel / TikTok link) directly into this chat. I will automatically extract the recipe, ingredients, cooking steps, and cover photo into your cookbook!\n" +
+                "2. 📹 **Import Cooking Video files**: Tap the 📹 Video button at the top of the chat to select any cooking video or screen recording from your phone, and our AI vision will analyze the video frames to build the recipe card.\n\n" +
+                "Try pasting a YouTube link right here in the chat!"
+
             // General Friendly Advice
             else ->
                 "I'm your kitchen Sous-Chef! Ask me any culinary substitution (e.g. 'what can I use instead of milk/eggs/butter'), baking conversions, cooking temperatures, or tell me to 'Scan recipe cards for Annette'!"
         }
+    }
+
+    /**
+     * Extracts and normalizes any web or video URL found in user prompt,
+     * including URLs starting with http://, https://, www., or known video/recipe platforms.
+     */
+    fun extractUrlFromPrompt(prompt: String): String? {
+        val trimmed = prompt.trim()
+
+        // 1. Explicit http:// or https://
+        val explicitMatcher = Pattern.compile("(?i)\\bhttps?://[\\w\\d:#@%/;$()~_?\\+-=\\\\.&]+").matcher(trimmed)
+        if (explicitMatcher.find()) {
+            val raw = explicitMatcher.group(0) ?: ""
+            return cleanExtractedUrl(raw)
+        }
+
+        // 2. www. prefixed URLs
+        val wwwMatcher = Pattern.compile("(?i)\\bwww\\.[\\w\\d:#@%/;$()~_?\\+-=\\\\.&]+").matcher(trimmed)
+        if (wwwMatcher.find()) {
+            val raw = wwwMatcher.group(0) ?: ""
+            return cleanExtractedUrl("https://$raw")
+        }
+
+        // 3. Known video and recipe domains without scheme
+        val knownDomainMatcher = Pattern.compile("(?i)\\b(?:(?:m\\.)?youtube\\.com|youtu\\.be|instagram\\.com|instagr\\.am|tiktok\\.com|pinterest\\.com|pin\\.it|facebook\\.com|fb\\.watch|allrecipes\\.com|chefkoch\\.de)/[\\w\\d:#@%/;$()~_?\\+-=\\\\.&]*").matcher(trimmed)
+        if (knownDomainMatcher.find()) {
+            val raw = knownDomainMatcher.group(0) ?: ""
+            return cleanExtractedUrl("https://$raw")
+        }
+
+        return null
+    }
+
+    private fun cleanExtractedUrl(raw: String): String {
+        var url = raw.trim()
+        while (url.isNotEmpty() && (url.endsWith(".") || url.endsWith(",") || url.endsWith(";") || 
+               url.endsWith("!") || url.endsWith("?") || url.endsWith(")") || url.endsWith(">") || 
+               url.endsWith("\"") || url.endsWith("'"))) {
+            url = url.substring(0, url.length - 1)
+        }
+        return url
     }
 }

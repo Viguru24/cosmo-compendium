@@ -6,11 +6,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,7 +45,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Link
@@ -72,11 +77,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.example.ai.ChatMessage
 import com.example.data.local.RecipeEntity
 import com.example.data.model.LanguageMode
@@ -103,14 +111,19 @@ fun SousChefChatSheet(
 ) {
     val context = LocalContext.current
     var detectedClipboardUrl by remember { mutableStateOf<String?>(null) }
+    var detectedClipboardRecipeText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         val clipData = clipboard?.primaryClip
         if (clipData != null && clipData.itemCount > 0) {
             val text = clipData.getItemAt(0).text?.toString()?.trim()
-            if (!text.isNullOrBlank() && (text.startsWith("http://") || text.startsWith("https://"))) {
-                detectedClipboardUrl = text
+            if (!text.isNullOrBlank()) {
+                if (text.startsWith("http://") || text.startsWith("https://")) {
+                    detectedClipboardUrl = text
+                } else if (com.example.ai.SousChefActionEngine.isPastedRecipeText(text)) {
+                    detectedClipboardRecipeText = text
+                }
             }
         }
     }
@@ -178,6 +191,8 @@ fun SousChefChatSheet(
                     onDismiss = onDismiss,
                     detectedClipboardUrl = detectedClipboardUrl,
                     onClearClipboardUrl = { detectedClipboardUrl = null },
+                    detectedClipboardRecipeText = detectedClipboardRecipeText,
+                    onClearClipboardRecipeText = { detectedClipboardRecipeText = null },
                     speechLauncher = speechLauncher,
                     videoPickerLauncher = videoPickerLauncher,
                     languageMode = languageMode
@@ -201,6 +216,8 @@ private fun SousChefContent(
     onDismiss: () -> Unit,
     detectedClipboardUrl: String?,
     onClearClipboardUrl: () -> Unit,
+    detectedClipboardRecipeText: String? = null,
+    onClearClipboardRecipeText: () -> Unit = {},
     speechLauncher: androidx.activity.result.ActivityResultLauncher<Intent>,
     videoPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>? = null,
     languageMode: LanguageMode = LanguageMode.ENGLISH
@@ -395,7 +412,7 @@ private fun SousChefContent(
             }
         }
 
-        // Clipboard Smart Bar
+        // Clipboard Smart Bar (Links & Recipe Text)
         if (!detectedClipboardUrl.isNullOrBlank()) {
             Surface(
                 color = Color(0xFFFFF8E7),
@@ -435,6 +452,45 @@ private fun SousChefContent(
                     }
                 }
             }
+        } else if (!detectedClipboardRecipeText.isNullOrBlank()) {
+            Surface(
+                color = Color(0xFFFFF8E7),
+                border = BorderStroke(1.dp, Color(0xFFE6C875)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.ContentPaste, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Recipe Text in Clipboard", fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = Color(0xFF78350F))
+                            Text(detectedClipboardRecipeText.lines().firstOrNull { it.isNotBlank() } ?: "Pasted recipe", fontSize = 10.5.sp, color = Color(0xFF92400E), maxLines = 1)
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Surface(
+                            onClick = {
+                                onSendMessage(detectedClipboardRecipeText)
+                                onClearClipboardRecipeText()
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFFD97706)
+                        ) {
+                            Text("Import Text", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        }
+                        IconButton(onClick = onClearClipboardRecipeText, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Color(0xFF92400E), modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+            }
         }
 
         // Quick Action Chips Row
@@ -445,6 +501,13 @@ private fun SousChefContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.AutoAwesome,
+                    label = AppLocalization.getSousChefPillCreate(languageMode),
+                    onClick = { inputText = if (languageMode == LanguageMode.GERMAN) "Erstelle ein Rezept für " else "Put together a recipe for " }
+                )
+            }
             item {
                 QuickActionChip(
                     icon = Icons.Default.CameraAlt,
@@ -499,7 +562,7 @@ private fun SousChefContent(
             }
         }
 
-        // Sleek Compact One-Liner Bottom Input Surface
+        // Sleek Compact Multi-line Bottom Input Surface
         Surface(
             color = Color(0xFFFFFDF9),
             border = BorderStroke(1.dp, Color(0xFFE5DDD3)),
@@ -512,58 +575,61 @@ private fun SousChefContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                VoiceInputOrb(
-                    onSpeechResult = { spoken ->
-                        if (spoken.isNotBlank()) {
-                            inputText = spoken
-                            if (!isProcessing) {
-                                onSendMessage(spoken.trim())
-                                inputText = ""
+                Box(modifier = Modifier.padding(bottom = 3.dp)) {
+                    VoiceInputOrb(
+                        onSpeechResult = { spoken ->
+                            if (spoken.isNotBlank()) {
+                                inputText = spoken
+                                if (!isProcessing) {
+                                    onSendMessage(spoken.trim())
+                                    inputText = ""
+                                }
                             }
-                        }
-                    },
-                    onPartialResult = { partial ->
-                        inputText = partial
-                    },
-                    size = 40.dp,
-                    iconSize = 20.dp
-                )
+                        },
+                        onPartialResult = { partial ->
+                            inputText = partial
+                        },
+                        size = 40.dp,
+                        iconSize = 20.dp
+                    )
+                }
 
                 Surface(
-                    shape = RoundedCornerShape(22.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = Color.White,
                     border = BorderStroke(1.5.dp, Color(0xFFD6C8B4)),
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp)
+                        .heightIn(min = 46.dp, max = 130.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp),
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         if (inputText.isEmpty()) {
                             Text(
                                 text = AppLocalization.getSousChefPromptPlaceholder(languageMode),
                                 fontSize = 13.sp,
-                                color = Color(0xFF9E8E81),
-                                maxLines = 1,
+                                color = Color(0xFF8C7A6B),
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                         BasicTextField(
                             value = inputText,
                             onValueChange = { inputText = it },
-                            singleLine = true,
-                            maxLines = 1,
+                            singleLine = false,
+                            maxLines = 5,
                             textStyle = androidx.compose.ui.text.TextStyle(
-                                color = Color(0xFF2C1E14),
-                                fontSize = 13.5.sp,
-                                fontWeight = FontWeight.Medium
+                                color = Color(0xFF1C120C),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 20.sp
                             ),
                             cursorBrush = SolidColor(TerracottaPrimary),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(
@@ -581,34 +647,36 @@ private fun SousChefContent(
                                 }
                             ),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Default
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
 
-                IconButton(
-                    onClick = {
-                        if (inputText.isNotBlank()) {
-                            onSendMessage(inputText.trim())
-                            inputText = ""
-                        }
-                    },
-                    enabled = inputText.isNotBlank() && !isProcessing,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            if (inputText.isNotBlank() && !isProcessing) TerracottaPrimary else Color(0xFFE5DDD3),
-                            CircleShape
+                Box(modifier = Modifier.padding(bottom = 3.dp)) {
+                    IconButton(
+                        onClick = {
+                            if (inputText.isNotBlank()) {
+                                onSendMessage(inputText.trim())
+                                inputText = ""
+                            }
+                        },
+                        enabled = inputText.isNotBlank() && !isProcessing,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                if (inputText.isNotBlank() && !isProcessing) TerracottaPrimary else Color(0xFFE5DDD3),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (inputText.isNotBlank() && !isProcessing) Color.White else Color(0xFF9E8E81),
+                            modifier = Modifier.size(18.dp)
                         )
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (inputText.isNotBlank() && !isProcessing) Color.White else Color(0xFF9E8E81),
-                        modifier = Modifier.size(18.dp)
-                    )
+                    }
                 }
             }
         }
@@ -653,6 +721,12 @@ private fun EmptyAssistantState(
             )
 
             HorizontalDivider(color = Color(0xFFF0EAE1))
+
+            PromptSuggestionItem(
+                icon = "✨",
+                title = if (languageMode == LanguageMode.GERMAN) "Neues Rezept erstellen (z.B. 'Erstelle ein Rezept für Hafermilch')" else "Put together a recipe (e.g. 'Put together a recipe for Oat milk')",
+                onClick = { onQuickActionClick(if (languageMode == LanguageMode.GERMAN) "Erstelle ein Rezept für Hafermilch" else "Put together a recipe for Oat milk") }
+            )
 
             PromptSuggestionItem(
                 icon = "📹",
@@ -751,12 +825,30 @@ private fun QuickActionChip(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatMessageBubble(
     message: ChatMessage,
     onSelectRecipe: (RecipeEntity) -> Unit,
     onOpenErrorLogs: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    var isCopied by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isCopied) {
+        if (isCopied) {
+            delay(2000)
+            isCopied = false
+        }
+    }
+
+    val copyToClipboard = {
+        clipboardManager.setText(AnnotatedString(message.text))
+        isCopied = true
+        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
     val isUser = message.isUser
     val isError = !isUser && (message.text.startsWith("⚠️") || message.text.contains("Error", ignoreCase = true) || message.text.contains("Could not extract", ignoreCase = true))
 
@@ -799,7 +891,11 @@ private fun ChatMessageBubble(
                     isError -> BorderStroke(1.5.dp, Color(0xFFFCA5A5))
                     else -> BorderStroke(1.dp, Color(0xFFE5DDD3))
                 },
-                shadowElevation = if (isUser) 1.dp else 2.dp
+                shadowElevation = if (isUser) 1.dp else 2.dp,
+                modifier = Modifier.combinedClickable(
+                    onClick = {},
+                    onLongClick = copyToClipboard
+                )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
@@ -813,6 +909,42 @@ private fun ChatMessageBubble(
                             lineHeight = 20.sp
                         )
                     )
+
+                    // Dedicated Copy Action Pill for Assistant Responses
+                    if (!isUser) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                onClick = copyToClipboard,
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isCopied) Color(0xFFDCFCE7) else Color(0xFFFAF7F2),
+                                border = BorderStroke(1.dp, if (isCopied) Color(0xFF86EFAC) else Color(0xFFE8DFD4))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                                        contentDescription = "Copy Answer",
+                                        tint = if (isCopied) Color(0xFF16A34A) else Color(0xFF786555),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = if (isCopied) "Copied!" else "Copy",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isCopied) Color(0xFF16A34A) else Color(0xFF786555)
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     if (message.matchingRecipes.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(10.dp))

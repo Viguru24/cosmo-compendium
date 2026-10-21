@@ -17,9 +17,15 @@ import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import org.json.JSONArray
 import org.json.JSONObject
+import android.util.JsonWriter
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
+import java.io.OutputStreamWriter
+import java.io.StringWriter
+import java.io.Writer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -70,12 +76,26 @@ object BackupManager {
             val file = File(filePathOrUri)
             if (file.exists() && file.isFile) {
                 val length = file.length()
-                if (length > 1024 * 1024) { // Compress large images down to JPEG 85 to keep backup size efficient
-                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                if (length > 512 * 1024) { // Downsample large images to keep memory and backup lean
+                    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(file.absolutePath, boundsOptions)
+                    var inSampleSize = 1
+                    val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
+                    if (maxDim > 1280) {
+                        inSampleSize = maxDim / 1280
+                    }
+                    val decodeOptions = BitmapFactory.Options().apply {
+                        this.inSampleSize = inSampleSize.coerceAtLeast(1)
+                    }
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
                     if (bitmap != null) {
-                        val stream = ByteArrayOutputStream()
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
-                        Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+                        try {
+                            val stream = ByteArrayOutputStream()
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+                            Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+                        } finally {
+                            bitmap.recycle()
+                        }
                     } else {
                         Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
                     }
@@ -91,8 +111,8 @@ object BackupManager {
             } else {
                 null
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             null
         }
     }
@@ -111,13 +131,35 @@ object BackupManager {
             } else {
                 null
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             null
         }
     }
 
     fun exportToJson(recipes: List<RecipeEntity>, context: Context? = null): String {
+        val sw = StringWriter()
+        exportToJsonStream(recipes, context, sw, "  ")
+        return sw.toString()
+    }
+
+    fun exportToJsonStream(
+        recipes: List<RecipeEntity>,
+        context: Context? = null,
+        outputStream: OutputStream,
+        indent: String? = null
+    ) {
+        val osw = OutputStreamWriter(BufferedOutputStream(outputStream), Charsets.UTF_8)
+        exportToJsonStream(recipes, context, osw, indent)
+        osw.flush()
+    }
+
+    fun exportToJsonStream(
+        recipes: List<RecipeEntity>,
+        context: Context? = null,
+        writer: Writer,
+        indent: String? = null
+    ) {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val manifest = BackupManifest(
             app = "Cookbook",
@@ -127,84 +169,84 @@ object BackupManager {
             recipeCount = recipes.size,
             recipes = recipes
         )
-        return serializeManualJson(manifest, context)
-    }
 
-    private fun serializeManualJson(manifest: BackupManifest, context: Context? = null): String {
-        val root = JSONObject()
-        root.put("app", manifest.app)
-        root.put("schemaVersion", manifest.schemaVersion)
-        root.put("exportedAt", manifest.exportedAt)
-        root.put("exportedAtFormatted", manifest.exportedAtFormatted)
-        root.put("recipeCount", manifest.recipeCount)
-
-        val arr = JSONArray()
+        val jsonWriter = JsonWriter(writer)
+        if (!indent.isNullOrBlank()) {
+            jsonWriter.setIndent(indent)
+        }
+        jsonWriter.beginObject()
+        jsonWriter.name("app").value(manifest.app)
+        jsonWriter.name("schemaVersion").value(manifest.schemaVersion)
+        jsonWriter.name("exportedAt").value(manifest.exportedAt)
+        jsonWriter.name("exportedAtFormatted").value(manifest.exportedAtFormatted)
+        jsonWriter.name("recipeCount").value(manifest.recipeCount)
+        jsonWriter.name("recipes").beginArray()
         for (r in manifest.recipes) {
-            val robj = JSONObject()
-            robj.put("id", r.id)
-            robj.put("title", r.title)
-            robj.put("titleGerman", r.titleGerman)
-            robj.put("titleEnglish", r.titleEnglish)
-            robj.put("category", r.category)
-            robj.put("servings", r.servings)
-            robj.put("prepTimeMinutes", r.prepTimeMinutes)
-            robj.put("cookTimeMinutes", r.cookTimeMinutes)
-            robj.put("difficulty", r.difficulty)
-            robj.put("notes", r.notes)
-            robj.put("notesGerman", r.notesGerman)
-            robj.put("sourceLanguage", r.sourceLanguage)
-            robj.put("profileName", r.profileName)
-            robj.put("coverPhotoName", r.coverPhotoName ?: "")
-            robj.put("imageUri", r.imageUri ?: "")
-            robj.put("originalCardPhotoUri", r.originalCardPhotoUri ?: "")
+            jsonWriter.beginObject()
+            jsonWriter.name("id").value(r.id)
+            jsonWriter.name("title").value(r.title)
+            jsonWriter.name("titleGerman").value(r.titleGerman ?: "")
+            jsonWriter.name("titleEnglish").value(r.titleEnglish ?: "")
+            jsonWriter.name("category").value(r.category)
+            jsonWriter.name("servings").value(r.servings)
+            jsonWriter.name("prepTimeMinutes").value(r.prepTimeMinutes)
+            jsonWriter.name("cookTimeMinutes").value(r.cookTimeMinutes)
+            jsonWriter.name("difficulty").value(r.difficulty)
+            jsonWriter.name("notes").value(r.notes)
+            jsonWriter.name("notesGerman").value(r.notesGerman ?: "")
+            jsonWriter.name("sourceLanguage").value(r.sourceLanguage)
+            jsonWriter.name("profileName").value(r.profileName)
+            jsonWriter.name("coverPhotoName").value(r.coverPhotoName ?: "")
+            jsonWriter.name("imageUri").value(r.imageUri ?: "")
+            jsonWriter.name("originalCardPhotoUri").value(r.originalCardPhotoUri ?: "")
 
-            // Embed full photo data so images are 100% bundled in backups
             val b64 = encodeImageFileToBase64(r.imageUri, context)
             if (!b64.isNullOrBlank()) {
-                robj.put("imageBase64", b64)
+                jsonWriter.name("imageBase64").value(b64)
             }
             val cardB64 = encodeImageFileToBase64(r.originalCardPhotoUri, context)
             if (!cardB64.isNullOrBlank()) {
-                robj.put("originalCardPhotoBase64", cardB64)
+                jsonWriter.name("originalCardPhotoBase64").value(cardB64)
             }
 
-            robj.put("coverTheme", r.coverTheme)
-            robj.put("isFavorite", r.isFavorite)
-            robj.put("rating", r.rating)
-            robj.put("timesCooked", r.timesCooked)
-            robj.put("originStory", r.originStory)
-            robj.put("createdAt", r.createdAt)
+            jsonWriter.name("coverTheme").value(r.coverTheme)
+            jsonWriter.name("isFavorite").value(r.isFavorite)
+            jsonWriter.name("rating").value(r.rating)
+            jsonWriter.name("timesCooked").value(r.timesCooked)
+            jsonWriter.name("originStory").value(r.originStory)
+            jsonWriter.name("createdAt").value(r.createdAt)
 
-            val ingArr = JSONArray()
+            jsonWriter.name("ingredients").beginArray()
             for (ing in r.ingredients) {
-                val ingObj = JSONObject()
-                ingObj.put("name", ing.name)
-                ingObj.put("amount", ing.amount)
-                ingObj.put("unit", ing.unit)
-                ingObj.put("nameGerman", ing.nameGerman ?: "")
-                ingObj.put("nameEnglish", ing.nameEnglish ?: "")
-                ingObj.put("isOptional", ing.isOptional)
-                ingObj.put("group", ing.group ?: "")
-                ingArr.put(ingObj)
+                jsonWriter.beginObject()
+                jsonWriter.name("name").value(ing.name)
+                jsonWriter.name("amount").value(ing.amount)
+                jsonWriter.name("unit").value(ing.unit)
+                jsonWriter.name("nameGerman").value(ing.nameGerman ?: "")
+                jsonWriter.name("nameEnglish").value(ing.nameEnglish ?: "")
+                jsonWriter.name("isOptional").value(ing.isOptional)
+                jsonWriter.name("group").value(ing.group ?: "")
+                jsonWriter.endObject()
             }
-            robj.put("ingredients", ingArr)
+            jsonWriter.endArray()
 
-            val stepArr = JSONArray()
+            jsonWriter.name("steps").beginArray()
             for (step in r.steps) {
-                val stepObj = JSONObject()
-                stepObj.put("stepNumber", step.stepNumber)
-                stepObj.put("instructionEnglish", step.instructionEnglish)
-                stepObj.put("instructionGerman", step.instructionGerman)
-                stepObj.put("timerMinutes", step.timerMinutes)
-                stepObj.put("tip", step.tip ?: "")
-                stepArr.put(stepObj)
+                jsonWriter.beginObject()
+                jsonWriter.name("stepNumber").value(step.stepNumber)
+                jsonWriter.name("instructionEnglish").value(step.instructionEnglish)
+                jsonWriter.name("instructionGerman").value(step.instructionGerman)
+                jsonWriter.name("timerMinutes").value(step.timerMinutes)
+                jsonWriter.name("tip").value(step.tip ?: "")
+                jsonWriter.endObject()
             }
-            robj.put("steps", stepArr)
+            jsonWriter.endArray()
 
-            arr.put(robj)
+            jsonWriter.endObject()
         }
-        root.put("recipes", arr)
-        return root.toString(2)
+        jsonWriter.endArray()
+        jsonWriter.endObject()
+        jsonWriter.flush()
     }
 
     fun parseBackup(jsonContent: String, context: Context? = null): Result<BackupManifest> {
@@ -718,11 +760,12 @@ object BackupManager {
     fun saveLocalSnapshot(context: Context, recipes: List<RecipeEntity>): Boolean {
         return try {
             val file = File(context.filesDir, "cookbook_local_snapshot.json")
-            val json = exportToJson(recipes, context)
-            file.writeText(json, Charsets.UTF_8)
+            FileOutputStream(file).use { fos ->
+                exportToJsonStream(recipes, context, fos)
+            }
             true
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             false
         }
     }
@@ -756,8 +799,29 @@ object BackupManager {
                 "${context.packageName}.fileprovider",
                 file
             )
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            null
+        }
+    }
+
+    fun createShareableBackupUri(context: Context, recipes: List<RecipeEntity>): Uri? {
+        return try {
+            val backupsDir = File(context.cacheDir, "backups")
+            if (!backupsDir.exists()) backupsDir.mkdirs()
+
+            val file = File(backupsDir, getSuggestedFileName())
+            FileOutputStream(file).use { fos ->
+                exportToJsonStream(recipes, context, fos)
+            }
+
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        } catch (t: Throwable) {
+            t.printStackTrace()
             null
         }
     }
@@ -837,8 +901,9 @@ object BackupManager {
             val fileName = "${prefix}${fileFormat.format(Date(timestamp))}.json"
             val file = File(backupsDir, fileName)
 
-            val json = exportToJson(recipes, context)
-            file.writeText(json, Charsets.UTF_8)
+            FileOutputStream(file).use { fos ->
+                exportToJsonStream(recipes, context, fos)
+            }
 
             // Also keep working snapshot
             saveLocalSnapshot(context, recipes)
@@ -855,8 +920,8 @@ object BackupManager {
                 sizeBytes = file.length(),
                 tag = tag
             )
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (t: Throwable) {
+            t.printStackTrace()
             null
         }
     }
@@ -878,6 +943,25 @@ object BackupManager {
         return false
     }
 
+    fun readRecipeCountFromBackupFile(file: File): Int {
+        if (!file.exists() || file.length() == 0L) return 0
+        return try {
+            val buffer = CharArray(8192)
+            val readChars = file.reader(Charsets.UTF_8).use { it.read(buffer) }
+            if (readChars <= 0) return 0
+            val header = String(buffer, 0, readChars)
+            val regex = Regex(""""recipeCount"\s*:\s*(\d+)""")
+            val match = regex.find(header)
+            if (match != null) {
+                match.groupValues[1].toIntOrNull() ?: 0
+            } else {
+                0
+            }
+        } catch (_: Throwable) {
+            0
+        }
+    }
+
     fun listAllLocalBackups(context: Context): List<SavedBackupFile> {
         val backupsDir = File(context.filesDir, "saved_backups")
         if (!backupsDir.exists()) return emptyList()
@@ -887,9 +971,7 @@ object BackupManager {
 
         return files.mapNotNull { file ->
             try {
-                val content = file.readText(Charsets.UTF_8)
-                val parseRes = parseBackup(content, context)
-                val count = parseRes.getOrNull()?.recipeCount ?: 0
+                val count = readRecipeCountFromBackupFile(file)
                 val tag = when {
                     file.name.startsWith("pre_delete_") -> "Pre-Deletion Safety Backup"
                     file.name.startsWith("grandfather_monthly_") -> "Monthly Archive (Grandfather)"
@@ -907,7 +989,7 @@ object BackupManager {
                     sizeBytes = file.length(),
                     tag = tag
                 )
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 null
             }
         }.sortedByDescending { it.timestamp }

@@ -1,4 +1,4 @@
-﻿package com.example.data.web
+package com.example.data.web
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,5 +68,73 @@ class UrlRecipeExtractorTest {
         assertTrue(compositeText.contains("1 tsp yeast"))
         assertTrue(compositeText.contains("Butter Mixture"))
         assertTrue(compositeText.contains("Bake at 370\u00B0F for 30 minutes"))
+    }
+
+    @Test
+    fun testCleanSocialTitleForYouTube() {
+        val rawYtTitle = "How to Make Oat Milk | Homemade Oat Milk Recipe - YouTube"
+        val cleaned = UrlRecipeExtractor.cleanSocialTitle(rawYtTitle)
+        assertEquals("How to Make Oat Milk | Homemade Oat Milk Recipe", cleaned)
+
+        val rawYtTitle2 = "Perfect French Toast Recipe • YouTube"
+        val cleaned2 = UrlRecipeExtractor.cleanSocialTitle(rawYtTitle2)
+        assertEquals("Perfect French Toast Recipe", cleaned2)
+    }
+
+    @Test
+    fun testExtractYouTubeDescription() {
+        val fakeYtHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta property="og:title" content="How to Make Oat Milk | Homemade Oat Milk Recipe">
+            </head>
+            <body>
+                <script>
+                    var ytInitialPlayerResponse = {"videoDetails":{"title":"How to Make Oat Milk","shortDescription":"Oat milk recipe.\n\nIngredients:\n1 cup (90g) Rolled oats\n4 cups (1 liter) cold water\nOptional:\n1 tsp vanilla extract\n1 tbsp maple syrup\n\nDirections:\n1. Blend oats and water for 30-60 seconds.\n2. Strain through cheesecloth.\n3. Keep chilled in fridge.","isCrawlable":true}};
+                </script>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val desc = UrlRecipeExtractor.extractYouTubeDescription(fakeYtHtml)
+        assertNotNull(desc)
+        assertTrue(desc!!.contains("1 cup (90g) Rolled oats"))
+        assertTrue(desc.contains("4 cups (1 liter) cold water"))
+        assertTrue(desc.contains("Blend oats and water for 30-60 seconds"))
+
+        val meta = UrlRecipeExtractor.extractPageMetadata(fakeYtHtml)
+        assertNotNull(meta.youTubeDescription)
+        val composite = UrlRecipeExtractor.buildCompositeRecipeText(fakeYtHtml, meta)
+        assertTrue(composite.contains("RECIPE POST CAPTION / DESCRIPTION (YOUTUBE):"))
+        assertTrue(composite.contains("1 cup (90g) Rolled oats"))
+    }
+
+    @Test
+    fun testIsYouTubeUrl() {
+        assertTrue(UrlRecipeExtractor.isYouTubeUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertTrue(UrlRecipeExtractor.isYouTubeUrl("https://youtu.be/dQw4w9WgXcQ"))
+        assertTrue(UrlRecipeExtractor.isYouTubeUrl("https://m.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertTrue(UrlRecipeExtractor.isYouTubeUrl("https://www.youtube.com/shorts/dQw4w9WgXcQ"))
+        assertTrue(UrlRecipeExtractor.isYouTubeUrl("youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertFalse(UrlRecipeExtractor.isYouTubeUrl("https://www.allrecipes.com/recipe/123/"))
+    }
+
+    @Test
+    fun testExtractYouTubeVideoId() {
+        assertEquals("dQw4w9WgXcQ", UrlRecipeExtractor.extractYouTubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals("dQw4w9WgXcQ", UrlRecipeExtractor.extractYouTubeVideoId("https://youtu.be/dQw4w9WgXcQ?si=12345"))
+        assertEquals("dQw4w9WgXcQ", UrlRecipeExtractor.extractYouTubeVideoId("https://www.youtube.com/shorts/dQw4w9WgXcQ"))
+        assertEquals("dQw4w9WgXcQ", UrlRecipeExtractor.extractYouTubeVideoId("youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals("dQw4w9WgXcQ", UrlRecipeExtractor.extractYouTubeVideoId("youtu.be/dQw4w9WgXcQ"))
+    }
+
+    @Test
+    fun testCleanUrlString() {
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", UrlRecipeExtractor.cleanUrlString("https://www.youtube.com/watch?v=dQw4w9WgXcQ."))
+        assertEquals("https://youtu.be/dQw4w9WgXcQ", UrlRecipeExtractor.cleanUrlString("https://youtu.be/dQw4w9WgXcQ!"))
+        assertEquals("https://youtube.com/watch?v=dQw4w9WgXcQ", UrlRecipeExtractor.cleanUrlString("youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals("https://youtu.be/dQw4w9WgXcQ", UrlRecipeExtractor.cleanUrlString("youtu.be/dQw4w9WgXcQ"))
+        assertEquals("https://www.allrecipes.com/recipe/123", UrlRecipeExtractor.cleanUrlString("www.allrecipes.com/recipe/123"))
     }
 }

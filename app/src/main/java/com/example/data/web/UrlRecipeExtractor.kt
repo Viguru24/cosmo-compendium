@@ -48,7 +48,7 @@ object UrlRecipeExtractor {
         urlStr: String,
         targetProfile: String = "Wife"
     ): Result<RecipeEntity> = withContext(Dispatchers.IO) {
-        val timedResult = withTimeoutOrNull(16000) {
+        val timedResult = withTimeoutOrNull(25000) {
             try {
                 val cleanUrl = cleanUrlString(urlStr)
                 AppLogger.i(TAG, "Starting URL recipe extraction for: $cleanUrl (Target Profile: $targetProfile)")
@@ -58,10 +58,14 @@ object UrlRecipeExtractor {
                 }
 
                 val isSocial = isSocialPlatform(cleanUrl)
+                val isYouTube = isYouTubeUrl(cleanUrl)
+                val ytVideoId = if (isYouTube) extractYouTubeVideoId(cleanUrl) else null
+                val ytOEmbed = if (isYouTube) fetchYouTubeOEmbed(cleanUrl) else null
+
                 val primaryUA = if (isSocial) SOCIAL_BOT_USER_AGENT else BROWSER_USER_AGENT
 
                 var html = fetchHtml(cleanUrl, primaryUA)
-                AppLogger.i(TAG, "Primary HTML fetch returned ${html.length} chars (isSocial=$isSocial)")
+                AppLogger.i(TAG, "Primary HTML fetch returned ${html.length} chars (isSocial=$isSocial, isYouTube=$isYouTube)")
                 
                 // If primary fetch returned empty or insufficient content, try fallback UA
                 if (html.length < 500) {
@@ -88,9 +92,13 @@ object UrlRecipeExtractor {
                 }
 
                 if (html.isBlank()) {
-                    val msg = "Webpage content could not be loaded. If Instagram requires login, copy & paste the recipe caption text directly into the chat!"
-                    AppLogger.e(TAG, msg)
-                    return@withTimeoutOrNull Result.failure<RecipeEntity>(Exception(msg))
+                    if (isYouTube && ytOEmbed != null && !ytOEmbed.title.isNullOrBlank()) {
+                        AppLogger.i(TAG, "YouTube HTML fetch was empty, but oEmbed succeeded for: ${ytOEmbed.title}")
+                    } else {
+                        val msg = "Webpage content could not be loaded. If Instagram requires login, copy & paste the recipe caption text directly into the chat!"
+                        AppLogger.e(TAG, msg)
+                        return@withTimeoutOrNull Result.failure<RecipeEntity>(Exception(msg))
+                    }
                 }
 
                 // --- Tier 1: Try Schema.org JSON-LD ---
@@ -106,39 +114,68 @@ object UrlRecipeExtractor {
                 val compositeText = buildCompositeRecipeText(html, meta)
 
                 if (compositeText.isBlank() || compositeText.length < 25) {
-                    val msg = "No readable recipe caption found. If this Instagram post is restricted, copy & paste the caption text directly into the chat!"
-                    AppLogger.e(TAG, msg)
-                    return@withTimeoutOrNull Result.failure<RecipeEntity>(Exception(msg))
+                    if (!isYouTube || ytOEmbed == null || ytOEmbed.title.isNullOrBlank()) {
+                        val msg = "No readable recipe caption found. If this Instagram post is restricted, copy & paste the caption text directly into the chat!"
+                        AppLogger.e(TAG, msg)
+                        return@withTimeoutOrNull Result.failure<RecipeEntity>(Exception(msg))
+                    }
                 }
 
-                AppLogger.i(TAG, "Sending ${compositeText.length} chars of recipe text to Gemini AI parser...")
-                val parsedDtoResult = GeminiClient.parseRecipeWithAi(emptyList(), compositeText)
-                val dto = if (parsedDtoResult.isSuccess) {
-                    val r = parsedDtoResult.getOrThrow()
-                    AppLogger.i(TAG, "Gemini parsed recipe: '${r.titleEnglish ?: r.title}' (${r.ingredients?.size ?: 0} ingredients)")
-                    r
+                var workingDto = if (compositeText.isNotBlank() && compositeText.length >= 25) {
+                    AppLogger.i(TAG, "Sending ${compositeText.length} chars of recipe text to Gemini AI parser...")
+                    val parsedDtoResult = GeminiClient.parseRecipeWithAi(emptyList(), compositeText)
+                    if (parsedDtoResult.isSuccess) {
+                        val r = parsedDtoResult.getOrThrow()
+                        AppLogger.i(TAG, "Gemini parsed recipe: '${r.titleEnglish ?: r.title}' (${r.ingredients?.size ?: 0} ingredients)")
+                        r
+                    } else {
+                        AppLogger.w(TAG, "Gemini AI failed: ${parsedDtoResult.exceptionOrNull()?.message}, falling back to OfflineRecipeParser...", parsedDtoResult.exceptionOrNull())
+                        OfflineRecipeParser.parse(compositeText)
+                    }
                 } else {
-                    AppLogger.w(TAG, "Gemini AI failed: ${parsedDtoResult.exceptionOrNull()?.message}, falling back to OfflineRecipeParser...", parsedDtoResult.exceptionOrNull())
-                    OfflineRecipeParser.parse(compositeText)
+                    com.example.ai.ParsedRecipeDto()
                 }
 
-                var title = dto.titleEnglish ?: dto.title ?: dto.name
+                var title = workingDto.titleEnglish ?: workingDto.title ?: workingDto.name
                 if (title.isNullOrBlank() || title.contains("Imported Web Recipe", ignoreCase = true) || (title.contains("Recipe", ignoreCase = true) && title.length < 10)) {
-                    val cleanedSocial = cleanSocialTitle(meta.ogTitle ?: meta.twitterTitle ?: meta.pageTitle)
+                    val cleanedSocial = cleanSocialTitle(ytOEmbed?.title ?: meta.ogTitle ?: meta.twitterTitle ?: meta.pageTitle)
                     if (!cleanedSocial.isNullOrBlank()) {
                         title = cleanedSocial
                     }
                 }
-                val finalTitle = if (!title.isNullOrBlank()) title else "Imported Recipe"
+                var finalTitle = if (!title.isNullOrBlank()) title else (cleanSocialTitle(ytOEmbed?.title) ?: "Imported Recipe")
+
+                // --- Tier 3: Zero Ingredients Fallback ---
+                // If the parsed recipe has 0 ingredients (e.g. YouTube video where description only had general info,
+                // or recipe card didn't extract ingredients), formulate a complete recipe using the dish/video title!
+                if (workingDto.ingredients.isNullOrEmpty()) {
+                    AppLogger.w(TAG, "Parsed recipe has 0 ingredients. Attempting AI recipe formulation fallback for '$finalTitle'...")
+                    val formulatePrompt = if (!compositeText.isBlank() && compositeText.length > 30) {
+                        "Recipe title: $finalTitle\nContext / Video summary:\n${compositeText.take(1500)}"
+                    } else {
+                        finalTitle
+                    }
+                    val formulationResult = GeminiClient.formulateRecipeWithAi(formulatePrompt)
+                    if (formulationResult.isSuccess) {
+                        val formulated = formulationResult.getOrThrow()
+                        if (!formulated.ingredients.isNullOrEmpty()) {
+                            AppLogger.i(TAG, "Successfully formulated recipe fallback: '${formulated.titleEnglish ?: finalTitle}' with ${formulated.ingredients.size} ingredients!")
+                            workingDto = formulated
+                            if (!formulated.titleEnglish.isNullOrBlank()) {
+                                finalTitle = formulated.titleEnglish
+                            }
+                        }
+                    }
+                }
 
                 // High-resolution cover photo selection
-                val imageUrl = meta.ogImage ?: meta.twitterImage
+                val imageUrl = meta.ogImage ?: meta.twitterImage ?: ytOEmbed?.thumbnail_url ?: (if (ytVideoId != null) "https://i.ytimg.com/vi/$ytVideoId/hqdefault.jpg" else null)
                 val downloadedImage = if (!imageUrl.isNullOrBlank()) {
                     val cleanImageUrl = decodeHtmlEntities(imageUrl).replace("&amp;", "&")
                     downloadAndSavePhoto(context, cleanImageUrl)
                 } else null
 
-                val ingredientsList = (dto.ingredients ?: emptyList()).map { ingDto ->
+                val ingredientsList = (workingDto.ingredients ?: emptyList()).map { ingDto ->
                     RecipeIngredient(
                         name = ingDto.nameEnglish ?: ingDto.name ?: "Ingredient",
                         amount = ingDto.amount ?: "",
@@ -150,7 +187,7 @@ object UrlRecipeExtractor {
                     )
                 }
 
-                val stepsList = (dto.steps ?: emptyList()).mapIndexed { idx, stepDto ->
+                val stepsList = (workingDto.steps ?: emptyList()).mapIndexed { idx, stepDto ->
                     RecipeStep(
                         stepNumber = stepDto.stepNumber ?: (idx + 1),
                         instructionEnglish = stepDto.instructionEnglish ?: stepDto.instruction ?: "",
@@ -163,18 +200,18 @@ object UrlRecipeExtractor {
                 val recipe = RecipeEntity(
                     id = 0,
                     title = finalTitle,
-                    titleGerman = dto.titleGerman ?: finalTitle,
+                    titleGerman = workingDto.titleGerman ?: finalTitle,
                     titleEnglish = finalTitle,
-                    category = dto.category ?: "Web Imports",
-                    servings = dto.servings ?: "4 servings",
-                    prepTimeMinutes = dto.prepTimeMinutes ?: 15,
-                    cookTimeMinutes = dto.cookTimeMinutes ?: 30,
-                    difficulty = dto.difficulty ?: "Medium",
+                    category = workingDto.category ?: "Web Imports",
+                    servings = workingDto.servings ?: "4 servings",
+                    prepTimeMinutes = workingDto.prepTimeMinutes ?: 15,
+                    cookTimeMinutes = workingDto.cookTimeMinutes ?: 30,
+                    difficulty = workingDto.difficulty ?: "Medium",
                     ingredients = ingredientsList,
                     steps = stepsList,
-                    notes = if (!dto.notesEnglish.isNullOrBlank()) dto.notesEnglish else "Imported from $cleanUrl",
-                    notesGerman = dto.notesGerman ?: "",
-                    sourceLanguage = dto.detectedSourceLanguage ?: "en",
+                    notes = if (!workingDto.notesEnglish.isNullOrBlank()) workingDto.notesEnglish else "Imported from $cleanUrl",
+                    notesGerman = workingDto.notesGerman ?: "",
+                    sourceLanguage = workingDto.detectedSourceLanguage ?: "en",
                     coverTheme = "VINTAGE_LEATHER",
                     imageUri = downloadedImage?.first,
                     coverPhotoName = downloadedImage?.second,
@@ -182,7 +219,7 @@ object UrlRecipeExtractor {
                     isFavorite = false,
                     rating = 5,
                     timesCooked = 0,
-                    originStory = "Recipe imported from $cleanUrl",
+                    originStory = if (ytOEmbed != null && !ytOEmbed.author_name.isNullOrBlank()) "Recipe from YouTube: '${ytOEmbed.title ?: finalTitle}' by ${ytOEmbed.author_name} ($cleanUrl)" else "Recipe imported from $cleanUrl",
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis(),
                     isDeleted = false,
@@ -196,7 +233,7 @@ object UrlRecipeExtractor {
             }
         }
 
-        timedResult ?: Result.failure(Exception("Extraction timed out after 16s. Tip: Copy and paste the recipe caption text directly into the chat!"))
+        timedResult ?: Result.failure(Exception("Extraction timed out. Tip: Copy and paste the recipe caption text directly into the chat!"))
     }
 
     private fun getInstagramEmbedUrl(url: String): String? {
@@ -253,7 +290,8 @@ object UrlRecipeExtractor {
         val twitterImage: String? = null,
         val metaDescription: String? = null,
         val metaKeywords: String? = null,
-        val pageTitle: String? = null
+        val pageTitle: String? = null,
+        val youTubeDescription: String? = null
     )
 
     fun extractPageMetadata(html: String): PageMetadata {
@@ -280,6 +318,8 @@ object UrlRecipeExtractor {
         val titleMatcher = titlePattern.matcher(searchChunk)
         val pTitle = if (titleMatcher.find()) decodeHtmlEntities(titleMatcher.group(1)?.trim() ?: "") else null
 
+        val ytDesc = extractYouTubeDescription(html)
+
         return PageMetadata(
             ogTitle = ogTitle?.let { decodeHtmlEntities(it) },
             ogDescription = ogDesc?.let { decodeHtmlEntities(it) },
@@ -289,7 +329,8 @@ object UrlRecipeExtractor {
             twitterImage = twImg,
             metaDescription = metaDesc?.let { decodeHtmlEntities(it) },
             metaKeywords = metaKw?.let { decodeHtmlEntities(it) },
-            pageTitle = pTitle
+            pageTitle = pTitle,
+            youTubeDescription = ytDesc
         )
     }
 
@@ -313,9 +354,14 @@ object UrlRecipeExtractor {
             sb.append("POST TITLE / HEADER:\n").append(bestTitle).append("\n\n")
         }
 
-        val bestDesc = meta.ogDescription ?: meta.twitterDescription ?: meta.metaDescription
-        if (!bestDesc.isNullOrBlank()) {
-            sb.append("RECIPE POST CAPTION / DESCRIPTION:\n").append(bestDesc).append("\n\n")
+        // Check for full YouTube description first if present
+        if (!meta.youTubeDescription.isNullOrBlank()) {
+            sb.append("RECIPE POST CAPTION / DESCRIPTION (YOUTUBE):\n").append(meta.youTubeDescription).append("\n\n")
+        } else {
+            val bestDesc = meta.ogDescription ?: meta.twitterDescription ?: meta.metaDescription
+            if (!bestDesc.isNullOrBlank()) {
+                sb.append("RECIPE POST CAPTION / DESCRIPTION:\n").append(bestDesc).append("\n\n")
+            }
         }
 
         if (!meta.metaKeywords.isNullOrBlank()) {
@@ -345,6 +391,14 @@ object UrlRecipeExtractor {
         val reelMatcher = reelSuffixPattern.matcher(title)
         if (reelMatcher.find()) {
             val inner = reelMatcher.group(1)?.trim()
+            if (!inner.isNullOrBlank()) title = inner
+        }
+
+        // YouTube title suffix cleaning (e.g. "How to Make Oat Milk - YouTube" or "... | YouTube")
+        val ytSuffixPattern = Pattern.compile("^(.*?)\\s*[-|•\\u2022]\\s*YouTube$", Pattern.CASE_INSENSITIVE)
+        val ytMatcher = ytSuffixPattern.matcher(title)
+        if (ytMatcher.find()) {
+            val inner = ytMatcher.group(1)?.trim()
             if (!inner.isNullOrBlank()) title = inner
         }
 
@@ -652,9 +706,135 @@ object UrlRecipeExtractor {
         return sb.toString().replace(Regex("\\s+"), " ").trim().take(4000)
     }
 
-    private fun cleanUrlString(input: String): String {
-        val pattern = Pattern.compile("https?://[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]+")
-        val matcher = pattern.matcher(input)
-        return if (matcher.find()) matcher.group(0) ?: "" else input.trim()
+    fun extractYouTubeDescription(html: String): String? {
+        if (!html.contains("youtube.com") && !html.contains("youtu.be") && !html.contains("shortDescription")) {
+            return null
+        }
+
+        try {
+            // Check for "shortDescription":"..." in initial data / player response
+            val pattern = Pattern.compile("\"shortDescription\"\\s*:\\s*\"(.*?)(?<!\\\\)\"", Pattern.DOTALL)
+            val matcher = pattern.matcher(html)
+            if (matcher.find()) {
+                val raw = matcher.group(1)
+                if (!raw.isNullOrBlank()) {
+                    val unescaped = unescapeJsonString(raw).trim()
+                    if (unescaped.isNotBlank()) {
+                        AppLogger.i(TAG, "Extracted full YouTube shortDescription (${unescaped.length} chars)")
+                        return unescaped
+                    }
+                }
+            }
+
+            // Fallback: Check for "description":{"simpleText":"..."}
+            val simplePattern = Pattern.compile("\"description\"\\s*:\\s*\\{\\s*\"simpleText\"\\s*:\\s*\"(.*?)(?<!\\\\)\"", Pattern.DOTALL)
+            val simpleMatcher = simplePattern.matcher(html)
+            if (simpleMatcher.find()) {
+                val raw = simpleMatcher.group(1)
+                if (!raw.isNullOrBlank()) {
+                    val unescaped = unescapeJsonString(raw).trim()
+                    if (unescaped.isNotBlank()) {
+                        AppLogger.i(TAG, "Extracted YouTube simpleText description (${unescaped.length} chars)")
+                        return unescaped
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            AppLogger.w(TAG, "Failed extracting YouTube description: ${e.message}")
+        }
+        return null
+    }
+
+    private fun unescapeJsonString(input: String): String {
+        var s = input
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t")
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .replace("\\/", "/")
+
+        val unicodePattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})")
+        val matcher = unicodePattern.matcher(s)
+        val sb = StringBuffer()
+        while (matcher.find()) {
+            try {
+                val code = matcher.group(1)!!.toInt(16)
+                matcher.appendReplacement(sb, MatcherQuote(String(Character.toChars(code))))
+            } catch (_: Exception) {
+                matcher.appendReplacement(sb, "")
+            }
+        }
+        matcher.appendTail(sb)
+        return sb.toString()
+    }
+
+    data class YouTubeOEmbed(
+        val title: String?,
+        val author_name: String?,
+        val thumbnail_url: String?
+    )
+
+    fun isYouTubeUrl(url: String): Boolean {
+        val lower = url.lowercase()
+        return lower.contains("youtube.com") || lower.contains("youtu.be")
+    }
+
+    fun extractYouTubeVideoId(url: String): String? {
+        val pattern = Pattern.compile("(?i)(?:youtube\\.com\\/(?:[^\\s/]+\\/\\S+\\/|(?:v|e(?:mbed)?|shorts)\\/|\\S*?[?&]v=)|youtu\\.be\\/)([a-zA-Z0-9_-]{11})")
+        val matcher = pattern.matcher(url)
+        return if (matcher.find()) matcher.group(1) else null
+    }
+
+    fun fetchYouTubeOEmbed(url: String): YouTubeOEmbed? {
+        val videoId = extractYouTubeVideoId(url) ?: return null
+        val oembedUrl = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=$videoId&format=json"
+        return try {
+            val req = Request.Builder()
+                .url(oembedUrl)
+                .addHeader("User-Agent", BROWSER_USER_AGENT)
+                .build()
+            val resp = httpClient.newCall(req).execute()
+            if (resp.isSuccessful) {
+                val jsonStr = resp.body?.string() ?: ""
+                if (jsonStr.isNotBlank()) {
+                    val obj = JSONObject(jsonStr)
+                    YouTubeOEmbed(
+                        title = obj.optString("title").takeIf { it.isNotBlank() },
+                        author_name = obj.optString("author_name").takeIf { it.isNotBlank() },
+                        thumbnail_url = obj.optString("thumbnail_url").takeIf { it.isNotBlank() }
+                    )
+                } else null
+            } else null
+        } catch (e: Exception) {
+            AppLogger.w(TAG, "Failed fetching YouTube oEmbed: ${e.message}")
+            null
+        }
+    }
+
+    fun cleanUrlString(input: String): String {
+        var s = input.trim()
+        val pattern = Pattern.compile("(?i)(https?://[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]+)")
+        val matcher = pattern.matcher(s)
+        s = if (matcher.find()) {
+            matcher.group(1) ?: s
+        } else {
+            val schemelessPattern = Pattern.compile("(?i)((?:www\\.|(?:(?:m\\.)?youtube\\.com|youtu\\.be|instagram\\.com|instagr\\.am|tiktok\\.com|pinterest\\.com|pin\\.it|facebook\\.com|fb\\.watch|allrecipes\\.com|chefkoch\\.de)/)[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]*)")
+            val sm = schemelessPattern.matcher(s)
+            if (sm.find()) sm.group(1) ?: s else s
+        }
+
+        while (s.isNotEmpty() && (s.endsWith(".") || s.endsWith(",") || s.endsWith(";") || 
+               s.endsWith("!") || s.endsWith("?") || s.endsWith(")") || s.endsWith(">") || 
+               s.endsWith("\"") || s.endsWith("'"))) {
+            s = s.substring(0, s.length - 1)
+        }
+
+        if (!s.startsWith("http://", ignoreCase = true) && !s.startsWith("https://", ignoreCase = true)) {
+            if (s.contains(".") && !s.contains(" ")) {
+                s = "https://$s"
+            }
+        }
+        return s
     }
 }

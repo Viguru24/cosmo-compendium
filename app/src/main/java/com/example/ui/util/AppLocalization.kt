@@ -278,12 +278,21 @@ object AppLocalization {
     }
 
     fun getSousChefPromptPlaceholder(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
-        LanguageMode.GERMAN -> "Frag den Küchen-Assistenten..."
-        LanguageMode.FRENCH -> "Demandez au Sous-Chef..."
-        LanguageMode.ITALIAN -> "Chiedi all'aiuto-cuoco..."
-        LanguageMode.SPANISH -> "Pregunta al ayudante..."
-        LanguageMode.DUTCH -> "Vraag de keukenhulp..."
-        else -> "Ask Sous-Chef or paste link..."
+        LanguageMode.GERMAN -> "Frag den Küchen-Assistenten, 'Rezept erstellen für...' oder Text/Link einfügen..."
+        LanguageMode.FRENCH -> "Demandez au Sous-Chef, 'Créer recette pour...' ou collez texte/lien..."
+        LanguageMode.ITALIAN -> "Chiedi all'aiuto-cuoco, 'Crea ricetta per...' o incolla testo/link..."
+        LanguageMode.SPANISH -> "Pregunta al ayudante, 'Crear receta para...' o pega texto/enlace..."
+        LanguageMode.DUTCH -> "Vraag de keukenhulp, 'Recept maken voor...' of plak tekst/link..."
+        else -> "Ask Sous-Chef, 'Make a recipe for...' or paste text/link..."
+    }
+
+    fun getSousChefPillCreate(lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {
+        LanguageMode.GERMAN -> "✨ Rezept erstellen"
+        LanguageMode.FRENCH -> "✨ Créer une recette"
+        LanguageMode.ITALIAN -> "✨ Crea ricetta"
+        LanguageMode.SPANISH -> "✨ Crear receta"
+        LanguageMode.DUTCH -> "✨ Recept creëren"
+        else -> "✨ Create Recipe"
     }
 
     fun getSousChefPillScan(name: String, lang: LanguageMode = LanguageMode.ENGLISH): String = when (lang) {

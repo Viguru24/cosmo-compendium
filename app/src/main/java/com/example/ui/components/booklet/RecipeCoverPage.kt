@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -24,7 +26,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,6 +67,7 @@ import com.example.ui.util.getDisplayCategory
 import com.example.ui.util.getDisplayTitle
 import java.io.File
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecipeCoverPage(
     recipe: RecipeEntity,
@@ -153,21 +156,25 @@ fun RecipeCoverPage(
 
                 // Top-Right Quick Action: View Full Photo (if photo exists)
                 if (hasPhoto) {
-                    IconButton(
-                        onClick = { showFullCoverPhotoDialog = true },
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0x55000000),
+                        border = BorderStroke(0.75.dp, Color(0x4DFFFFFF)),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(14.dp)
-                            .size(38.dp)
-                            .background(Color(0x77000000), CircleShape)
-                            .border(1.dp, Color(0x66FFFFFF), CircleShape)
+                            .padding(top = 16.dp, end = 16.dp)
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable { showFullCoverPhotoDialog = true }
                     ) {
-                        Icon(
-                            Icons.Default.ZoomIn,
-                            contentDescription = "View Full Picture",
-                            tint = Color(0xFFFFD54F),
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Fullscreen,
+                                contentDescription = "View Full Picture",
+                                tint = Color(0xFFF3E7DA),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
 
@@ -179,7 +186,10 @@ fun RecipeCoverPage(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     // Top Inscription
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) {
                         Text(
                             text = AppLocalization.getCoverHeader(languageMode),
                             style = MaterialTheme.typography.labelMedium.copy(
@@ -249,29 +259,35 @@ fun RecipeCoverPage(
                             list
                         }
                         if (coverBadges.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Spacer(modifier = Modifier.height(10.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                coverBadges.take(3).forEach { badge ->
+                                coverBadges.take(4).forEach { badge ->
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = Color(0x33000000),
-                                        border = BorderStroke(0.8.dp, Color(0x66E5D4B8))
+                                        color = Color(0x38000000),
+                                        border = BorderStroke(0.8.dp, Color(0x55E5D4B8))
                                     ) {
                                         Text(
                                             text = badge,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 color = Color(0xFFF3E7DA),
-                                                fontSize = 10.sp,
+                                                fontSize = 11.sp,
                                                 fontWeight = FontWeight.Medium
-                                            )
+                                            ),
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        } else if (onGenerateAiCover != null || isGeneratingCover) {
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
 
                         // AI Cover Art Generator Action Button

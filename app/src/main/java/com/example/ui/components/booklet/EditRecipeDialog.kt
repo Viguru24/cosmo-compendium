@@ -679,621 +679,82 @@ fun EditRecipeDialog(
 
                         // ================= TAB 1: INGREDIENTS =================
                         1 -> {
-                            Text(
-                                text = "Recipe Ingredients (${ingredients.size}):",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF431407))
+                            EditRecipeIngredientsTab(
+                                ingredients = ingredients,
+                                editingIngIndex = editingIngIndex,
+                                onEditingIngIndexChange = { editingIngIndex = it },
+                                editIngAmount = editIngAmount,
+                                onEditIngAmountChange = { editIngAmount = it },
+                                editIngUnit = editIngUnit,
+                                onEditIngUnitChange = { editIngUnit = it },
+                                editIngName = editIngName,
+                                onEditIngNameChange = { editIngName = it },
+                                editIngGroup = editIngGroup,
+                                onEditIngGroupChange = { editIngGroup = it },
+                                editIngOptional = editIngOptional,
+                                onEditIngOptionalChange = { editIngOptional = it },
+                                newIngAmount = newIngAmount,
+                                onNewIngAmountChange = { newIngAmount = it },
+                                newIngUnit = newIngUnit,
+                                onNewIngUnitChange = { newIngUnit = it },
+                                newIngName = newIngName,
+                                onNewIngNameChange = { newIngName = it },
+                                newIngGroup = newIngGroup,
+                                onNewIngGroupChange = { newIngGroup = it },
+                                newIngOptional = newIngOptional,
+                                onNewIngOptionalChange = { newIngOptional = it },
+                                draggedIngIndex = draggedIngIndex,
+                                onDraggedIngIndexChange = { draggedIngIndex = it },
+                                dragIngOffsetY = dragIngOffsetY,
+                                onDragIngOffsetYChange = { dragIngOffsetY = it },
+                                quickUnits = quickUnits,
+                                quickGroups = quickGroups,
+                                editorTextFieldColors = editorTextFieldColors,
+                                onCommitActiveIngEdit = { commitActiveIngEdit() },
+                                onStartEditIngredient = { index, ing ->
+                                    commitActiveIngEdit()
+                                    editingIngIndex = index
+                                    editIngAmount = ing.amount
+                                    editIngUnit = ing.unit
+                                    editIngName = ing.nameEnglish ?: ing.name
+                                    editIngGroup = ing.group ?: ""
+                                    editIngOptional = ing.isOptional
+                                }
                             )
-
-                            // List of existing ingredients
-                            ingredients.forEachIndexed { index, ing ->
-                                if (editingIngIndex == index) {
-                                    // Inline editor card for this ingredient
-                                    Surface(
-                                        color = Color(0xFFFFF8EE),
-                                        border = BorderStroke(1.5.dp, TerracottaPrimary),
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Text("Edit Ingredient #${index + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
-                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                OutlinedTextField(
-                                                    value = editIngAmount,
-                                                    onValueChange = { editIngAmount = it },
-                                                    label = { Text("Amount") },
-                                                    colors = editorTextFieldColors,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                OutlinedTextField(
-                                                    value = editIngUnit,
-                                                    onValueChange = { editIngUnit = it },
-                                                    label = { Text("Unit") },
-                                                    colors = editorTextFieldColors,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                            }
-                                            OutlinedTextField(
-                                                value = editIngName,
-                                                onValueChange = { editIngName = it },
-                                                label = { Text("Ingredient Name") },
-                                                colors = editorTextFieldColors,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            OutlinedTextField(
-                                                value = editIngGroup,
-                                                onValueChange = { editIngGroup = it },
-                                                label = { Text("Group (e.g. Dough, Filling)") },
-                                                colors = editorTextFieldColors,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text("Optional ingredient?", fontSize = 12.sp, color = Color(0xFF6B5B4E))
-                                                Switch(
-                                                    checked = editIngOptional,
-                                                    onCheckedChange = { editIngOptional = it },
-                                                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = SageGreen)
-                                                )
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.End,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                TextButton(onClick = { editingIngIndex = null }) {
-                                                    Text("Cancel", color = Color(0xFF786555))
-                                                }
-                                                Button(
-                                                    onClick = { commitActiveIngEdit() },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = SageGreen)
-                                                ) {
-                                                    Text("Apply Edit", fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    val isDragged = draggedIngIndex == index
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isDragged) Color(0xFFFFF3E0) else Color(0xFFFBF8F2),
-                                        border = BorderStroke(if (isDragged) 1.5.dp else 1.dp, if (isDragged) TerracottaPrimary else Color(0xFFE8DED1)),
-                                        shadowElevation = if (isDragged) 6.dp else 0.dp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .zIndex(if (isDragged) 1f else 0f)
-                                            .graphicsLayer {
-                                                translationY = if (isDragged) dragIngOffsetY else 0f
-                                            }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.weight(1f),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                // Drag & Drop Handle
-                                                Box(
-                                                    modifier = Modifier
-                                                        .pointerInput(ingredients.size) {
-                                                            detectDragGestures(
-                                                                onDragStart = {
-                                                                    draggedIngIndex = index
-                                                                    dragIngOffsetY = 0f
-                                                                },
-                                                                onDrag = { change, dragAmount ->
-                                                                    change.consume()
-                                                                    dragIngOffsetY += dragAmount.y
-                                                                    val currentIdx = draggedIngIndex ?: return@detectDragGestures
-                                                                    val itemHeightPx = 48.dp.toPx()
-                                                                    if (dragIngOffsetY > itemHeightPx && currentIdx < ingredients.size - 1) {
-                                                                        val item = ingredients.removeAt(currentIdx)
-                                                                        ingredients.add(currentIdx + 1, item)
-                                                                        draggedIngIndex = currentIdx + 1
-                                                                        dragIngOffsetY -= itemHeightPx
-                                                                    } else if (dragIngOffsetY < -itemHeightPx && currentIdx > 0) {
-                                                                        val item = ingredients.removeAt(currentIdx)
-                                                                        ingredients.add(currentIdx - 1, item)
-                                                                        draggedIngIndex = currentIdx - 1
-                                                                        dragIngOffsetY += itemHeightPx
-                                                                    }
-                                                                },
-                                                                onDragEnd = {
-                                                                    draggedIngIndex = null
-                                                                    dragIngOffsetY = 0f
-                                                                },
-                                                                onDragCancel = {
-                                                                    draggedIngIndex = null
-                                                                    dragIngOffsetY = 0f
-                                                                }
-                                                            )
-                                                        }
-                                                        .padding(end = 6.dp)
-                                                ) {
-                                                    Icon(
-                                                        Icons.Default.DragHandle,
-                                                        contentDescription = "Drag to reorder",
-                                                        tint = if (isDragged) TerracottaPrimary else Color(0xFFB0A395),
-                                                        modifier = Modifier.size(20.dp)
-                                                    )
-                                                }
-
-                                                // Non-wrapping Measurement Badge Pill
-                                                if (ing.amount.isNotBlank() || ing.unit.isNotBlank()) {
-                                                    Surface(
-                                                        shape = RoundedCornerShape(6.dp),
-                                                        color = Color(0xFFFFEDD5),
-                                                        border = BorderStroke(1.dp, Color(0xFFFED7AA))
-                                                    ) {
-                                                        Text(
-                                                            text = "${ing.amount} ${ing.unit}".trim(),
-                                                            fontSize = 11.5.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFF9A3412),
-                                                            maxLines = 1,
-                                                            softWrap = false,
-                                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                }
-
-                                                val displayName = RecipeIngredient.cleanIngredientName(ing.nameEnglish ?: ing.name).ifBlank { ing.name }
-
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = displayName,
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            color = Color(0xFF2C1E14),
-                                                            fontSize = 13.sp
-                                                        )
-                                                    )
-                                                    if (!ing.group.isNullOrBlank()) {
-                                                        Text(
-                                                            text = ing.group,
-                                                            fontSize = 10.sp,
-                                                            color = SageGreen,
-                                                            fontWeight = FontWeight.Bold
-                                                        )
-                                                    }
-                                                    if (ing.isOptional) {
-                                                        Text(
-                                                            text = "(optional)",
-                                                            fontSize = 10.sp,
-                                                            fontStyle = FontStyle.Italic,
-                                                            color = Color(0xFF8C7A6B)
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-                                            // Action icons (Edit, Delete)
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                IconButton(
-                                                    onClick = {
-                                                        commitActiveIngEdit()
-                                                        editingIngIndex = index
-                                                        editIngAmount = ing.amount
-                                                        editIngUnit = ing.unit
-                                                        editIngName = ing.nameEnglish ?: ing.name
-                                                        editIngGroup = ing.group ?: ""
-                                                        editIngOptional = ing.isOptional
-                                                    },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
-                                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TerracottaPrimary, modifier = Modifier.size(16.dp))
-                                                }
-                                                IconButton(
-                                                    onClick = {
-                                                        if (editingIngIndex == index) editingIngIndex = null
-                                                        ingredients.removeAt(index)
-                                                    },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
-                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFE5DDD3))
-
-                            // Add New Ingredient Section
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFFBF8F2),
-                                border = BorderStroke(1.dp, Color(0xFFE8DED1)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Add New Ingredient", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        OutlinedTextField(
-                                            value = newIngAmount,
-                                            onValueChange = { newIngAmount = it },
-                                            placeholder = { Text("Qty (e.g. 250, 1/2)", fontSize = 12.sp) },
-                                            colors = editorTextFieldColors,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        OutlinedTextField(
-                                            value = newIngUnit,
-                                            onValueChange = { newIngUnit = it },
-                                            placeholder = { Text("Unit", fontSize = 12.sp) },
-                                            colors = editorTextFieldColors,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-
-                                    // Quick Unit Chips
-                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        items(quickUnits.size) { idx ->
-                                            val u = quickUnits[idx]
-                                            val isSel = newIngUnit == u
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = if (isSel) Color(0xFFFFEDD5) else Color.White,
-                                                border = BorderStroke(1.dp, if (isSel) TerracottaPrimary else Color(0xFFD6C7B2)),
-                                                modifier = Modifier.clickable { newIngUnit = u }
-                                            ) {
-                                                Text(
-                                                    text = u,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (isSel) TerracottaPrimary else Color(0xFF6B5B4E),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    OutlinedTextField(
-                                        value = newIngName,
-                                        onValueChange = { newIngName = it },
-                                        placeholder = { Text("Ingredient name (e.g. All-purpose flour)", fontSize = 12.sp) },
-                                        colors = editorTextFieldColors,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    OutlinedTextField(
-                                        value = newIngGroup,
-                                        onValueChange = { newIngGroup = it },
-                                        placeholder = { Text("Group (e.g. Dough, Filling, Sauce)", fontSize = 12.sp) },
-                                        colors = editorTextFieldColors,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    // Quick Group Chips
-                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        items(quickGroups.size) { idx ->
-                                            val g = quickGroups[idx]
-                                            val isSel = newIngGroup == g
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = if (isSel) Color(0xFFFFEDD5) else Color.White,
-                                                border = BorderStroke(1.dp, if (isSel) TerracottaPrimary else Color(0xFFD6C7B2)),
-                                                modifier = Modifier.clickable { newIngGroup = g }
-                                            ) {
-                                                Text(
-                                                    text = g,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (isSel) TerracottaPrimary else Color(0xFF6B5B4E),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            if (newIngName.isNotBlank()) {
-                                                ingredients.add(
-                                                    RecipeIngredient(
-                                                        name = newIngName,
-                                                        amount = newIngAmount,
-                                                        unit = newIngUnit,
-                                                        nameEnglish = newIngName,
-                                                        isOptional = newIngOptional,
-                                                        group = newIngGroup.ifBlank { null }
-                                                    )
-                                                )
-                                                newIngName = ""
-                                                newIngAmount = ""
-                                                newIngUnit = "g"
-                                                newIngGroup = ""
-                                            }
-                                        },
-                                        enabled = newIngName.isNotBlank(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = SageGreen),
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Add Ingredient", fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
                         }
 
                         // ================= TAB 2: INSTRUCTIONS / STEPS =================
                         2 -> {
-                            Text(
-                                text = "Preparation Steps (${steps.size}):",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color(0xFF431407))
+                            EditRecipeStepsTab(
+                                steps = steps,
+                                editingStepIndex = editingStepIndex,
+                                onEditingStepIndexChange = { editingStepIndex = it },
+                                editStepEn = editStepEn,
+                                onEditStepEnChange = { editStepEn = it },
+                                editStepTimer = editStepTimer,
+                                onEditStepTimerChange = { editStepTimer = it },
+                                editStepTip = editStepTip,
+                                onEditStepTipChange = { editStepTip = it },
+                                newStepEn = newStepEn,
+                                onNewStepEnChange = { newStepEn = it },
+                                newStepTimer = newStepTimer,
+                                onNewStepTimerChange = { newStepTimer = it },
+                                newStepTip = newStepTip,
+                                onNewStepTipChange = { newStepTip = it },
+                                draggedStepIndex = draggedStepIndex,
+                                onDraggedStepIndexChange = { draggedStepIndex = it },
+                                dragStepOffsetY = dragStepOffsetY,
+                                onDragStepOffsetYChange = { dragStepOffsetY = it },
+                                editorTextFieldColors = editorTextFieldColors,
+                                onCommitActiveStepEdit = { commitActiveStepEdit() },
+                                onStartEditStep = { index, step ->
+                                    commitActiveStepEdit()
+                                    editingStepIndex = index
+                                    editStepEn = step.getInstruction(LanguageMode.ENGLISH)
+                                    editStepTimer = step.timerMinutes.toString()
+                                    editStepTip = step.tip ?: ""
+                                }
                             )
-
-                            // List of existing steps
-                            steps.forEachIndexed { index, step ->
-                                if (editingStepIndex == index) {
-                                    Surface(
-                                        color = Color(0xFFFFF8EE),
-                                        border = BorderStroke(1.5.dp, TerracottaPrimary),
-                                        shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Text("Edit Step #${index + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
-                                            OutlinedTextField(
-                                                value = editStepEn,
-                                                onValueChange = { editStepEn = it },
-                                                label = { Text("Step Instruction") },
-                                                colors = editorTextFieldColors,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                OutlinedTextField(
-                                                    value = editStepTimer,
-                                                    onValueChange = { editStepTimer = it },
-                                                    label = { Text("Timer (min)") },
-                                                    colors = editorTextFieldColors,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                OutlinedTextField(
-                                                    value = editStepTip,
-                                                    onValueChange = { editStepTip = it },
-                                                    label = { Text("Chef's Tip") },
-                                                    colors = editorTextFieldColors,
-                                                    modifier = Modifier.weight(2f)
-                                                )
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.End,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                TextButton(onClick = { editingStepIndex = null }) {
-                                                    Text("Cancel", color = Color(0xFF786555))
-                                                }
-                                                Button(
-                                                    onClick = { commitActiveStepEdit() },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = SageGreen)
-                                                ) {
-                                                    Text("Apply Step Edit", fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    val isDragged = draggedStepIndex == index
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isDragged) Color(0xFFFFF3E0) else Color(0xFFFBF8F2),
-                                        border = BorderStroke(if (isDragged) 1.5.dp else 1.dp, if (isDragged) TerracottaPrimary else Color(0xFFE8DED1)),
-                                        shadowElevation = if (isDragged) 6.dp else 0.dp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .zIndex(if (isDragged) 1f else 0f)
-                                            .graphicsLayer {
-                                                translationY = if (isDragged) dragStepOffsetY else 0f
-                                            }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 8.dp, vertical = 8.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.Top
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.weight(1f),
-                                                verticalAlignment = Alignment.Top
-                                            ) {
-                                                // Drag & Drop Handle
-                                                Box(
-                                                    modifier = Modifier
-                                                        .pointerInput(steps.size) {
-                                                            detectDragGestures(
-                                                                onDragStart = {
-                                                                    draggedStepIndex = index
-                                                                    dragStepOffsetY = 0f
-                                                                },
-                                                                onDrag = { change, dragAmount ->
-                                                                    change.consume()
-                                                                    dragStepOffsetY += dragAmount.y
-                                                                    val currentIdx = draggedStepIndex ?: return@detectDragGestures
-                                                                    val itemHeightPx = 54.dp.toPx()
-                                                                    if (dragStepOffsetY > itemHeightPx && currentIdx < steps.size - 1) {
-                                                                        val item = steps.removeAt(currentIdx)
-                                                                        steps.add(currentIdx + 1, item)
-                                                                        draggedStepIndex = currentIdx + 1
-                                                                        dragStepOffsetY -= itemHeightPx
-                                                                    } else if (dragStepOffsetY < -itemHeightPx && currentIdx > 0) {
-                                                                        val item = steps.removeAt(currentIdx)
-                                                                        steps.add(currentIdx - 1, item)
-                                                                        draggedStepIndex = currentIdx - 1
-                                                                        dragStepOffsetY += itemHeightPx
-                                                                    }
-                                                                },
-                                                                onDragEnd = {
-                                                                    draggedStepIndex = null
-                                                                    dragStepOffsetY = 0f
-                                                                },
-                                                                onDragCancel = {
-                                                                    draggedStepIndex = null
-                                                                    dragStepOffsetY = 0f
-                                                                }
-                                                            )
-                                                        }
-                                                        .padding(end = 6.dp, top = 2.dp)
-                                                ) {
-                                                    Icon(
-                                                        Icons.Default.DragHandle,
-                                                        contentDescription = "Drag to reorder",
-                                                        tint = if (isDragged) TerracottaPrimary else Color(0xFFB0A395),
-                                                        modifier = Modifier.size(20.dp)
-                                                    )
-                                                }
-
-                                                // Step number badge
-                                                Surface(
-                                                    shape = CircleShape,
-                                                    color = TerracottaPrimary,
-                                                    modifier = Modifier.size(22.dp)
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        Text("${index + 1}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-
-                                                Spacer(modifier = Modifier.width(8.dp))
-
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = step.getInstruction(LanguageMode.ENGLISH),
-                                                        style = MaterialTheme.typography.bodySmall.copy(
-                                                            color = Color(0xFF2C1E14),
-                                                            fontSize = 12.5.sp,
-                                                            lineHeight = 17.sp
-                                                        )
-                                                    )
-                                                    if (step.timerMinutes > 0) {
-                                                        Spacer(modifier = Modifier.height(2.dp))
-                                                        Surface(
-                                                            shape = RoundedCornerShape(4.dp),
-                                                            color = Color(0xFFFEF3C7)
-                                                        ) {
-                                                            Text(
-                                                                text = "⏱ ${step.timerMinutes} min",
-                                                                fontSize = 10.sp,
-                                                                color = Color(0xFF92400E),
-                                                                fontWeight = FontWeight.Bold,
-                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                    if (!step.tip.isNullOrBlank()) {
-                                                        Spacer(modifier = Modifier.height(2.dp))
-                                                        Text("💡 ${step.tip}", fontSize = 10.5.sp, color = SageGreen, fontWeight = FontWeight.Medium)
-                                                    }
-                                                }
-                                            }
-
-                                            // Step action buttons (Edit, Delete)
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                IconButton(
-                                                    onClick = {
-                                                        commitActiveStepEdit()
-                                                        editingStepIndex = index
-                                                        editStepEn = step.getInstruction(LanguageMode.ENGLISH)
-                                                        editStepTimer = step.timerMinutes.toString()
-                                                        editStepTip = step.tip ?: ""
-                                                    },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
-                                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TerracottaPrimary, modifier = Modifier.size(16.dp))
-                                                }
-                                                IconButton(
-                                                    onClick = {
-                                                        if (editingStepIndex == index) editingStepIndex = null
-                                                        steps.removeAt(index)
-                                                    },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
-                                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFE5DDD3))
-
-                            // Add New Step Section
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFFBF8F2),
-                                border = BorderStroke(1.dp, Color(0xFFE8DED1)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("Add Step #${steps.size + 1}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TerracottaPrimary)
-
-                                    OutlinedTextField(
-                                        value = newStepEn,
-                                        onValueChange = { newStepEn = it },
-                                        placeholder = { Text("Step instruction (e.g. Whisk eggs and sugar until pale)", fontSize = 12.sp) },
-                                        colors = editorTextFieldColors,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        OutlinedTextField(
-                                            value = newStepTimer,
-                                            onValueChange = { newStepTimer = it },
-                                            placeholder = { Text("Timer (min)", fontSize = 12.sp) },
-                                            colors = editorTextFieldColors,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        OutlinedTextField(
-                                            value = newStepTip,
-                                            onValueChange = { newStepTip = it },
-                                            placeholder = { Text("Chef's tip (optional)", fontSize = 12.sp) },
-                                            colors = editorTextFieldColors,
-                                            modifier = Modifier.weight(2f)
-                                        )
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            if (newStepEn.isNotBlank()) {
-                                                steps.add(
-                                                    RecipeStep(
-                                                        stepNumber = steps.size + 1,
-                                                        instructionEnglish = newStepEn,
-                                                        timerMinutes = newStepTimer.toIntOrNull() ?: 0,
-                                                        tip = newStepTip.ifBlank { null }
-                                                    )
-                                                )
-                                                newStepEn = ""
-                                                newStepTimer = "0"
-                                                newStepTip = ""
-                                            }
-                                        },
-                                        enabled = newStepEn.isNotBlank(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = SageGreen),
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Add Step", fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
                         }
 
                         // ================= TAB 3: NOTES =================

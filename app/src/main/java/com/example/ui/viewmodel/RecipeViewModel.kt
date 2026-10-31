@@ -462,7 +462,6 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     val batchCoverLog: MutableStateFlow<String?> get() = batchCoverDelegate.batchCoverLog
     val showBatchCoverDialog: MutableStateFlow<Boolean> get() = batchCoverDelegate.showBatchCoverDialog
     val selectedBatchFilter: MutableStateFlow<BatchCoverFilter> get() = batchCoverDelegate.selectedBatchFilter
-    val recipesMissingPhotosCount: StateFlow<Int> get() = batchCoverDelegate.recipesMissingPhotosCount
 
     fun openBatchCoverDialog() = batchCoverDelegate.openBatchCoverDialog()
     fun closeBatchCoverDialog() = batchCoverDelegate.closeBatchCoverDialog()
@@ -737,6 +736,10 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
         started = SharingStarted.Lazily,
         initialValue = emptyList()
     )
+
+    val recipesMissingPhotosCount: StateFlow<Int> = recipes.map { list ->
+        list.count { RecipeImageClassifier.isMissingAiPhoto(it.imageUri) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     // ==========================================
     // UI ACTIONS & NAVIGATION

@@ -53,10 +53,6 @@ class RecipeBatchCoverDelegate(
     val showBatchCoverDialog = MutableStateFlow(false)
     val selectedBatchFilter = MutableStateFlow(BatchCoverFilter.MISSING_AI_PHOTOS)
 
-    val recipesMissingPhotosCount: StateFlow<Int> = vm.recipes.map { list ->
-        list.count { RecipeImageClassifier.isMissingAiPhoto(it.imageUri) }
-    }.stateIn(vm.viewModelScope, SharingStarted.Lazily, 0)
-
     init {
         vm.viewModelScope.launch(Dispatchers.IO) {
             for (task in coverGenQueue) {
